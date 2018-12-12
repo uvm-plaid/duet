@@ -59,25 +59,32 @@ inferKind δ = \case
 
 data TypeError p = TypeError
   { typeErrorTerm ∷ Doc
-  , typeErrorContext ∷ (𝕏 ⇰ Type p RNF)
+  , typeErrorContext ∷ (𝕏 ⇰ TypePre p RNF)
   , typeErrorType ∷ TypePre p RNF
   , typeErrorExpected ∷ 𝐿 𝕊
   }
 makePrettyRecord ''TypeError
 
-inferSens ∷ (Privacy p) ⇒ (𝕏 ⇰ Kind) → (𝕏 ⇰ Type p RNF) → SExp p → ErrorT (TypeError p) (WriterT (𝕏 ⇰ Sens RNF) ID) (TypePre p RNF)
+anno ∷ a → Annotated FullContext a
+anno = Annotated $ FullContext null null null
+
+inferSens ∷ (Privacy p) 
+          ⇒ (𝕏 ⇰ Kind) 
+          → (𝕏 ⇰ TypePre p RNF) 
+          → SExp p 
+          → ErrorT (TypeError p) (WriterT (𝕏 ⇰ Sens RNF) ID) (TypePre p RNF)
 inferSens δ γ eA = case extract eA of
   ℕˢSE n → return $ ℕˢT $ NatRNF n
   ℝˢSE d → return $ ℝˢT $ NNRealRNF d
   DynSE e → do
     τ ← inferSens δ γ e
     case τ of
-      ℕˢT η → return ℕT
-      ℝˢT η → return ℝT
-      𝕀T η → return ℕT
+      ℕˢT _η → return ℕT
+      ℝˢT _η → return ℝT
+      𝕀T _η → return ℕT
       _ → throw $ TypeError (pretty $ annotatedTag eA) γ τ (list ["singleton nat","singleton real"])
-  ℕSE n → return $ ℕT
-  ℝSE d → return $ ℝT
+  ℕSE _n → return $ ℕT
+  ℝSE _d → return $ ℝT
   RealSE e → do
     τ ← inferSens δ γ e
     case τ of
@@ -118,78 +125,153 @@ inferSens δ γ eA = case extract eA of
       (𝔻T,𝔻T) → return 𝔻T
       _ → undefined -- TypeError
   TimesSE e₁ e₂ → do
-    τ₁ ← inferSens δ γ e₁
-    τ₂ ← inferSens δ γ e₂
+    σ₁ :* τ₁ ← listen $ inferSens δ γ e₁
+    σ₂ :* τ₂ ← listen $ inferSens δ γ e₂
     case (τ₁,τ₂) of
-      (ℕˢT η₁,ℕˢT η₂) → return $ ℕˢT $ η₁ × η₂
-      (ℝˢT η₁,ℝˢT η₂) → return $ ℝˢT $ η₁ × η₂
-      (𝕀T η₁,𝕀T η₂) → return $ 𝕀T $ η₁ × η₂
-      (ℕT,ℕT) → return ℕT
-      (ℝT,ℝT) → return ℝT
-      (𝔻T,𝔻T) → return 𝔻T
+      (ℕˢT η₁,ℕˢT η₂) → do tell $ σ₁ ⧺ σ₂ ; return $ ℕˢT $ η₁ × η₂
+      (ℝˢT η₁,ℝˢT η₂) → do tell $ σ₁ ⧺ σ₂ ; return $ ℝˢT $ η₁ × η₂
+      (𝕀T η₁,𝕀T η₂) →   do tell $ σ₁ ⧺ σ₂ ; return $ 𝕀T $ η₁ × η₂
+      (ℕˢT η₁,ℕT) → do
+        tell $ σ₁ ⧺ map ((×) $ Sens $ Quantity η₁) σ₂
+        return ℕT
+      (ℕT,ℕˢT η₂) → do
+        tell $ map ((×) $ Sens $ Quantity η₂) σ₁ ⧺ σ₂
+        return ℕT
+      (ℝˢT η₁,ℝT) → do
+        tell $ σ₁ ⧺ map ((×) $ Sens $ Quantity η₁) σ₂
+        return ℝT
+      (ℝT,ℝˢT η₂) → do
+        tell $ map ((×) $ Sens $ Quantity η₂) σ₁ ⧺ σ₂
+        return ℝT
+      (𝕀T η₁,ℕT) → do
+        tell $ σ₁ ⧺ map ((×) $ Sens $ Quantity η₁) σ₂
+        return ℕT
+      (ℕT,𝕀T η₂) → do
+        tell $ map ((×) $ Sens $ Quantity η₂) σ₁ ⧺ σ₂
+        return ℕT
+      (ℕT,ℕT) → do tell $ σ₁ ⧺ σ₂ ; return ℕT
+      (ℝT,ℝT) → do tell $ σ₁ ⧺ σ₂ ; return ℝT
+      (𝔻T,𝔻T) → do tell $ σ₁ ⧺ σ₂ ; return 𝔻T
       _ → undefined -- TypeError
   DivSE e₁ e₂ → do
-    τ₁ ← inferSens δ γ e₁
-    τ₂ ← inferSens δ γ e₂
+    σ₁ :* τ₁ ← listen $ inferSens δ γ e₁
+    σ₂ :* τ₂ ← listen $ inferSens δ γ e₂
     case (τ₁,τ₂) of
-      (ℝˢT η₁,ℝˢT η₂) → return $ ℝˢT $ η₁ / η₂
-      (ℝT,ℝT) → return ℝT
-      _ → undefined -- TypeError
-  RootSE e → do
-    τ ← inferSens δ γ e
-    case τ of
-      ℝˢT η → return $ ℝˢT $ rootRNF η
-      ℝT → return ℝT
-      _ → undefined -- TypeError
-  LogSE e → do
-    τ ← inferSens δ γ e
-    case τ of
-      ℝˢT η → return $ ℝˢT $ logRNF η
-      ℝT → return ℝT
-      _ → undefined -- TypeError
-  ModSE e₁ e₂ → do
-    τ₁ ← inferSens δ γ e₁
-    τ₂ ← inferSens δ γ e₂
-    case (τ₁,τ₂) of
-      (ℕˢT η₁,ℕˢT η₂) → return ℕT
-      (ℝˢT η₁,ℝˢT η₂) → return ℝT
-      (𝕀T η₁,𝕀T η₂) → return ℕT
-      (ℕT,ℕT) → return ℕT
+      (ℝˢT η₁,ℝˢT η₂) → do tell $ σ₁ ⧺ σ₂ ; return $ ℝˢT $ η₁ / η₂
+      (ℝˢT _η₁,ℝT) → do 
+        tell $ σ₁ ⧺ map ((×) $ Sens Inf) σ₂
+        return $ ℝT
+      (ℝT,ℝˢT η₂) → do 
+        tell $ map ((×) $ Sens $ Quantity $ one / η₂) σ₁ ⧺ σ₂ 
+        return $ ℝT
       (ℝT,ℝT) → return ℝT
       (𝔻T,𝔻T) → return 𝔻T
+      _ → undefined -- TypeError
+  RootSE e → do
+    σ :* τ ← listen $ inferSens δ γ e
+    case τ of
+      ℝˢT η → do tell σ ; return $ ℝˢT $ rootRNF η
+      ℝT → do tell $ map ((×) $ Sens Inf) σ ; return ℝT
+      𝔻T → return 𝔻T
+      _ → undefined -- TypeError
+  LogSE e → do
+    σ :* τ ← listen $ inferSens δ γ e
+    case τ of
+      ℝˢT η → do tell σ ; return $ ℝˢT $ rootRNF η
+      ℝT → do tell $ map ((×) $ Sens Inf) σ ; return ℝT
+      𝔻T → return 𝔻T
+      _ → undefined -- TypeError
+  ModSE e₁ e₂ → do
+    σ₁ :* τ₁ ← listen $ inferSens δ γ e₁
+    σ₂ :* τ₂ ← listen $ inferSens δ γ e₂
+    case (τ₁,τ₂) of
+      (ℕˢT _η₁,ℕˢT _η₂) → do tell $ σ₁ ⧺ σ₂ ; return ℕT
+      (𝕀T _η₁,𝕀T _η₂)   → do tell $ σ₁ ⧺ σ₂ ; return ℕT
+      (ℕˢT η₁,ℕT) → do
+        tell $ σ₁ ⧺ map ((×) $ Sens $ Quantity η₁) σ₂
+        return ℕT
+      (ℕT,ℕˢT η₂) → do 
+        tell $ map ((×) $ Sens $ Quantity η₂) σ₁ ⧺ σ₂
+        return ℕT
+      (𝕀T η₁,ℕT) → do
+        tell $ σ₁ ⧺ map ((×) $ Sens $ Quantity η₁) σ₂
+        return ℕT
+      (ℕT,𝕀T η₂) → do
+        tell $ map ((×) $ Sens $ Quantity η₂) σ₁ ⧺ σ₂
+        return ℕT
+      (ℕT,ℕT) → do tell $ map ((×) $ Sens Inf) $ σ₁ ⧺ σ₂ ; return ℕT
       _ → undefined -- TypeError
   MinusSE e₁ e₂ → do
     τ₁ ← inferSens δ γ e₁
     τ₂ ← inferSens δ γ e₂
     case (τ₁,τ₂) of
-      (ℕˢT η₁,ℕˢT η₂) → return ℕT
-      (ℝˢT η₁,ℝˢT η₂) → return ℝT
-      (𝕀T η₁,𝕀T η₂) → return ℕT
-      (ℕT,ℕT) → return ℕT
+      (ℝˢT _η₁,ℝˢT _η₂) → return ℝT
       (ℝT,ℝT) → return ℝT
       (𝔻T,𝔻T) → return 𝔻T
       _ → undefined -- TypeError
-
--- infer :: SExp -> KEnv → TEnv -> (Type RNF,SEnv)
--- infer (SNatE i) δ tenv = (NatT , Map.empty)
--- 
--- infer (SRealE d) δ tenv = (RealT, Map.empty)
--- 
--- infer (SSingNatE i) δ tenv = (SingNatT (NatRNF i), Map.empty)
--- 
--- infer (SSingRealE d) δ tenv = (SingNNRealT (RealRNF d), Map.empty)
--- 
--- infer (SDynE e) δ tenv = 
---     case infer e δ tenv of
---          (SingNatT n, senv) -> (NatT, senv)
---          (SingNNRealT r, senv) -> (RealT, senv)
---          (_,_) -> error "type error"
---          
--- 
--- infer (SRealNatE e) δ tenv =
---   case infer e δ tenv of
---     (NatT, senv) -> (RealT, senv)
---     (SingNatT n, senv) -> (SingNNRealT n, senv)
+  MCreateSE ℓ e₁ e₂ x₁ x₂ e₃ → do
+    τ₁ ← inferSens δ γ e₁ 
+    τ₂ ← inferSens δ γ e₂
+    case (τ₁,τ₂) of
+      (𝕀T ηₘ,𝕀T ηₙ) → do
+        σ₃ :* τ₃ ← listen $ inferSens δ (dict [x₁ ↦ 𝕀T ηₘ,x₂ ↦ 𝕀T ηₙ] ⩌ γ) e₃
+        tell $ map ((×) $ Sens $ Quantity $ ηₘ × ηₙ) σ₃
+        return $ 𝕄T ℓ UClip ηₘ ηₙ $ anno τ₃
+      _ → undefined -- TypeError
+  MIndexSE e₁ e₂ e₃ → do
+    τ₁ ← inferSens δ γ e₁
+    τ₂ ← inferSens δ γ e₂
+    τ₃ ← inferSens δ γ e₃
+    case (τ₁,τ₂,τ₃) of
+      (𝕄T _ℓ _c ηₘ ηₙ τ,𝕀T ηₘ',𝕀T ηₙ') | (ηₘ ≡ ηₘ') ⩓ (ηₙ ≡ ηₙ') → return $ extract τ
+      _ → undefined -- TypeError
+  MUpdateSE e₁ e₂ e₃ e₄ → do
+    τ₁ ← inferSens δ γ e₁
+    τ₂ ← inferSens δ γ e₂
+    τ₃ ← inferSens δ γ e₃
+    τ₄ ← inferSens δ γ e₄
+    case (τ₁,τ₂,τ₃,τ₄) of
+      (𝕄T ℓ c ηₘ ηₙ τ,𝕀T ηₘ',𝕀T ηₙ',τ') | (ηₘ ≡ ηₘ') ⩓ (ηₙ ≡ ηₙ') ⩓ (extract τ ≡ τ') → return $ 𝕄T ℓ c ηₘ ηₙ τ
+      _ → undefined -- TypeError
+  MRowsSE e → do
+    τ ← inferSens δ γ e
+    case τ of
+      𝕄T _ℓ _c ηₘ _ηₙ _τ' → return $ ℕˢT ηₘ
+      _ → undefined -- Type Error
+  MColsSE e → do
+    τ ← inferSens δ γ e
+    case τ of
+      𝕄T _ℓ _c _ηₘ ηₙ _τ' → return $ ℕˢT ηₙ
+      _ → undefined -- Type Error
+  MClipSE ℓ e → do
+    τ ← inferSens δ γ e
+    case τ of
+      𝕄T ℓ' _c ηₘ ηₙ τ' | extract τ' ≡ 𝔻T → return $ 𝕄T ℓ' (NormClip ℓ) ηₘ ηₙ τ'
+      _ → undefined -- Type Error
+  MConvertSE e → do
+    τ ← inferSens δ γ e
+    case τ of
+      𝕄T _ℓ (NormClip ℓ) ηₘ ηₙ τ' | extract τ' ≡ 𝔻T → return $ 𝕄T ℓ UClip ηₘ ηₙ $ anno ℝT
+      _ → undefined -- Type Error
+  MLipGradSE _g e₁ e₂ e₃ → do
+    σ₁ :* τ₁ ← listen $ inferSens δ γ e₁
+    tell $ map ((×) $ Sens Inf) σ₁
+    τ₂ ← inferSens δ γ e₂
+    τ₃ ← inferSens δ γ e₃
+    case (τ₁,τ₂,τ₃) of
+      (𝕄T _ℓ₁ _c₁ ηₘ₁ ηₙ₁ τ₁',𝕄T _ℓ₂ (NormClip ℓ) ηₘ₂ ηₙ₂ τ₂',𝕄T _ℓ₃ _c₃ ηₘ₃ ηₙ₃ τ₃') 
+        | meets
+          [ extract τ₁' ≡ ℝT
+          , extract τ₂' ≡ 𝔻T
+          , extract τ₃' ≡ 𝔻T
+          , ηₘ₁ ≡ one
+          , ηₙ₃ ≡ one
+          , ηₙ₁ ≡ ηₙ₂
+          , ηₘ₂ ≡ ηₘ₃
+          ]
+        → return $ 𝕄T ℓ UClip one ηₙ₁ $ anno ℝT
+      _ → undefined -- Type Error
+        
 -- 
 -- infer (SVarE x) δ tenv | Map.member x tenv = (tenv Map.! x , Map.singleton x (RealSens (RealRNF 1)))
 --                        | otherwise         = error $ "Unknown variable: " ++ chars x
@@ -297,15 +379,6 @@ inferSens δ γ eA = case extract eA of
 --     in if t₂ == t₃
 --         then (t₂, sγ₁ `sensAddEnv` sγ₂ `sensAddEnv` sγ₃)
 --         else error "type error"
--- 
--- infer (SMCreateE l e1 e2 x y e) δ tenv = 
---     let (t1, senv1) = infer e1 δ tenv
---         (t2, senv2) = infer e2 δ tenv
---         (t, senv3) = infer e δ (Map.insert x NatT (Map.insert y NatT tenv))
---     in case (t1,t2) of
---         (SingNatT n, SingNatT m) -> 
---             (MatrixT l UClip n m t, sensAddEnv senv1 (sensAddEnv senv2 (sensMultEnv (RealSens (m `timesRNF` n)) senv3)))
---         (_,_) -> error $ "type error: " ++ (show (t1, t2))
 -- 
 -- infer (SMMapE e1 v e2) δ tenv = 
 --     let (t1, senv1) = infer e1 δ tenv

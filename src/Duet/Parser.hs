@@ -282,7 +282,6 @@ parSExp = mixfixParserWithContext "sexp" $ concat
       parLit "L∇"
       parLit "["
       g ← parGrad
-      ℓ ← parNorm
       parLit "|"
       e₁ ← parSExp
       parLit ";"
@@ -290,7 +289,7 @@ parSExp = mixfixParserWithContext "sexp" $ concat
       parLit ","
       e₃ ← parSExp
       parLit "]"
-      return $ MLipGradSE g ℓ e₁ e₂ e₃
+      return $ MLipGradSE g e₁ e₂ e₃
   , mixF $ MixFTerminal $ VarSE ∘ var ^$ parName
   , mixF $ MixFPrefix 1 $ do
       parLit "let"

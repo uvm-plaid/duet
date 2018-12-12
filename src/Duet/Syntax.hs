@@ -22,7 +22,7 @@ data Clip = NormClip Norm | UClip
 makePrettySum ''Clip
 
 newtype Sens e = Sens { unSens ∷ Quantity e }
-  deriving (Eq,Ord,Show,Functor,Null,Append,Monoid)
+  deriving (Eq,Ord,Show,Functor,Null,Append,Monoid,Additive,Multiplicative)
 makePrettyUnion ''Sens
 
 newtype Priv p e = Priv { unPriv ∷ Quantity (p e) }
@@ -97,8 +97,8 @@ data SExpPre p =
   | MColsSE (SExp p)
   | MClipSE Norm (SExp p)
   | MConvertSE (SExp p)
-  | MLipGradSE Grad Norm (SExp p) (SExp p) (SExp p)
-  | MUnbGradSE Grad (SExp p) (SExp p) (SExp p)
+  | MLipGradSE Grad (SExp p) (SExp p) (SExp p)
+  -- | MUnbGradSE (SExp p) (SExp p) (SExp p)
   | MMapSE (SExp p) 𝕏 (SExp p)
   | MMap2SE (SExp p) (SExp p) 𝕏 𝕏 (SExp p)
   | MMapRowSE (SExp p) 𝕏 (SExp p)
