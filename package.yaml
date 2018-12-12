@@ -41,6 +41,13 @@ ghc-options:
   - -Wall
   - -Wno-orphans
 
+library:
+  source-dirs:
+    - src
+  dependencies:
+    - base
+    - uvmhs
+
 executables:
   duet:
     source-dirs:
