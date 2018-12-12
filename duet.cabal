@@ -1,0 +1,31 @@
+cabal-version: 2.2
+
+-- This file has been generated from package.yaml by hpack version 0.31.1.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 000c89d8cd27cabdcbe7109979015903d0506732035b164a1832c0926c304e92
+
+name:           duet
+version:        0.0.0.1
+build-type:     Simple
+
+executable duet
+  main-is: Main.hs
+  other-modules:
+      Duet
+      Duet.Check
+      Duet.Parser
+      Duet.Quantity
+      Duet.RExp
+      Duet.Syntax
+      Duet.Var
+      Paths_duet
+  hs-source-dirs:
+      src
+  default-extensions: ConstraintKinds DataKinds ExplicitNamespaces FlexibleContexts FlexibleInstances FunctionalDependencies GADTs GeneralizedNewtypeDeriving InstanceSigs KindSignatures LambdaCase MonadComprehensions MultiParamTypeClasses NoImplicitPrelude OverloadedStrings PatternSynonyms PolyKinds QuantifiedConstraints RankNTypes RebindableSyntax ScopedTypeVariables StandaloneDeriving Strict StrictData TemplateHaskell TypeApplications TypeOperators UndecidableInstances UndecidableSuperClasses UnicodeSyntax ViewPatterns
+  ghc-options: -Wall -Wno-orphans
+  build-depends:
+      base
+    , uvmhs
+  default-language: Haskell2010

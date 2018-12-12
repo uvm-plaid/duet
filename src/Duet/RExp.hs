@@ -1,0 +1,297 @@
+module Duet.RExp where
+
+import UVMHS
+
+import Duet.Var
+
+cart' ∷ 𝐿 a → 𝐿 (𝐿 a) → 𝐿 (𝐿 a)
+cart' Nil _xss = Nil
+cart' xs Nil = map (:&Nil) xs
+cart' (x:&xs) (ys:&yss) =
+  let yss' = cart' ys yss
+  in map (x:&) yss' ⧺ cart' xs (ys:&yss)
+
+cart ∷ 𝐿 (𝐿 a) → 𝐿 (𝐿 a)
+cart Nil = Nil :& Nil
+cart (xs:&xss) = cart' xs xss
+
+parens ∷ 𝕊 → 𝕊
+parens s = concat ["(",s,")"]
+
+parenSwitch ∷ ℕ → 𝕊 → 𝕊
+parenSwitch i s
+  | i ≤ 1 = s
+  | otherwise = parens s
+
+type RExp = Annotated FullContext RExpPre
+data RExpPre =
+    VarRE 𝕏
+  | NatRE ℕ
+  | NNRealRE 𝔻
+  | MaxRE RExp RExp
+  | MinRE RExp RExp
+  | PlusRE RExp RExp
+  | TimesRE RExp RExp
+  | DivRE RExp RExp
+  | RootRE RExp
+  | LogRE RExp
+  deriving (Eq,Ord)
+makePrettySum ''RExpPre
+
+prettyRExp ∷ RExpPre → 𝕊
+prettyRExp = \case
+  VarRE x → 𝕩name x
+  NatRE n → concat ["𝕟",show𝕊 n]
+  NNRealRE r → concat ["𝕣",show𝕊 r]
+  MaxRE e₁ e₂ → parens $ concat [prettyRExp $ extract e₁,"⊔",prettyRExp $ extract e₂]
+  MinRE e₁ e₂ → parens $ concat [prettyRExp $ extract e₁,"⊓",prettyRExp $ extract e₂]
+  PlusRE e₁ e₂ → parens $ concat [prettyRExp $ extract e₁,"+",prettyRExp $ extract e₂]
+  TimesRE e₁ e₂ → parens $ concat [prettyRExp $ extract e₁,prettyRExp $ extract e₂]
+  DivRE e₁ e₂ → parens $ concat [prettyRExp $ extract e₁,"/",prettyRExp $ extract e₂]
+  RootRE e → concat ["√",prettyRExp $ extract e]
+  LogRE e → concat ["㏑",prettyRExp $ extract e]
+
+interpRExp ∷ (𝕏 ⇰ 𝔻) → RExpPre → 𝔻
+interpRExp γ = \case
+  VarRE x → γ ⋕! x
+  NatRE n → dbl n
+  NNRealRE r → r
+  MaxRE e₁ e₂ → interpRExp γ (extract e₁) ⩏ interpRExp γ (extract e₂)
+  MinRE e₁ e₂ → interpRExp γ (extract e₁) ⩎ interpRExp γ (extract e₂)
+  PlusRE e₁ e₂ → interpRExp γ (extract e₁) + interpRExp γ (extract e₂)
+  TimesRE e₁ e₂ → interpRExp γ (extract e₁) × interpRExp γ (extract e₂)
+  DivRE e₁ e₂ → interpRExp γ (extract e₁) / interpRExp γ (extract e₂)
+  RootRE e → sqrt $ interpRExp γ $ extract e
+  LogRE e → log $ interpRExp γ $ extract e
+
+data RNF = 
+    NatRNF ℕ
+  | NNRealRNF 𝔻
+  | SymRNF (𝑃 {- max -} (𝑃 {- min -} RSP))
+  deriving (Eq,Ord,Show)
+newtype RSP = RSP { unRSP ∷ (RAtom ⇰ {- prod -} ℕ) ⇰ {- sum -} ℕ }
+  deriving (Eq,Ord,Show)
+data RAtom =
+    VarRA 𝕏
+  | NNRealRA 𝔻
+  | InvRA RSP
+  | RootRA RSP
+  | LogRA RSP
+  deriving (Eq,Ord,Show)
+
+makePrettySum ''RNF
+makePrettyUnion ''RSP
+makePrettySum ''RAtom
+
+prettyRAtom ∷ RAtom → 𝕊
+prettyRAtom (VarRA x) = 𝕩name x
+prettyRAtom (NNRealRA r) = show𝕊 r
+prettyRAtom (InvRA e) = parens $ concat ["1/",prettyRSP e]
+prettyRAtom (RootRA e) = concat ["√",prettyRSP e]
+prettyRAtom (LogRA e) = concat ["㏑",prettyRSP e]
+
+prettyRSP ∷ RSP → 𝕊
+prettyRSP xs² =
+  parenSwitch (dsize $ unRSP xs²) $ concat $ inbetween "+" $ do
+    (xs :* m) ← list $ unRSP xs²
+    let s = parenSwitch (dsize xs) $ concat $ do
+          (x :* n) ← list xs
+          return $ 
+            case n ≡ 1 of
+              True → prettyRAtom x
+              False → parens $ concat [prettyRAtom x,"^",show𝕊 n]
+    return $
+      case m ≡ 1 of
+        True → s
+        False → concat [show𝕊 m,s]
+
+prettyRNF ∷ RNF → 𝕊
+prettyRNF (NatRNF n) = concat ["𝕟",show𝕊 n]
+prettyRNF (NNRealRNF r) = concat ["𝕣",show𝕊 r]
+prettyRNF (SymRNF xs⁴) = 
+  parenSwitch (psize xs⁴) $ concat $ inbetween "⊔" $ do
+    xs³ ← list xs⁴
+    return $ parenSwitch (psize xs³) $ concat $ inbetween "⊓" $ do
+      xs² ← list xs³
+      return $ prettyRSP xs²
+
+interpRAtom ∷ (𝕏 ⇰ 𝔻) → RAtom → 𝔻
+interpRAtom γ = \case
+  VarRA x → γ ⋕! x
+  NNRealRA r → r
+  InvRA xs² → 1.0 / interpRSP γ xs²
+  RootRA xs² → sqrt $ interpRSP γ xs²
+  LogRA xs² → log $ interpRSP γ xs²
+
+interpRSP ∷ (𝕏 ⇰ 𝔻) → RSP → 𝔻
+interpRSP γ xs² = 
+  fold 0.0 (+) $ do
+    (xs :* m) ← list $ unRSP xs²
+    let d = fold 1.0 (×) $ do
+          (x :* n) ← list xs
+          return $ interpRAtom γ x ^ dbl n
+    return $ d × dbl m
+
+interpRNF ∷ (𝕏 ⇰ 𝔻) → RNF → 𝔻
+interpRNF γ = \case
+  NatRNF n → dbl n
+  NNRealRNF r → r
+  SymRNF xs⁴ → 
+    fold 0.0 (⩏) $ do
+      xs³ ← list xs⁴
+      return $ fold (1.0/0.0) (⩎) $ do
+        xs² ← list xs³
+        return $ interpRSP γ xs²
+
+natSymRNF ∷ ℕ → 𝑃 (𝑃 RSP)
+natSymRNF n
+  | n ≤ 0 = pø
+  | otherwise = single $ single $ RSP $ dø ↦ n
+
+realSymRNF ∷ 𝔻 → 𝑃 (𝑃 RSP)
+realSymRNF r = single $ single $ RSP $ (NNRealRA r ↦ 1) ↦ 1
+
+binopRNF ∷ 𝑃 RNF → 𝑃 RNF → (ℕ → ℕ → ℕ ∨ 𝔻) → (𝔻 → 𝔻 → 𝔻) → (𝑃 (𝑃 RSP) → 𝑃 (𝑃 RSP) → 𝑃 (𝑃 RSP)) → RNF → RNF → RNF
+binopRNF units zeros nop rop rspop ε₁ ε₂
+  | ε₁ ∈ units = ε₂
+  | ε₂ ∈ units = ε₁
+  | ε₁ ∈ zeros = ε₁
+  | ε₂ ∈ zeros = ε₂
+  | otherwise = case (ε₁,ε₂) of
+    (NatRNF n₁ ,NatRNF n₂ ) → case nop n₁ n₂ of {Inl n → NatRNF n;Inr r → NNRealRNF r}
+    (NatRNF n₁ ,NNRealRNF r₂) → NNRealRNF $ rop (dbl n₁) r₂
+    (NNRealRNF r₁,NatRNF n₂ ) → NNRealRNF $ rop r₁ $ dbl n₂
+    (NatRNF n₁ ,SymRNF ys⁴) → SymRNF $ rspop (natSymRNF n₁) ys⁴
+    (SymRNF xs⁴,NatRNF n₂ ) → SymRNF $ rspop xs⁴ $ natSymRNF n₂
+    (NNRealRNF r₁,NNRealRNF r₂) → NNRealRNF $ rop r₁ r₂
+    (NNRealRNF r₁,SymRNF ys⁴) → SymRNF $ rspop (realSymRNF r₁) ys⁴
+    (SymRNF xs⁴,NNRealRNF r₂) → SymRNF $ rspop xs⁴ $ realSymRNF r₂
+    (SymRNF xs⁴,SymRNF ys⁴) → SymRNF $ rspop xs⁴ ys⁴
+
+varRNF ∷ 𝕏 → RNF
+varRNF x = SymRNF $ single $ single $ RSP $ (VarRA x ↦ 1) ↦ 1
+
+maxRNF ∷ RNF → RNF → RNF
+maxRNF = binopRNF (pow [NatRNF 0,NNRealRNF 0.0]) pø (Inl ∘∘ (⩏)) (⩏) $ \ xs⁴ ys⁴ → xs⁴ ∪ ys⁴
+
+minRNF ∷ RNF → RNF → RNF
+minRNF = binopRNF pø (pow [NatRNF 0,NNRealRNF 0.0]) (Inl ∘∘ (⩎)) (⩎) $ \ xs⁴ ys⁴ → pow $ do
+  xs³ ← list xs⁴
+  ys³ ← list ys⁴
+  return $ xs³ ⧺ ys³
+
+plusRNF ∷ RNF → RNF → RNF
+plusRNF = binopRNF (pow [NatRNF 0,NNRealRNF 0.0]) pø (Inl ∘∘ (+)) (+) $ \ xs⁴ ys⁴ → pow $ do
+  xs³ ← list xs⁴
+  ys³ ← list ys⁴
+  return $ pow $ do
+    xs² ← list xs³
+    ys² ← list ys³
+    return $ RSP $ unionWith (+) (unRSP xs²) (unRSP ys²)
+
+timesRNF ∷ RNF → RNF → RNF
+timesRNF = binopRNF (pow [NatRNF 1,NNRealRNF 1.0]) (pow [NatRNF 0,NNRealRNF 0.0]) (Inl ∘∘ (×)) (×) $ \ xs⁴ ys⁴ → pow $ do
+  xs³ ← list xs⁴
+  ys³ ← list ys⁴
+  return $ pow $ do
+    xs² ← list xs³
+    ys² ← list ys³
+    return $ RSP $ dict $ do
+      (xs :* m) ← list $ unRSP xs²
+      (ys :* n) ← list $ unRSP ys²
+      return $ unionWith (+) xs ys ↦ m×n
+
+expRNF ∷ RNF → ℕ → RNF
+expRNF e = \case
+  0 → NatRNF 1
+  n → timesRNF e (expRNF e (n - 1))
+
+invRNF ∷ RNF → RNF
+invRNF (NatRNF n) = NNRealRNF $ 1.0 / dbl n
+invRNF (NNRealRNF r) = NNRealRNF $ 1.0 / r
+invRNF (SymRNF xs⁴) = SymRNF $ pow $ do
+  xs³ ← cart $ map list $ list xs⁴
+  return $ pow $ do
+    xs² ← xs³
+    return $ RSP $ (InvRA xs² ↦ 1) ↦ 1
+
+rootRNF ∷ RNF → RNF
+rootRNF (NatRNF n) = NNRealRNF $ sqrt $ dbl n
+rootRNF (NNRealRNF r) = NNRealRNF $ sqrt $ r
+rootRNF (SymRNF xs⁴) = SymRNF $ pow $ do
+  xs³ ← list xs⁴
+  return $ pow $ do
+    xs² ← list xs³
+    return $ RSP $ (RootRA xs² ↦ 1) ↦ 1
+
+logRNF ∷ RNF → RNF
+logRNF (NatRNF n) = NNRealRNF $ log $ dbl n
+logRNF (NNRealRNF r) = NNRealRNF $ log $ r
+logRNF (SymRNF xs⁴) = SymRNF $ pow $ do
+  xs³ ← list xs⁴
+  return $ pow $ do
+    xs² ← list xs³
+    return $ RSP $ (LogRA xs² ↦ 1) ↦ 1
+
+instance Bot RNF where bot = NatRNF 0
+instance Join RNF where (⊔) = maxRNF
+instance JoinLattice RNF
+
+instance Meet RNF where (⊓) = maxRNF
+
+instance Additive RNF where {zero = NatRNF 0;(+) = plusRNF}
+instance Multiplicative RNF where {one = NatRNF 1;(×) = timesRNF}
+instance Divisible RNF where e₁ / e₂ = e₁ `timesRNF` invRNF e₂
+
+instance Null RNF where null = zero
+instance Append RNF where (⧺) = (+)
+instance Monoid RNF
+
+
+instance POrd RNF where
+  NatRNF  n₁  ⊑ NatRNF  n₂  = n₁ ≤ n₂
+  NatRNF  n₁  ⊑ NNRealRNF r₂  = dbl n₁ ≤ r₂
+  NNRealRNF r₁  ⊑ NatRNF  n₂  = r₁ ≤ dbl n₂
+  NatRNF  n₁  ⊑ SymRNF  ys⁴ = natSymRNF n₁ ⊆ ys⁴
+  SymRNF  xs⁴ ⊑ NatRNF  n₂  = xs⁴ ⊆ natSymRNF n₂
+  NNRealRNF r₁  ⊑ NNRealRNF r₂  = r₁ ≤ r₂
+  NNRealRNF r₁  ⊑ SymRNF  ys⁴ = realSymRNF r₁ ⊆ ys⁴
+  SymRNF  xs⁴ ⊑ NNRealRNF r₂  = xs⁴ ⊆ realSymRNF r₂
+  SymRNF  xs⁴ ⊑ SymRNF  ys⁴ = xs⁴ ⊆ ys⁴
+
+normalizeRExp ∷ RExpPre → RNF
+normalizeRExp (VarRE x) = varRNF x
+normalizeRExp (NatRE n) = NatRNF n
+normalizeRExp (NNRealRE r) = NNRealRNF r
+normalizeRExp (MaxRE e₁ e₂) = maxRNF (normalizeRExp $ extract e₁) (normalizeRExp $ extract e₂)
+normalizeRExp (MinRE e₁ e₂) = minRNF (normalizeRExp $ extract e₁) (normalizeRExp $ extract e₂)
+normalizeRExp (PlusRE e₁ e₂) = plusRNF (normalizeRExp $ extract e₁) (normalizeRExp $ extract e₂)
+normalizeRExp (TimesRE e₁ e₂) = timesRNF (normalizeRExp $ extract e₁) (normalizeRExp $ extract e₂)
+normalizeRExp (DivRE e₁ e₂) = timesRNF (normalizeRExp $ extract e₁) $ invRNF (normalizeRExp $ extract e₂)
+normalizeRExp (RootRE e) = rootRNF (normalizeRExp $ extract e)
+normalizeRExp (LogRE e) = logRNF (normalizeRExp $ extract e)
+
+-- mainDuetRExp ∷ IO ()
+-- mainDuetRExp = do
+--   let es = 
+--         [ (VarRE "x" `MaxRE` VarRE "y") `PlusRE` (VarRE "y" `MaxRE` VarRE "z")
+--         , (VarRE "x" `TimesRE` VarRE "y")
+--         , (VarRE "x" `TimesRE` VarRE "y") `PlusRE` (VarRE "y" `TimesRE` VarRE "z")
+--         , (VarRE "x" `PlusRE` VarRE "y") `TimesRE` (VarRE "y" `PlusRE` VarRE "z")
+--         , InvRE (VarRE "x" `PlusRE` VarRE "y")
+--         , InvRE (VarRE "x" `MaxRE` VarRE "y")
+--         , InvRE (VarRE "x" `MinRE` VarRE "y")
+--         , InvRE $ (VarRE "x" `MaxRE` VarRE "y") `MinRE` (VarRE "y" `MaxRE` VarRE "z")
+--         ]
+--       γ = dict [("x"↦1.0),("y"↦2.0),("z"↦3.0),("a"↦4.0),("b"↦5.0),("c"↦6.0)]
+--   eachWith es $ \ e → do
+--     out "-------------------------------"
+--     out $ prettyRExp e
+--     shout $ interpRExp γ e
+--     let nf = normalizeRExp e
+--     out $ prettyRNF nf
+--     shout $ interpRNF γ nf
+--   out "==============================="
+--   shout $ cart $ frhs [[1,2,3],[4,5,6],[7,8,9]]
+--   shout $ cart $ frhs [[1,2,3],[4,5,6],[7,8,9],[1]]
+--   shout $ cart $ frhs [[1,2,3],[4,5,6],[7,8,9],[]]
