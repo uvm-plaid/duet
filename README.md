@@ -1,1 +1,1 @@
-HTML documentation [here](https://uvm-plas.github.io/duet/doc).
+HTML documentation [here](https://uvm-plas.github.io/duet-hs/doc).
