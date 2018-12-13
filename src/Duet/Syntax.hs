@@ -22,11 +22,11 @@ data Clip = NormClip Norm | UClip
 makePrettySum ''Clip
 
 newtype Sens e = Sens { unSens ∷ Quantity e }
-  deriving (Eq,Ord,Show,Functor,Null,Append,Monoid,Additive,Multiplicative)
+  deriving (Eq,Ord,Show,Functor,Additive,Multiplicative,Null,Append,Monoid,Bot,Join,JoinLattice)
 makePrettyUnion ''Sens
 
 newtype Priv p e = Priv { unPriv ∷ Quantity (p e) }
-  deriving (Eq,Ord,Show,Null,Append,Monoid)
+  deriving (Eq,Ord,Show,Additive,Null,Append,Monoid,Bot,Join,JoinLattice)
 makePrettyUnion ''Priv
 instance (Functor p) ⇒ Functor (Priv p) where
   map f (Priv q) = Priv $ mapp f q
@@ -100,14 +100,14 @@ data SExpPre p =
   | MLipGradSE Grad (SExp p) (SExp p) (SExp p)
   -- | MUnbGradSE (SExp p) (SExp p) (SExp p)
   | MMapSE (SExp p) 𝕏 (SExp p)
-  | MMap2SE (SExp p) (SExp p) 𝕏 𝕏 (SExp p)
-  | MMapRowSE (SExp p) 𝕏 (SExp p)
-  | MMapRow2SE (SExp p) 𝕏 (SExp p)
-  | MFoldRowSE (SExp p) (SExp p) 𝕏 𝕏 (SExp p)
+  -- | MMap2SE (SExp p) (SExp p) 𝕏 𝕏 (SExp p)
+  -- | MMapRowSE (SExp p) 𝕏 (SExp p)
+  -- | MMapRow2SE (SExp p) 𝕏 (SExp p)
+  -- | MFoldRowSE (SExp p) (SExp p) 𝕏 𝕏 (SExp p)
   -- connectives
-  | IfSE (SExp p) (SExp p) (SExp p)
-  | SLoopSE (SExp p) (SExp p) 𝕏 (SExp p)
-  | LoopSE (SExp p) (SExp p) 𝕏 (SExp p)
+  -- | IfSE (SExp p) (SExp p) (SExp p)
+  -- | SLoopSE (SExp p) (SExp p) 𝕏 (SExp p)
+  -- | LoopSE (SExp p) (SExp p) 𝕏 (SExp p)
   | VarSE 𝕏
   | LetSE 𝕏 (SExp p) (SExp p)
   | SFunSE 𝕏 (Type p RExp) (SExp p)
@@ -129,7 +129,8 @@ data PExpPre p =
     ReturnPE (SExp p)
   | BindPE 𝕏 (PExp p) (PExp p)
   | AppPE (𝐿 RExp) (SExp p) (𝐿 𝕏)
-  | LoopPE (SExp p) (SExp p) (SExp p) (𝐿 𝕏) 𝕏 𝕏 (PExp p)
+  | EDLoopPE (SExp p) (SExp p) (SExp p) (𝐿 𝕏) 𝕏 𝕏 (PExp p)
+  | LoopPE (SExp p) (SExp p) (𝐿 𝕏) 𝕏 𝕏 (PExp p)
   | GaussPE (SExp p) (SExp p) (SExp p) (𝐿 𝕏) (SExp p)
   | MGaussPE (SExp p) (SExp p) (SExp p) (𝐿 𝕏) (SExp p)
   | PLaplaceE (SExp p) (SExp p) (𝐿 𝕏) (SExp p)

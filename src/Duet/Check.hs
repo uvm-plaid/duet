@@ -6,6 +6,7 @@ import Duet.Syntax
 import Duet.RExp
 import Duet.Var
 import Duet.Quantity
+import Duet.AddToUVMHS
 
 inferKind ∷ 𝕏 ⇰ KindPre → RExpPre → 𝑂 KindPre
 inferKind δ = \case
@@ -215,7 +216,8 @@ inferSens δ γ eA = case extract eA of
     case (τ₁,τ₂) of
       (𝕀T ηₘ,𝕀T ηₙ) → do
         σ₃ :* τ₃ ← listen $ inferSens δ (dict [x₁ ↦ 𝕀T ηₘ,x₂ ↦ 𝕀T ηₙ] ⩌ γ) e₃
-        tell $ map ((×) $ Sens $ Quantity $ ηₘ × ηₙ) σ₃
+        let σ₃' = without (pow [x₁,x₂]) σ₃
+        tell $ map ((×) $ Sens $ Quantity $ ηₘ × ηₙ) σ₃'
         return $ 𝕄T ℓ UClip ηₘ ηₙ $ anno τ₃
       _ → undefined -- TypeError
   MIndexSE e₁ e₂ e₃ → do
@@ -271,345 +273,104 @@ inferSens δ γ eA = case extract eA of
           ]
         → return $ 𝕄T ℓ UClip one ηₙ₁ $ anno ℝT
       _ → undefined -- Type Error
-        
--- 
--- infer (SVarE x) δ tenv | Map.member x tenv = (tenv Map.! x , Map.singleton x (RealSens (RealRNF 1)))
---                        | otherwise         = error $ "Unknown variable: " ++ chars x
--- 
--- infer (SLetE v e1 e2) δ tenv = 
---     let (t1, senv1) = infer e1 δ tenv
---         (t2, senv2) = infer e2 δ (Map.insert v t1 tenv)
---         s = senv2 Map.! v
---     in
---     (t2, sensAddEnv senv2 (sensMultEnv s senv1))
--- 
--- infer (SSFunE x t1 e) δ tenv = 
---   let τ₁' = fmap normalizeRExp t1
---       (t2,senv2) = infer e δ (Map.insert x τ₁' tenv)
---       s = senv2 Map.! x
---       senv2' = Map.delete x senv2
---   in (SFunT τ₁' s t2, senv2') 
---                         
--- infer (SAppE e1 e2) δ tenv =
---   case infer e1 δ tenv of
---     (SFunT t1 s t2, senv1) ->
---       let (t1', senv2) = infer e2 δ tenv 
---       in 
---       if t1 /= t1' 
---         then error $ "type error: " ++ (show t1) ++ "/=" ++ (show t1') ++ " with function " ++ (show e1)
---         else (t2, sensAddEnv senv1 (sensMultEnv s senv2))
---     _ -> error "type error"
--- 
--- infer (SPlusE e1 e2) δ tenv = 
---     let (t1, senv1) = infer e1 δ tenv
---         (t2, senv2) = infer e2 δ tenv
---     in 
---     case (t1, t2) of
---         (RealT, RealT) -> (RealT, sensAddEnv senv1 senv2) 
---         (NatT, NatT) -> (NatT, sensAddEnv senv1 senv2)
---         (SingNatT n1, SingNatT n2) -> (SingNatT (n1 `plusRNF` n2), sensAddEnv senv1 senv2)
---         -- TODO: should we have a separate matrix +?
---         (MatrixT l c m n RealT, MatrixT l' c' m' n' RealT) | l == l' && c == c' && m == m' && n == n' →
---                                                              (t1, sensAddEnv senv1 senv2)
---         (_, _) -> error $ "type error" ++ (show (t1, t2))
--- 
--- infer (SMinusE e1 e2) δ tenv = 
---     let (t1, senv1) = infer e1 δ tenv
---         (t2, senv2) = infer e2 δ tenv
---     in 
---     case (t1, t2) of
---         (NatT, NatT) -> (NatT, sensAddEnv senv1 senv2) 
---         (RealT, RealT) -> (RealT, sensAddEnv senv1 senv2) 
---         (MatrixT l1 c1 m1 n1 RealT, MatrixT l2 c2 m2 n2 RealT) ->
---             if l1 == l2 && m1 == m2 && n1 == n2
---                 then (MatrixT l1 c1 m1 n1 RealT, sensAddEnv senv1 senv2)
---                 else error $ "type error" ++ (show (m1, m2, n1, n2))
---         (_, _) -> error $ "type error: " ++ (show (t1, t2))
--- 
--- infer (SMultE e1 e2) δ tenv = 
---     let (t1, senv1) = infer e1 δ tenv
---         (t2, senv2) = infer e2 δ tenv
---     in 
---     case (t1, t2) of
---         (RealT, RealT) -> (RealT, sensMultEnv InfS (sensAddEnv senv1 senv2))
---         (NatT, NatT) -> (NatT, sensMultEnv InfS (sensAddEnv senv1 senv2))
---         (SingNatT n1, SingNatT n2) -> (SingNatT (n1 `timesRNF` n2), sensAddEnv senv1 senv2)
---         (SingNNRealT r, MatrixT l c m n RealT) -> (MatrixT l c m n RealT, sensMultEnv InfS (sensAddEnv senv1 senv2))
---         (RealT, MatrixT l c m n RealT) -> (MatrixT l c m n RealT, sensMultEnv InfS (sensAddEnv senv1 senv2))
---         (_, _) -> error $ "type error: " ++ (show (t1, t2)) ++ (show e2)
--- 
--- infer (SDivE e1 e2) δ tenv = 
---     let (t1, senv1) = infer e1 δ tenv
---         (t2, senv2) = infer e2 δ tenv
---     in 
---     case (t1, t2) of
---         (RealT, RealT) -> (RealT, sensMultEnv InfS (sensAddEnv senv1 senv2))
---         (SingNNRealT r1, SingNNRealT r2) -> (SingNNRealT (r1 `timesRNF` invRNF r2), sensMultEnv InfS (sensAddEnv senv1 senv2))
---         (_, _) -> error $ "type error: " ++ (show (t1, t2))
--- 
--- infer (SModE e1 e2) δ tenv = 
---     let (t1, senv1) = infer e1 δ tenv
---         (t2, senv2) = infer e2 δ tenv
---     in
---     case (t1, t2) of
---          (NatT, SingNatT n) -> (NatT, sensMultEnv (RealSens n) (sensCrossEnv senv1))
---          (NatT, NatT) -> (NatT, sensMultEnv InfS  (sensCrossEnv (sensAddEnv senv2 senv1)))
---          (_,_) -> error $ "type error" ++ (show (t1, t2))
--- 
--- infer (SRootE e) δ tenv = 
---     let (t, senv) = infer e δ tenv
---     in 
---     case t of
---         RealT -> (RealT, senv)
---         SingNNRealT r -> (SingNNRealT (rootRNF r), senv)
---         _ -> error $ "type error: " ++ (show t)
--- 
--- infer (SLogE e) δ tenv = 
---     let (t, senv) = infer e δ tenv
---     in 
---     case t of
---         RealT -> (RealT, sensMultEnv InfS senv)
---         SingNNRealT r -> (SingNNRealT (logRNF r), sensMultEnv InfS senv)
---         _ -> error $ "type error: " ++ (show t)
--- 
--- infer (SLoopE e₁ e₂ x e₃) δ γ = 
---     let (t₁, sγ₁) = infer e₁ δ γ
---         (t₂, sγ₂) = infer e₂ δ γ
---         (t₃, sγ₃) = infer e₃ δ $ (x ↦ t₂) ⩌ γ
---     in if t₂ == t₃
---         then (t₂, sγ₁ `sensAddEnv` sγ₂ `sensAddEnv` sγ₃)
---         else error "type error"
--- 
--- infer (SMMapE e1 v e2) δ tenv = 
---     let (t1, senv1) = infer e1 δ tenv
---     in case t1 of
---         MatrixT ℓ c n m t' -> 
---             let (t2, senv2) = infer e2 δ (Map.insert v t1 tenv)
---                 s = senv2 Map.! v
---             in (MatrixT ℓ UClip n m t2, sensAddEnv (sensMultEnv s senv1) (sensMultEnv (RealSens (m `timesRNF` n)) senv2))
---         
---         _ -> error "type error"
--- 
--- infer (SBMapE e1 e2 v1 v2 e3) δ tenv = 
---     let (t1, senv1) = infer e1 δ tenv
---         (t2, senv2) = infer e2 δ tenv
---     in case (t1,t2) of 
---         (MatrixT l c n m t, MatrixT l' c' n' m' t') -> 
---             let (t3, senv3) = infer e3 δ (Map.insert v1 t1 (Map.insert v2 t2 tenv))
---                 s1 = senv3 Map.! v1
---                 s2 = senv3 Map.! v2
---             in
---             if m == m' && n == n' && l == l'
---                 then(MatrixT l UClip n m t2, sensAddEnv (sensMultEnv s2 senv2) (sensAddEnv (sensMultEnv s1 senv1) (sensMultEnv (RealSens (m `timesRNF` n)) senv3)))
---                 else error "type error"
---         (_,_) -> error "type error"
--- 
--- infer (SMMapRowE e1 v e2) δ tenv = 
---     let (t1, senv1) = infer e1 δ tenv in
---     case t1 of 
---          MatrixT l c m n t ->
---              let (t2, senv2) = infer e2 δ (Map.insert v (MatrixT l c (NatRNF 1) n t) tenv) 
---                  s = senv2 Map.! v   
---              in
---              case t2 of
---                   MatrixT l' c' (NatRNF 1) n' t' -> (MatrixT l' c' m n' t, sensAddEnv (sensMultEnv s senv1) (sensMultEnv (RealSens m) senv2 ))
---                   _ -> error "type error"
---          _ -> error "type error"   
--- 
--- infer (SMMapColE e1 v e2) δ tenv = 
---     let (t1, senv1) = infer e1 δ tenv in
---     case t1 of 
---          MatrixT l c m n t ->
---              let (t2, senv2) = infer e2 δ (Map.insert v (MatrixT l c m (NatRNF 1) t) tenv) 
---                  s = senv2 Map.! v   
---              in
---              case t2 of
---                   MatrixT l' c' m' (NatRNF 1) t' -> (MatrixT l' c' m' n t, sensAddEnv (sensMultEnv s senv1) (sensMultEnv (RealSens n) senv2 ))
---                   _ -> error "type error"
---          _ -> error "type error"   
--- 
--- 
--- infer (SMFoldRowE e1 e2 x y e3) δ tenv = 
---     let (t1, senv1) = infer e1 δ tenv
---         in case t1 of
---            MatrixT ℓ c  m n t1' ->
---             let (t2, senv2) = infer e2 δ tenv
---                 (t3, senv3) = infer e3 δ (Map.insert x t1' (Map.insert y t2 tenv))
---                 s = senv3 Map.! x
---                 s' = senv3 Map.! y
---             in
---               if t3 == t2 && s' == RealSens (RealRNF 1)
---                 then (MatrixT ℓ c (NatRNF 1) n t2, sensAddEnv (sensMultEnv s senv1) (sensAddEnv (sensMultEnv s' senv2) (sensMultEnv (RealSens m) senv3)))
---                 else error "type error"
---            _ -> error "type error"        
--- 
--- 
--- infer (SMFoldColE e1 e2 x y e3) δ tenv = 
---     let (t1, senv1) = infer e1 δ tenv
---         in case t1 of
---            MatrixT ℓ c m n t1' ->
---             let (t2, senv2) = infer e2 δ tenv
---                 (t3, senv3) = infer e3 δ (Map.insert x t1' (Map.insert y t2 tenv))
---                 s = senv3 Map.! x
---                 s' = senv3 Map.! y
---             in
---               if t3 == t2 && s' == RealSens (RealRNF 1)
---                 then (MatrixT ℓ c m (NatRNF 1) t2, sensAddEnv senv1 (sensAddEnv senv2 (sensMultEnv s senv3)))
---                 else error "type error"
---            _ -> error "type error"        
--- 
--- infer (SMTrE e) δ tenv = 
---       let (t, senv) = infer e δ tenv in
---       case t of
---            MatrixT ℓ c m n t' -> (MatrixT ℓ c n m t',senv)
---            _ -> error "type error"
--- 
--- infer (SMIdE e) δ tenv = 
---       let (t, senv) = infer e δ tenv in
---       case t of
---            MatrixT l c m n t' -> (MatrixT l c m n t', senv)
--- 
--- infer (SMRowsE e1) δ tenv = 
---     let (t1, senv1) = infer e1 δ tenv
---     in 
---     case t1 of
---         MatrixT l c n1 n2 t -> (SingNatT n1,  sensMultEnv (RealSens (RealRNF 0)) senv1)
---         _ -> error "type error"    
--- 
--- infer (SMColsE e1) δ tenv = 
---     let (t1, senv1) = infer e1 δ tenv
---     in 
---     case t1 of
---         MatrixT l c n1 n2 t -> (SingNatT n2, sensMultEnv (RealSens (RealRNF 0)) senv1)
---         _ -> error $ "type error: " ++ (show t1)
--- 
--- infer (SClipE no e1) δ tenv =
---     let (t1, senv1) = infer e1 δ tenv
---     in
---     case (no, t1) of
---          (l, MatrixT l1 c n n1 t) -> 
---             if t /= DataT
---                then error $ "type error" ++ (show t)
---                else (MatrixT l (NormClip no) n n1 t, senv1)  
---          (_,_) -> error "type error"
--- 
--- infer (SGradE g no e1 e2 e3) δ tenv = 
---     let (t1, senv1) = infer e1 δ tenv
---         (t2, senv2) = infer e2 δ tenv
---         (t3, senv3) = infer e3 δ tenv
---     in
---     case (t1, t2, t3) of
---          (MatrixT l1 c1 m1 n1 t₁, MatrixT l2 c2 m2 n2 t₂, MatrixT l3 c3 m3 n3 t₃) ->
---             if and
---                [ m1 == NatRNF 1  , n1 == n2
---                , m2 == m3 , n3 == NatRNF 1 
---                , t₁ == RealT , t₂ == DataT , t₃ == DataT
---                , l2 == l3 
---                , no == l2
---                ]
---                 then (MatrixT l1 c1 (NatRNF 1) n1 RealT, sensAddEnv senv1 (sensMultEnv (RealSens (invRNF m2)) (sensAddEnv senv3 senv2))) 
---                 else error $ "type error" ++ (show (t₁, t₂, t₃, m1,n3,n1,n2,m2,m3,(t₁ == DataT ), l2,l3,no)) 
---          (_,_,_) -> error $ "type error" ++ (show (t1,t2,t3))
--- 
--- infer (SIndGradE g e1 e2 e3) δ tenv = 
---     let (t1, senv1) = infer e1 δ tenv
---         (t2, senv2) = infer e2 δ tenv
---         (t3, senv3) = infer e3 δ tenv
---     in
---     case (t1, t2, t3) of
---          (MatrixT l1 c1 m1 n1 t₁, MatrixT l2 c2 m2 n2 t₂, MatrixT l3 c3 m3 n3 t₃) ->
---             if and
---                [ m1 == NatRNF 1  , n1 == n2
---                , m2 == m3 , n3 == NatRNF 1 
---                , t₁ == RealT , t₂ == DataT , t₃ == DataT
---                , l2 == l3 
---                ]
---                 then (MatrixT LInf c1 (NatRNF 1) n1 RealT, sensAddEnv senv1 (sensMultEnv (RealSens (invRNF m2)) (sensAddEnv senv3 senv2))) 
---                 else error $ "type error" ++ (show (m1,n3,n1,n2,m2,m3,(t₁ == DataT ))) 
---          (_,_,_) -> error $ "type error" ++ (show (t1,t2,t3))
--- 
--- infer (SInlE t e) δ tenv = 
---     let (t1, senv) = infer e δ tenv in
---     (SumT t1 (fmap normalizeRExp t), senv)
--- 
--- infer (SInrE t e) δ tenv = 
---     let (t1, senv) = infer e δ tenv in
---     (SumT (fmap normalizeRExp t) t1, senv)
--- 
--- infer (SCaseE e1 v1 e2 v2 e3) δ tenv = 
---     let (t, senv) = infer e1 δ tenv
---     in case t of
---         SumT t1 t2 -> 
---            let (t3, senv1) = infer e2 δ (Map.insert v1 t1 tenv)
---                (t3', senv2) = infer e3 δ (Map.insert v2 t2 tenv)
---                s = maxSens senv
---            in case t3 == t3' of
---                 true -> (t3, sensAddEnv (sensMultEnv s senv1) senv2)
---         _ -> error "type error"
--- 
--- infer (SMPairE e₁ e₂) δ γ =
---     let (t₁, γ₁) = infer e₁ δ γ
---         (t₂, γ₂) = infer e₂ δ γ
---     in (MProdT t₁ t₂, sensAddEnv γ₁ γ₂)
--- 
--- infer (SPairLetE v1 v2 e1 e2) δ tenv =
---     let (t, senv1) = infer e1 δ tenv in
---     case t of
---          MProdT t1 t2 ->
---             let (t3, senv2) = infer e2 δ (Map.insert v1 t1 (Map.insert v2 t2 tenv))
---                 s = maxSens senv1
---             in (t3, sensAddEnv (sensMultEnv s senv1) senv2)
---          _ -> error "type error"
--- 
--- -- TODO: need to check idx bounds
--- infer (SIndexE e₁ e₂ e₃) δ γ =
---   let (t₁, γ₁) = infer e₁ δ γ
---       (t₂, γ₂) = infer e₂ δ γ
---       (t₃, γ₃) = infer e₃ δ γ in
---     case t₁ of
---       (MatrixT _ _ _ _ mₜ) → (mₜ, sensAddEnv γ₁ (sensAddEnv γ₂ γ₃))
---       a → error $ "expected a matrix type " ++ (show a)
--- 
--- -- TODO: need to check idx bounds
--- infer (SUpdateE e₁ e₂ e₃ e₄) δ γ =
---   let (t₁, γ₁) = infer e₁ δ γ
---       (t₂, γ₂) = infer e₂ δ γ
---       (t₃, γ₃) = infer e₃ δ γ
---       (t₄, γ₄) = infer e₄ δ γ in
---     case (t₁, t₄) of
---       (MatrixT _ _ _ _ mₜ, mₜ') | mₜ == mₜ' → (t₁, sensAddEnv γ₁ (sensAddEnv γ₂ (sensAddEnv γ₃ γ₄)))
---       (a, b) → error $ "expected another type " ++ (show (a,b))
--- 
--- infer (SAPairE e1 e2) δ tenv = 
---     let (t1, senv1) = infer e1 δ tenv
---         (t2, senv2) = infer e2 δ tenv
---     in (APairT t1 t2, senv1)
--- 
--- infer (SProjlE e) δ tenv =
---     let (t, senv) = infer e δ tenv 
---     in case t of
---             APairT t1 t2 -> (t1, senv)
---             _ -> error "type error"
--- infer (SProjrE e) δ tenv = 
---     let (t, senv) = infer e δ tenv 
---     in case t of
---             APairT t1 t2 -> (t2, senv)
---             _ -> error "type error"
--- infer (SPFunE αks xτs e) δ γ = 
---     let xτs' = mapon xτs $ \ (x,τ) → (x,fmap normalizeRExp τ)
---         γ' = dict xτs'
---         (τ,pγ) = infraRed e (dict αks ⩌ δ) (γ' ⩌ γ)
---         pγ₁ = restrictKeys (keys γ') pγ
---         sγ₂ = InfS `sensMultEnv` sensPrivCrossEnv (restrictKeys (keys γ ∖ keys γ') pγ)
---         τps = mapon xτs' $ \ (x,τ) → 
---           let p = case pγ₁ # x of
---                 Nothing → EDPriv (RealRNF 0) (RealRNF 0)
---                 Just p → p
---           in (τ,p)
---     in (PFunT αks τps τ,sγ₂)
--- 
--- infer a _ _ = error $ "no rule for expression " ++ (show a)
--- 
+  MMapSE e₁ x e₂ → do
+    σ₁ :* τ₁ ← listen $ inferSens δ γ e₁
+    case τ₁ of
+      𝕄T ℓ _c ηₘ ηₙ τ₁' → do
+        σ₂ :* τ₂ ← listen $ inferSens δ ((x ↦ extract τ₁') ⩌ γ) e₂
+        let (ς :* σ₂') = ifNone (zero :* σ₂) $ deleteView x σ₂
+        tell $ map ((×) ς) σ₁
+        tell $ map ((×) $ Sens $ Quantity $ ηₘ × ηₙ) σ₂'
+        return $ 𝕄T ℓ UClip ηₘ ηₙ $ anno τ₂ 
+      _  → undefined -- Type Error
+  VarSE x → case γ ⋕? x of
+    None → undefined -- Type Error
+    Some τ → do
+      tell $ x ↦ (Sens $ Quantity one)
+      return τ
+  LetSE x e₁ e₂ → do
+    σ₁ :* τ₁ ← listen $ inferSens δ γ e₁
+    σ₂ :* τ₂ ← listen $ inferSens δ ((x ↦ τ₁) ⩌ γ) e₂
+    let (ς :* σ₂') = ifNone (zero :* σ₂) $ deleteView x σ₂
+    tell $ map ((×) ς) σ₁
+    tell σ₂'
+    return τ₂
+  SFunSE x τ e → do
+    let τ' = map normalizeRExp $ extract τ
+    σ :* τ'' ← listen $ inferSens δ ((x ↦ τ') ⩌ γ) e
+    let (ς :* σ') = ifNone (zero :* σ) $ deleteView x σ
+    tell σ'
+    return $ anno τ' :⊸: (ς :* anno τ'')
+  AppSE e₁ e₂ → do
+    τ₁ ← inferSens δ γ e₁
+    σ₂ :* τ₂ ← listen $ inferSens δ γ e₂
+    case τ₁ of
+      τ₁' :⊸: (ς :* τ₂') | extract τ₁' ≡ τ₂ → do
+        tell $ map ((×) ς) σ₂
+        return $ extract τ₂'
+      _ → undefined -- Type Error
+  PFunSE ακs xτs e → do
+    let xτs' = map (mapSnd (map normalizeRExp ∘ extract)) xτs
+        xs = map fst xτs
+    σ :* τ ← privToSens $ listen $ inferPriv (dict (map single ακs) ⩌ δ) (dict (map single xτs') ⩌ γ) e
+    tell $ map (Sens ∘ truncate Inf ∘ unPriv) $ without (pow xs) σ
+    let τps = mapOn xτs' $ \ (x :* τ') → anno τ' :* ifNone zero (σ ⋕? x)
+    return $ (ακs :* τps) :⊸⋆: anno τ
+
+privToSens ∷ (Privacy p)
+           ⇒ ErrorT (TypeError p) (WriterT (𝕏 ⇰ Priv p RNF) ID) a
+           → ErrorT (TypeError p) (WriterT (𝕏 ⇰ Sens RNF) ID) a
+privToSens = undefined
+
+sensToPriv ∷ (Privacy p)
+           ⇒ ErrorT (TypeError p) (WriterT (𝕏 ⇰ Sens RNF) ID) a
+           → ErrorT (TypeError p) (WriterT (𝕏 ⇰ Priv p RNF) ID) a
+sensToPriv = undefined
+
+inferPriv ∷ (Privacy p) 
+          ⇒ (𝕏 ⇰ Kind) 
+          → (𝕏 ⇰ TypePre p RNF) 
+          → PExp p 
+          → ErrorT (TypeError p) (WriterT (𝕏 ⇰ Priv p RNF) ID) (TypePre p RNF)
+inferPriv δ γ eA = case extract eA of
+  ReturnPE e → sensToPriv $ inferSens δ γ e
+  BindPE x e₁ e₂ → do
+    τ₁ ← inferPriv δ γ e₁
+    σ₂ :* τ₂ ← listen $ inferPriv δ ((x ↦ τ₁) ⩌ γ) e₂
+    let σ₂' = delete x σ₂
+    tell σ₂
+    return τ₂
+  EDLoopPE e₁ e₂ e₃ xs x₁ x₂ e₄ → do
+    let xs' = pow xs
+    τ₁ ← sensToPriv $ inferSens δ γ e₁
+    τ₂ ← sensToPriv $ inferSens δ γ e₂
+    τ₃ ← sensToPriv $ inferSens δ γ e₃
+    σ₄ :* τ₄ ← listen $ inferPriv δ (dict [x₁ ↦ ℕT,x₂ ↦ τ₃] ⩌ γ) e₄
+    let σ₄Keep = restrict xs' σ₄
+        σ₄KeepMax = joins $ values σ₄Keep
+        σ₄Toss = without xs' σ₄
+    case (τ₁,τ₂,σ₄KeepMax) of
+      (ℝˢT ηᵟ,ℝˢT ηₙ,Priv (Quantity p)) | τ₄ ≡ τ₃ → do 
+        tell $ map (Priv ∘ truncate (Quantity $ edLoopBounds ηᵟ ηₙ p)∘ unPriv) σ₄Keep
+        tell $ map (Priv ∘ truncate Inf ∘ unPriv) σ₄Toss
+        return τ₃
+      _ → undefined -- TypeError
+  -- GaussPE e₁ e₂ e₃ xs e₄ → do
+  --   τ₁ ← sensToPriv $ inferSens δ γ e₁
+  --   τ₂ ← sensToPriv $ inferSens δ γ e₂
+  --   τ₃ ← sensToPriv $ inferSens δ γ e₃
+  --   σ₄ :* τ₄ ← sensToPriv $ listen $ inferSens δ γ e₄
+  --   let σ₄Keep = restrict xs' σ₄
+  --       σ₄KeepMax = joins $ values σ₄Keep
+  --       σ₄Toss = without xs' σ₄
+  --   case (τ₁,τ₂,τ₃,τ₄,σ₄KeepMax) of
+  --     (ℝˢT ηₛ,ℝˢT ηᵋ,ℝˢT ηᵟ,Sens (Quantity ς)) → do
+  --       tell $ map (Priv ∘ trruncate (Quantity $ 
+  _ → undefined
+   
+    
+    
+    
 -- infraRed :: PExp -> KEnv → TEnv -> (Type RNF, PEnv)
 -- 
 -- infraRed (PBindE x e₁ e₂) δ γ = 

@@ -259,17 +259,20 @@ instance POrd RNF where
   SymRNF  xs⁴ ⊑ NNRealRNF r₂  = xs⁴ ⊆ realSymRNF r₂
   SymRNF  xs⁴ ⊑ SymRNF  ys⁴ = xs⁴ ⊆ ys⁴
 
-normalizeRExp ∷ RExpPre → RNF
-normalizeRExp (VarRE x) = varRNF x
-normalizeRExp (NatRE n) = NatRNF n
-normalizeRExp (NNRealRE r) = NNRealRNF r
-normalizeRExp (MaxRE e₁ e₂) = maxRNF (normalizeRExp $ extract e₁) (normalizeRExp $ extract e₂)
-normalizeRExp (MinRE e₁ e₂) = minRNF (normalizeRExp $ extract e₁) (normalizeRExp $ extract e₂)
-normalizeRExp (PlusRE e₁ e₂) = plusRNF (normalizeRExp $ extract e₁) (normalizeRExp $ extract e₂)
-normalizeRExp (TimesRE e₁ e₂) = timesRNF (normalizeRExp $ extract e₁) (normalizeRExp $ extract e₂)
-normalizeRExp (DivRE e₁ e₂) = timesRNF (normalizeRExp $ extract e₁) $ invRNF (normalizeRExp $ extract e₂)
-normalizeRExp (RootRE e) = rootRNF (normalizeRExp $ extract e)
-normalizeRExp (LogRE e) = logRNF (normalizeRExp $ extract e)
+normalizeRExpPre ∷ RExpPre → RNF
+normalizeRExpPre (VarRE x) = varRNF x
+normalizeRExpPre (NatRE n) = NatRNF n
+normalizeRExpPre (NNRealRE r) = NNRealRNF r
+normalizeRExpPre (MaxRE e₁ e₂) = maxRNF (normalizeRExpPre $ extract e₁) (normalizeRExpPre $ extract e₂)
+normalizeRExpPre (MinRE e₁ e₂) = minRNF (normalizeRExpPre $ extract e₁) (normalizeRExpPre $ extract e₂)
+normalizeRExpPre (PlusRE e₁ e₂) = plusRNF (normalizeRExpPre $ extract e₁) (normalizeRExpPre $ extract e₂)
+normalizeRExpPre (TimesRE e₁ e₂) = timesRNF (normalizeRExpPre $ extract e₁) (normalizeRExpPre $ extract e₂)
+normalizeRExpPre (DivRE e₁ e₂) = timesRNF (normalizeRExpPre $ extract e₁) $ invRNF (normalizeRExpPre $ extract e₂)
+normalizeRExpPre (RootRE e) = rootRNF (normalizeRExpPre $ extract e)
+normalizeRExpPre (LogRE e) = logRNF (normalizeRExpPre $ extract e)
+
+normalizeRExp ∷ RExp → RNF
+normalizeRExp = normalizeRExpPre ∘ extract
 
 -- mainDuetRExp ∷ IO ()
 -- mainDuetRExp = do

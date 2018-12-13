@@ -4,7 +4,7 @@ cabal-version: 2.2
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: a1574c21c8c49b635504f1528d9f45fad66bcbcfa4f986f5af1d61da486ce6d6
+-- hash: b9fb06019760746e196b15181718555b1d607bdbcc590d6449db78052c7ab1d2
 
 name:           duet
 version:        0.0.0.1
@@ -13,6 +13,7 @@ build-type:     Simple
 library
   exposed-modules:
       Duet
+      Duet.AddToUVMHS
       Duet.Check
       Duet.Parser
       Duet.Quantity
@@ -24,10 +25,11 @@ library
       Paths_duet
   hs-source-dirs:
       src
-  default-extensions: ConstraintKinds DataKinds ExplicitNamespaces FlexibleContexts FlexibleInstances FunctionalDependencies GADTs GeneralizedNewtypeDeriving InstanceSigs KindSignatures LambdaCase MonadComprehensions MultiParamTypeClasses NoImplicitPrelude OverloadedStrings PatternSynonyms PolyKinds QuantifiedConstraints RankNTypes RebindableSyntax ScopedTypeVariables StandaloneDeriving Strict StrictData TemplateHaskell TypeApplications TypeOperators UndecidableInstances UndecidableSuperClasses UnicodeSyntax ViewPatterns
+  default-extensions: ConstraintKinds DataKinds ExplicitNamespaces FlexibleContexts FlexibleInstances FunctionalDependencies GADTs GeneralizedNewtypeDeriving InstanceSigs KindSignatures LambdaCase MonadComprehensions MultiParamTypeClasses NoImplicitPrelude OverloadedStrings PatternSynonyms PolyKinds QuantifiedConstraints RankNTypes RebindableSyntax ScopedTypeVariables StandaloneDeriving Strict StrictData TemplateHaskell TypeApplications TypeFamilies TypeOperators UndecidableInstances UndecidableSuperClasses UnicodeSyntax ViewPatterns
   ghc-options: -Wall -Wno-orphans
   build-depends:
       base
+    , containers
     , uvmhs
   default-language: Haskell2010
 
@@ -35,6 +37,7 @@ executable duet
   main-is: Main.hs
   other-modules:
       Duet
+      Duet.AddToUVMHS
       Duet.Check
       Duet.Parser
       Duet.Quantity
@@ -44,7 +47,7 @@ executable duet
       Paths_duet
   hs-source-dirs:
       src
-  default-extensions: ConstraintKinds DataKinds ExplicitNamespaces FlexibleContexts FlexibleInstances FunctionalDependencies GADTs GeneralizedNewtypeDeriving InstanceSigs KindSignatures LambdaCase MonadComprehensions MultiParamTypeClasses NoImplicitPrelude OverloadedStrings PatternSynonyms PolyKinds QuantifiedConstraints RankNTypes RebindableSyntax ScopedTypeVariables StandaloneDeriving Strict StrictData TemplateHaskell TypeApplications TypeOperators UndecidableInstances UndecidableSuperClasses UnicodeSyntax ViewPatterns
+  default-extensions: ConstraintKinds DataKinds ExplicitNamespaces FlexibleContexts FlexibleInstances FunctionalDependencies GADTs GeneralizedNewtypeDeriving InstanceSigs KindSignatures LambdaCase MonadComprehensions MultiParamTypeClasses NoImplicitPrelude OverloadedStrings PatternSynonyms PolyKinds QuantifiedConstraints RankNTypes RebindableSyntax ScopedTypeVariables StandaloneDeriving Strict StrictData TemplateHaskell TypeApplications TypeFamilies TypeOperators UndecidableInstances UndecidableSuperClasses UnicodeSyntax ViewPatterns
   ghc-options: -Wall -Wno-orphans
   build-depends:
       base

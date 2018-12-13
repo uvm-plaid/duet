@@ -31,6 +31,7 @@ default-extensions:
   - StrictData
   - TemplateHaskell
   - TypeApplications
+  - TypeFamilies
   - TypeOperators
   - UndecidableInstances
   - UndecidableSuperClasses
@@ -46,6 +47,7 @@ library:
     - src
   dependencies:
     - base
+    - containers
     - uvmhs
 
 executables:
