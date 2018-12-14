@@ -24,8 +24,8 @@ tokKeywords = list
   ,"ℕ","ℝ","ℝ⁺","𝔻","𝕀","𝕄"
   ,"LR","L2","U"
   ,"real"
-  ,"matrix","mcreate","clip","L∇","U∇"
-  ,"loop","mgauss","rows","cols"
+  ,"matrix","mcreate","clip","L∇","U∇","mmap"
+  ,"aloop","loop","mgauss","rows","cols"
   ,"L1","L2","L∞","U"
   ,"dyn","real"
   ]
@@ -147,8 +147,8 @@ parClip = tries
 parSens ∷ Parser Token (Sens RExp)
 parSens = Sens ∘ Quantity ^$ parRExp
 
-parPriv ∷ Parser Token (Priv ID RExp)
-parPriv = Priv ∘ Quantity ∘ ID ^$ parRExp
+parPriv ∷ Parser Token (Priv p RExp)
+parPriv = undefined
 
 parSpace ∷ Parser Token ()
 parSpace = pSkip (const False) $ void $ pOneOrMore $ tries
@@ -156,30 +156,33 @@ parSpace = pSkip (const False) $ void $ pOneOrMore $ tries
   , pLit TokenSpace
   ]
 
-parType ∷ Parser Token (Type ID RExp)
-parType = mixfixParserWithContext "type" $ concat
-  [ mixF $ MixFTerminal $ do
+parTypeSource ∷ Parser Token (TypeSource p RExp)
+parTypeSource = pWithContext "type" parType
+
+parType ∷ Parser Token (Type p RExp)
+parType = mixfixParser $ concat
+  [ mix $ MixTerminal $ do
       parLit "ℕ"
       parLit "["
       η ← parRExp
       parLit "]"
       return $ ℕˢT η
-  , mixF $ MixFTerminal $ do
+  , mix $ MixTerminal $ do
       parLit "ℝ⁺"
       parLit "["
       η ← parRExp
       parLit "]"
       return $ ℝˢT η
-  , mixF $ MixFTerminal $ const ℕT ^$ parLit "ℕ"
-  , mixF $ MixFTerminal $ const ℝT ^$ parLit "ℝ"
-  , mixF $ MixFTerminal $ const 𝔻T ^$ parLit "𝔻"
-  , mixF $ MixFTerminal $ do
+  , mix $ MixTerminal $ const ℕT ^$ parLit "ℕ"
+  , mix $ MixTerminal $ const ℝT ^$ parLit "ℝ"
+  , mix $ MixTerminal $ const 𝔻T ^$ parLit "𝔻"
+  , mix $ MixTerminal $ do
       parLit "𝕀"
       parLit "["
       η ← parRExp
       parLit "]"
       return $ 𝕀T η
-  , mixF $ MixFPrefix 10 $ do
+  , mix $ MixPrefix 10 $ do
       parLit "𝕄"
       parLit "["
       ℓ ← parNorm
@@ -190,16 +193,16 @@ parType = mixfixParserWithContext "type" $ concat
       ηₙ ← parRExp
       parLit "]"
       return $ 𝕄T ℓ c ηₘ ηₙ
-  , mixF $ MixFInfixL 3 $ const (:+:) ^$ parLit "+"
-  , mixF $ MixFInfixL 4 $ const (:×:) ^$ parLit "×"
-  , mixF $ MixFInfixL 4 $ const (:&:) ^$ parLit "&"
-  , mixF $ MixFInfixR 2 $ do
+  , mix $ MixInfixL 3 $ const (:+:) ^$ parLit "+"
+  , mix $ MixInfixL 4 $ const (:×:) ^$ parLit "×"
+  , mix $ MixInfixL 4 $ const (:&:) ^$ parLit "&"
+  , mix $ MixInfixR 2 $ do
       parLit "⊸"
       parLit "["
       s ← parSens
       parLit "]"
       return $ \ τ₁ τ₂ → τ₁ :⊸: (s :* τ₂)
-  , mixF $ MixFPrefix 2 $ do
+  , mix $ MixPrefix 2 $ do
       parLit "∀"
       ακs ← pOneOrMoreSepBy (parLit ",") $ do
         α ← parName
@@ -220,11 +223,11 @@ parGrad = tries
   [ const LR ^$ parLit "LR"
   ]
 
-parSExp ∷ Parser Token (SExp ID)
-parSExp = mixfixParserWithContext "sexp" $ concat
+parSExp ∷ PRIV_W p → Parser Token (SExpSource p)
+parSExp p = mixfixParserWithContext "sexp" $ concat
   [ mixF $ MixFTerminal $ do
       parLit "("
-      e ← parSExp
+      e ← parSExp p
       parLit ")"
       return $ extract e
   , mixF $ MixFTerminal $ do
@@ -258,16 +261,16 @@ parSExp = mixfixParserWithContext "sexp" $ concat
       parLit "["
       ℓ ← parNorm
       parLit "|"
-      e₁ ← parSExp
+      e₁ ← parSExp p
       parLit ","
-      e₂ ← parSExp
+      e₂ ← parSExp p
       parLit "]"
       parLit "{"
       x₁ ← parName
       parLit ","
       x₂ ← parName
       parLit "⇒"
-      e₃ ← parSExp
+      e₃ ← parSExp p
       parLit "}"
       return $ MCreateSE ℓ e₁ e₂ (var x₁) (var x₂) e₃
   , mixF $ MixFPrefix 10 $ const MRowsSE ^$ parLit "rows"
@@ -283,19 +286,40 @@ parSExp = mixfixParserWithContext "sexp" $ concat
       parLit "["
       g ← parGrad
       parLit "|"
-      e₁ ← parSExp
+      e₁ ← parSExp p
       parLit ";"
-      e₂ ← parSExp
+      e₂ ← parSExp p
       parLit ","
-      e₃ ← parSExp
+      e₃ ← parSExp p
       parLit "]"
       return $ MLipGradSE g e₁ e₂ e₃
+  , mixF $ MixFTerminal $ do
+      parLit "mmap"
+      e₁ ← parSExp p
+      e₂O ← pOptional $ do
+        parLit ","
+        e₂ ← parSExp p
+        return e₂
+      parLit "{"
+      x₁ ← var ^$ parName
+      e₂x₂O ← case e₂O of
+        None → return None
+        Some e₂ → do
+          parLit ","
+          x₂ ← var ^$ parName
+          return $ Some $ e₂ :* x₂
+      parLit "⇒"
+      e₃ ← parSExp p
+      parLit "}"
+      return $ case e₂x₂O of
+        None → MMapSE e₁ x₁ e₃
+        Some (e₂ :* x₂) → MMap2SE e₁ e₂ x₁ x₂ e₃
   , mixF $ MixFTerminal $ VarSE ∘ var ^$ parName
   , mixF $ MixFPrefix 1 $ do
       parLit "let"
       x ← parName
       parLit "="
-      e₁ ← parSExp
+      e₁ ← parSExp p
       parLit "in"
       return $ \ e₂ → LetSE (var x) e₁ e₂
   , mixF $ MixFInfixL 10 $ const AppSE ^$ parSpace
@@ -310,64 +334,70 @@ parSExp = mixfixParserWithContext "sexp" $ concat
       xτs ← pOneOrMoreSepBy (parLit ",") $ do
         x ← parName
         parLit ":"
-        τ ← parType
+        τ ← parTypeSource
         return $ var x :* τ
       parLit "⇒"
-      e ← parPExp
+      e ← parPExp p
       return $ PFunSE ακs xτs e
   ]
 
-parPExp ∷ Parser Token (PExp ID)
-parPExp = pWithContext "pexp" $ tries
+parPExp ∷ PRIV_W p → Parser Token (PExpSource p)
+parPExp p = pWithContext "pexp" $ tries
   [ do parLit "let"
        x ← parName
        parLit "="
-       e₁ ← parSExp
+       e₁ ← parSExp p
        parLit "in"
-       e₂ ← parPExp
+       e₂ ← parPExp p
        return $ BindPE (var x) (ReturnPE %⋅ e₁) e₂
   , do parLit "return"
-       e ← parSExp
+       e ← parSExp p
        return $ ReturnPE e
   , do x ← var ^$ parName
        parLit "←"
-       e₁ ← parPExp
+       e₁ ← parPExp p
        parLit ";"
-       e₂ ← parPExp
+       e₂ ← parPExp p
        return $ BindPE x e₁ e₂
-  , do parLit "loop"
-       parLit "["
-       e₁ ← parSExp
-       parLit "]"
-       e₂ ← parSExp
-       parLit "on"
-       e₃ ← parSExp
-       parLit "<"
-       xs ← var ^^$ pManySepBy (parLit ",") parName
-       parLit ">"
-       parLit "{"
-       x₁ ← var ^$ parName
-       parLit ","
-       x₂ ← var ^$ parName
-       parLit "⇒"
-       e₄ ← parPExp
-       parLit "}"
-       return $ LoopPE e₁ e₂ e₃ xs x₁ x₂ e₄
-  , do parLit "mgauss"
-       parLit "["
-       e₁ ← parSExp
-       parLit ","
-       e₂ ← parSExp
-       parLit ","
-       e₃ ← parSExp
-       parLit "]"
-       parLit "<"
-       xs ← var ^^$ pManySepBy (parLit ",") parName
-       parLit ">"
-       parLit "{"
-       e₄ ← parSExp
-       parLit "}"
-       return $ MGaussPE e₁ e₂ e₃ xs e₄
+  , case p of
+      ED_W → do 
+        parLit "aloop"
+        parLit "["
+        e₁ ← parSExp p
+        parLit "]"
+        e₂ ← parSExp p
+        parLit "on"
+        e₃ ← parSExp p
+        parLit "<"
+        xs ← var ^^$ pManySepBy (parLit ",") parName
+        parLit ">"
+        parLit "{"
+        x₁ ← var ^$ parName
+        parLit ","
+        x₂ ← var ^$ parName
+        parLit "⇒"
+        e₄ ← parPExp p
+        parLit "}"
+        return $ EDLoopPE e₁ e₂ e₃ xs x₁ x₂ e₄
+      _ → abort
+  , case p of
+      ED_W → do 
+        parLit "mgauss"
+        parLit "["
+        e₁ ← parSExp p
+        parLit ","
+        e₂ ← parSExp p
+        parLit ","
+        e₃ ← parSExp p
+        parLit "]"
+        parLit "<"
+        xs ← var ^^$ pManySepBy (parLit ",") parName
+        parLit ">"
+        parLit "{"
+        e₄ ← parSExp p
+        parLit "}"
+        return $ MGaussPE e₁ (EDGaussParams e₂ e₃) xs e₄
+      _ → abort
   ]
 
 tokSkip ∷ Token → 𝔹

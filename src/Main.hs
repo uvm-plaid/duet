@@ -8,4 +8,5 @@ main = do
   pprint $ ppHeader "PARSING"
   s ← read "examples/e.duet"
   ts ← stream ^$ tokenizeIO tokDuet $ tokens s
-  parseIOMain (pSkip tokSkip (pFinal parSExp)) ts
+  e ← parseIO (pSkip tokSkip $ pFinal $ parSExp ED_W) ts
+  pprint $ runSM dø dø $ inferSens e

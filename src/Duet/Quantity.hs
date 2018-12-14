@@ -3,10 +3,15 @@ module Duet.Quantity where
 import UVMHS
 
 import Duet.RExp
+import Duet.AddToUVMHS
 
 data Quantity a = Zero | Quantity a | Inf
   deriving (Eq,Ord,Show)
+
+makePrisms ''Quantity
 makePrettySum ''Quantity
+
+instance (HasPrism a b) ⇒ HasPrism (Quantity a) b where hasPrism = (hasPrism @ a @ b) ⊚ (quantityL @ a)
 
 instance (Additive a) ⇒ Additive (Quantity a) where
   zero = Zero
@@ -40,6 +45,15 @@ instance (Join a) ⇒ Join (Quantity a) where
   _ ⊔ Inf = Inf
   Quantity x ⊔ Quantity y = Quantity $ x ⊔ y
 instance (Join a) ⇒ JoinLattice (Quantity a)
+
+instance Top (Quantity a) where top = Inf
+instance (Meet a) ⇒ Meet (Quantity a) where
+  Zero ⊓ _ = Zero
+  _ ⊓ Zero = Zero
+  x ⊓ Inf = x
+  Inf ⊓ y = y
+  Quantity x ⊓ Quantity y = Quantity $ x ⊓ y
+instance (Meet a) ⇒ MeetLattice (Quantity a)
 
 instance Functor Quantity where
   map f = \case

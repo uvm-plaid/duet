@@ -8,7 +8,10 @@ data 𝕏 = 𝕏
   }
   deriving (Eq,Ord,Show)
 makeLenses ''𝕏
-makePrettySum ''𝕏
+
+instance Pretty 𝕏 where
+  pretty (𝕏 x None) = ppText x
+  pretty (𝕏 x (Some n)) = concat [pretty x,ppText "@",pretty n]
 
 var ∷ 𝕊 → 𝕏
 var x = 𝕏 x None

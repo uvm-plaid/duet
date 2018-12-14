@@ -7,8 +7,7 @@ let main = pλ m  : ℕ,
               ε  : ℝ⁺,
               k  : ℕ,
               δ  : ℝ⁺,
-              δ′ : ℝ⁺,
-              η  : ℝ⁺
+              δ′ : ℝ⁺
               .
               xs : 𝕄[L2 U|m,n] 𝔻,
               ys : 𝕄[L2 U|m,1] 𝔻,
@@ -16,16 +15,16 @@ let main = pλ m  : ℕ,
               k  : ℕ[k],
               δ  : ℝ⁺[δ],
               δ′ : ℝ⁺[δ′],
-              η  : ℝ⁺[η]
+              η  : ℝ
               ⇒
-  let k  = ℕ[1000] in
-  let δ  = ℝ⁺[0.000001] in
-  let δ′ = ℝ⁺[0.000001] in
-  let η  = ℝ⁺[0.1] in
-  let m₀ = mcreate[ L2 | ℕ[1] , cols xs ] { i , j ⇒ 0.0 } in
-  loop[ δ′ ] k on m₀ <xs,ys> { a, θ ⇒ 
+  -- let k  = ℕ[1000] in
+  -- let δ  = ℝ⁺[0.000001] in
+  -- let δ′ = ℝ⁺[0.000001] in
+  -- let η  = ℝ⁺[0.1] in
+  let m₀ = mcreate[ L∞ | ℕ[1] , cols xs ] { i , j ⇒ 0.0 } in
+  aloop[ δ′ ] k on m₀ <xs,ys> { a, θ ⇒ 
     let s = ℝ⁺[1.0] / real (rows xs) in
-    g ← mgauss[ s , ε , δ ] <xs,ys> { L∇[ LR L2 | θ ; clip[L2] xs, ys ] } ;
-    return θ - η ⋅ g
+    g ← mgauss[ s , ε , δ ] <xs,ys> { L∇[ LR | θ ; clip[L2] xs, ys ] } ;
+    return mmap θ , mmap g { x ⇒ η ⋅ x } { x , y ⇒ x - y }
   }
 in main

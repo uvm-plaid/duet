@@ -23,9 +23,9 @@ let main = pλ m  : ℕ,
   let δ′ = ℝ⁺[0.000001] in
   let η  = ℝ⁺[0.1] in
   let m₀ = mcreate[ L2 | ℕ[1] , cols xs ] { i , j ⇒ 0.0 } in
-  loop[ δ′ ] k on m₀ <xs,ys> { a, θ ⇒ 
+  aloop[ δ′ ] k on m₀ <xs,ys> { a, θ ⇒ 
     let s = ℝ⁺[1.0] / real (rows xs) in
-    g ← mgauss[ s , ε , δ ] <xs,ys> { L∇[ LR L2 | θ ; clip[L2] xs, ys ] } ;
+    g ← mgauss[ s , ε , δ ] <xs,ys> { L∇[ LR | θ ; clip[L2] xs, ys ] } ;
     return θ - η ⋅ g
   }
 in main

@@ -1,8 +1,9 @@
 module Duet.RExp where
 
-import UVMHS
+import UVMHS hiding (log)
 
 import Duet.Var
+import Duet.AddToUVMHS
 
 cart' ∷ 𝐿 a → 𝐿 (𝐿 a) → 𝐿 (𝐿 a)
 cart' Nil _xss = Nil
@@ -79,9 +80,73 @@ data RAtom =
   | LogRA RSP
   deriving (Eq,Ord,Show)
 
-makePrettySum ''RNF
-makePrettyUnion ''RSP
-makePrettySum ''RAtom
+makePrisms ''RNF
+
+instance HasPrism RNF ℕ where hasPrism = natRNFL
+instance HasPrism RNF 𝔻 where hasPrism = nNRealRNFL
+
+ppRAtom ∷ RAtom → Doc
+ppRAtom = \case
+  VarRA x → pretty x
+  NNRealRA r → pretty r
+  InvRA e → ppAtLevel 6 $ concat [ppOp "1/",ppRSP e]
+  RootRA e → ppAtLevel 8 $ concat [ppOp "√",ppRSP e]
+  LogRA e → ppAtLevel 8 $ concat [ppOp "㏒",ppRSP e]
+
+ppProd ∷ (RAtom ⇰ ℕ) → Doc
+ppProd xs = case list xs of
+  Nil → pretty 1
+  (x :* n) :& Nil → 
+    case n ≡ 1 of
+      True → ppRAtom x
+      False → ppAtLevel 7 $ concat [ppRAtom x,ppOp "^",pretty n]
+  _ → ppAtLevel 6 $ concat $ do
+        (x :* n) ← list xs
+        return $ 
+          case n ≡ 1 of
+            True → ppRAtom x
+            False → ppAtLevel 7 $ concat [ppRAtom x,ppOp "^",pretty n]
+
+ppSum ∷ (RAtom ⇰ ℕ) ⇰ ℕ → Doc
+ppSum xs² = case list xs² of
+  Nil → pretty 0
+  (xs :* m) :& Nil → 
+      case m ≡ 1 of
+        True → ppProd xs
+        False → ppAtLevel 6 $ concat [pretty m,ppProd xs]
+  _ → ppAtLevel 5 $ concat $ inbetween (ppOp "+") $ do
+    (xs :* m) ← list xs²
+    return $
+      case m ≡ 1 of
+        True → ppProd xs
+        False → ppAtLevel 6 $ concat [pretty m,ppProd xs]
+
+ppRSP ∷ RSP → Doc
+ppRSP = ppSum ∘ unRSP
+
+ppMin ∷ 𝑃 RSP → Doc
+ppMin xs³ = case list xs³ of
+  Nil → pretty 0
+  xs² :& Nil → ppRSP xs²
+  _ → ppAtLevel 6 $ concat $ inbetween (ppOp "⊓") $ do
+    xs² ← list xs³
+    return $ ppRSP xs²
+
+ppMax ∷ 𝑃 (𝑃 RSP) → Doc
+ppMax xs⁴ = case list xs⁴ of
+  Nil → ppLit "∞"
+  xs³ :& Nil → ppMin xs³
+  _ → ppAtLevel 5 $ concat $ inbetween (ppOp "⊔") $ do
+    xs³ ← list xs⁴
+    return $ ppMin xs³
+
+ppRNF ∷ RNF → Doc
+ppRNF = \case
+  NatRNF n → concat [pretty n]
+  NNRealRNF r → concat [pretty r]
+  SymRNF xs⁴ → ppMax xs⁴
+
+instance Pretty RNF where pretty = ppRNF
 
 prettyRAtom ∷ RAtom → 𝕊
 prettyRAtom (VarRA x) = 𝕩name x
@@ -246,6 +311,9 @@ instance Divisible RNF where e₁ / e₂ = e₁ `timesRNF` invRNF e₂
 instance Null RNF where null = zero
 instance Append RNF where (⧺) = (+)
 instance Monoid RNF
+
+instance Root RNF where root = rootRNF
+instance Log RNF where log = logRNF
 
 
 instance POrd RNF where

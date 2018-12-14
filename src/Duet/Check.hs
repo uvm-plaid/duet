@@ -1,6 +1,6 @@
 module Duet.Check where
 
-import UVMHS
+import UVMHS hiding (log)
 
 import Duet.Syntax
 import Duet.RExp
@@ -73,11 +73,44 @@ data Context p = Context
 makeLenses ''Context
 makePrettyRecord ''Context
 
-inferSens ∷ SExpSource p 
-          → ErrorT (TypeError p) (ReaderT (Context p) (WriterT (𝕏 ⇰ Sens RNF) ID)) (Type p RNF)
+newtype SM p a = SM { unSM ∷ ReaderT (Context p) (WriterT (𝕏 ⇰ Sens RNF) (ErrorT (TypeError p) ID)) a }
+  deriving 
+  (Functor
+  ,Return,Bind,Monad
+  ,MonadError (TypeError p)
+  ,MonadReader (Context p)
+  ,MonadWriter (𝕏 ⇰ Sens RNF))
+
+mkSM ∷ (𝕏 ⇰ Kind → 𝕏 ⇰ Type p RNF → TypeError p ∨ ((𝕏 ⇰ Sens RNF) ∧ a)) → SM p a
+mkSM f = SM $ ReaderT $ \ (Context δ γ) → WriterT $ ErrorT $ ID $ f δ γ
+
+runSM ∷ 𝕏 ⇰ Kind → 𝕏 ⇰ Type p RNF → SM p a → TypeError p ∨ ((𝕏 ⇰ Sens RNF) ∧ a)
+runSM δ γ = unID ∘ unErrorT ∘ unWriterT ∘ runReaderT (Context δ γ) ∘ unSM
+
+newtype PM p a = PM { unPM ∷ ReaderT (Context p) (WriterT (𝕏 ⇰ Priv p RNF) (ErrorT (TypeError p) ID)) a }
+  deriving 
+  (Functor
+  ,Return,Bind,Monad
+  ,MonadError (TypeError p)
+  ,MonadReader (Context p)
+  ,MonadWriter (𝕏 ⇰ Priv p RNF))
+
+mkPM ∷ (𝕏 ⇰ Kind → 𝕏 ⇰ Type p RNF → TypeError p ∨ ((𝕏 ⇰ Priv p RNF) ∧ a)) → PM p a
+mkPM f = PM $ ReaderT $ \ (Context δ γ) → WriterT $ ErrorT $ ID $ f δ γ
+
+runPM ∷ 𝕏 ⇰ Kind → 𝕏 ⇰ Type p RNF → PM p a → TypeError p ∨ ((𝕏 ⇰ Priv p RNF) ∧ a)
+runPM δ γ = unID ∘ unErrorT ∘ unWriterT ∘ runReaderT (Context δ γ) ∘ unPM
+
+smFromPM ∷ PM p a → SM p a
+smFromPM xM = mkSM $ \ δ γ → mapInr (mapFst $ map $ Sens ∘ truncate Inf ∘ unPriv) $ runPM δ γ xM
+
+pmFromSM ∷ SM p a → PM p a
+pmFromSM xM = mkPM $ \ δ γ → mapInr (mapFst $ map $ Priv ∘ truncate Inf ∘ unSens) $ runSM δ γ xM
+
+inferSens ∷ SExpSource p → SM p (Type p RNF)
 inferSens eA = case extract eA of
-  ℕˢSE n → return $ ℕˢT $ NatRNF n
-  ℝˢSE d → return $ ℝˢT $ NNRealRNF d
+  ℕˢSE n → return $ ℕˢT $ ι n
+  ℝˢSE d → return $ ℝˢT $ ι d
   DynSE e → do
     τ ← inferSens e
     case τ of
@@ -134,37 +167,37 @@ inferSens eA = case extract eA of
       (ℝˢT η₁,ℝˢT η₂) → do tell $ σ₁ ⧺ σ₂ ; return $ ℝˢT $ η₁ × η₂
       (𝕀T η₁,𝕀T η₂) →   do tell $ σ₁ ⧺ σ₂ ; return $ 𝕀T $ η₁ × η₂
       (ℕˢT η₁,ℕT) → do
-        tell $ σ₁ ⧺ Sens (Quantity η₁) ⨵  σ₂
+        tell $ σ₁ ⧺ ι η₁ ⨵  σ₂
         return ℕT
       (ℕT,ℕˢT η₂) → do
-        tell $ Sens (Quantity η₂) ⨵ σ₁ ⧺ σ₂
+        tell $ ι η₂ ⨵ σ₁ ⧺ σ₂
         return ℕT
       (ℝˢT η₁,ℝT) → do
-        tell $ σ₁ ⧺ Sens (Quantity η₁) ⨵ σ₂
+        tell $ σ₁ ⧺ ι η₁ ⨵ σ₂
         return ℝT
       (ℝT,ℝˢT η₂) → do
-        tell $ Sens (Quantity η₂) ⨵ σ₁ ⧺ σ₂
+        tell $ ι η₂ ⨵ σ₁ ⧺ σ₂
         return ℝT
       (𝕀T η₁,ℕT) → do
-        tell $ σ₁ ⧺ Sens (Quantity η₁) ⨵ σ₂
+        tell $ σ₁ ⧺ ι η₁ ⨵ σ₂
         return ℕT
       (ℕT,𝕀T η₂) → do
-        tell $ Sens (Quantity η₂) ⨵ σ₁ ⧺ σ₂
+        tell $ ι η₂ ⨵ σ₁ ⧺ σ₂
         return ℕT
       (ℕT,ℕT) → do tell $ σ₁ ⧺ σ₂ ; return ℕT
       (ℝT,ℝT) → do tell $ σ₁ ⧺ σ₂ ; return ℝT
       (𝔻T,𝔻T) → do tell $ σ₁ ⧺ σ₂ ; return 𝔻T
-      _ → undefined -- TypeError
+      _ → error $ pprender $ (τ₁ :* τ₂)
   DivSE e₁ e₂ → do
     σ₁ :* τ₁ ← listen $ inferSens e₁
     σ₂ :* τ₂ ← listen $ inferSens e₂
     case (τ₁,τ₂) of
       (ℝˢT η₁,ℝˢT η₂) → do tell $ σ₁ ⧺ σ₂ ; return $ ℝˢT $ η₁ / η₂
       (ℝˢT _η₁,ℝT) → do 
-        tell $ σ₁ ⧺ Sens Inf ⨵ σ₂
+        tell $ σ₁ ⧺ top ⨵ σ₂
         return $ ℝT
       (ℝT,ℝˢT η₂) → do 
-        tell $ Sens (Quantity (one / η₂)) ⨵ σ₁ ⧺ σ₂ 
+        tell $ ι (one / η₂) ⨵ σ₁ ⧺ σ₂ 
         return $ ℝT
       (ℝT,ℝT) → return ℝT
       (𝔻T,𝔻T) → return 𝔻T
@@ -173,14 +206,14 @@ inferSens eA = case extract eA of
     σ :* τ ← listen $ inferSens e
     case τ of
       ℝˢT η → do tell σ ; return $ ℝˢT $ rootRNF η
-      ℝT → do tell $ Sens Inf ⨵ σ ; return ℝT
+      ℝT → do tell $ top ⨵ σ ; return ℝT
       𝔻T → return 𝔻T
       _ → undefined -- TypeError
   LogSE e → do
     σ :* τ ← listen $ inferSens e
     case τ of
       ℝˢT η → do tell σ ; return $ ℝˢT $ rootRNF η
-      ℝT → do tell $ Sens Inf ⨵ σ ; return ℝT
+      ℝT → do tell $ top ⨵ σ ; return ℝT
       𝔻T → return 𝔻T
       _ → undefined -- TypeError
   ModSE e₁ e₂ → do
@@ -190,18 +223,18 @@ inferSens eA = case extract eA of
       (ℕˢT _η₁,ℕˢT _η₂) → do tell $ σ₁ ⧺ σ₂ ; return ℕT
       (𝕀T _η₁,𝕀T _η₂)   → do tell $ σ₁ ⧺ σ₂ ; return ℕT
       (ℕˢT η₁,ℕT) → do
-        tell $ σ₁ ⧺ Sens (Quantity η₁) ⨵ σ₂
+        tell $ σ₁ ⧺ ι η₁ ⨵ σ₂
         return ℕT
       (ℕT,ℕˢT η₂) → do 
-        tell $ Sens (Quantity η₂) ⨵ σ₁ ⧺ σ₂
+        tell $ ι η₂ ⨵ σ₁ ⧺ σ₂
         return ℕT
       (𝕀T η₁,ℕT) → do
-        tell $ σ₁ ⧺ Sens (Quantity η₁) ⨵ σ₂
+        tell $ σ₁ ⧺ ι η₁ ⨵ σ₂
         return ℕT
       (ℕT,𝕀T η₂) → do
-        tell $ Sens (Quantity η₂) ⨵ σ₁ ⧺ σ₂
+        tell $ ι η₂ ⨵ σ₁ ⧺ σ₂
         return ℕT
-      (ℕT,ℕT) → do tell $ Sens Inf ⨵ σ₁ ⧺ σ₂ ; return ℕT
+      (ℕT,ℕT) → do tell $ top ⨵ σ₁ ⧺ σ₂ ; return ℕT
       _ → undefined -- TypeError
   MinusSE e₁ e₂ → do
     τ₁ ← inferSens e₁
@@ -215,10 +248,10 @@ inferSens eA = case extract eA of
     τ₁ ← inferSens e₁ 
     τ₂ ← inferSens e₂
     case (τ₁,τ₂) of
-      (𝕀T ηₘ,𝕀T ηₙ) → do
+      (ℕˢT ηₘ,ℕˢT ηₙ) → do
         σ₃ :* τ₃ ← listen $ mapEnvL contextTypeL (\ γ → dict [x₁ ↦ 𝕀T ηₘ,x₂ ↦ 𝕀T ηₙ] ⩌ γ) $ inferSens e₃
         let σ₃' = without (pow [x₁,x₂]) σ₃
-        tell $ Sens (Quantity $ ηₘ × ηₙ) ⨵ σ₃'
+        tell $ ι (ηₘ × ηₙ) ⨵ σ₃'
         return $ 𝕄T ℓ UClip ηₘ ηₙ τ₃
       _ → undefined -- TypeError
   MIndexSE e₁ e₂ e₃ → do
@@ -237,12 +270,12 @@ inferSens eA = case extract eA of
       (𝕄T ℓ c ηₘ ηₙ τ,𝕀T ηₘ',𝕀T ηₙ',τ') | (ηₘ ≡ ηₘ') ⩓ (ηₙ ≡ ηₙ') ⩓ (τ ≡ τ') → return $ 𝕄T ℓ c ηₘ ηₙ τ
       _ → undefined -- TypeError
   MRowsSE e → do
-    τ ← inferSens e
+    _ :* τ ← listen $ inferSens e
     case τ of
       𝕄T _ℓ _c ηₘ _ηₙ _τ' → return $ ℕˢT ηₘ
       _ → undefined -- TypeSource Error
   MColsSE e → do
-    τ ← inferSens e
+    _ :* τ ← listen $ inferSens e
     case τ of
       𝕄T _ℓ _c _ηₘ ηₙ _τ' → return $ ℕˢT ηₙ
       _ → undefined -- TypeSource Error
@@ -258,9 +291,9 @@ inferSens eA = case extract eA of
       _ → undefined -- TypeSource Error
   MLipGradSE _g e₁ e₂ e₃ → do
     σ₁ :* τ₁ ← listen $ inferSens e₁
-    tell $ Sens Inf ⨵ σ₁
-    τ₂ ← inferSens e₂
-    τ₃ ← inferSens e₃
+    tell $ top ⨵ σ₁
+    σ₂ :* τ₂ ← listen $ inferSens e₂
+    σ₃ :* τ₃ ← listen $ inferSens e₃
     case (τ₁,τ₂,τ₃) of
       (𝕄T _ℓ₁ _c₁ ηₘ₁ ηₙ₁ τ₁',𝕄T _ℓ₂ (NormClip ℓ) ηₘ₂ ηₙ₂ τ₂',𝕄T _ℓ₃ _c₃ ηₘ₃ ηₙ₃ τ₃') 
         | meets
@@ -272,7 +305,8 @@ inferSens eA = case extract eA of
           , ηₙ₁ ≡ ηₙ₂
           , ηₘ₂ ≡ ηₘ₃
           ]
-        → return $ 𝕄T ℓ UClip one ηₙ₁ ℝT
+        → do tell $ ι (ι 1 / ηₘ₂) ⨵ (σ₂ ⧺ σ₃)
+             return $ 𝕄T ℓ UClip one ηₙ₁ ℝT
       _ → undefined -- TypeSource Error
   MMapSE e₁ x e₂ → do
     σ₁ :* τ₁ ← listen $ inferSens e₁
@@ -281,15 +315,36 @@ inferSens eA = case extract eA of
         σ₂ :* τ₂ ← listen $ mapEnvL contextTypeL (\ γ → (x ↦ τ₁') ⩌ γ) $ inferSens e₂
         let (ς :* σ₂') = ifNone (zero :* σ₂) $ deleteView x σ₂
         tell $ ς ⨵ σ₁
-        tell $ Sens (Quantity $ ηₘ × ηₙ) ⨵ σ₂'
+        tell $ ι (ηₘ × ηₙ) ⨵ σ₂'
         return $ 𝕄T ℓ UClip ηₘ ηₙ τ₂ 
       _  → undefined -- TypeSource Error
+  MMap2SE e₁ e₂ x₁ x₂ e₃ → do
+    σ₁ :* τ₁ ← listen $ inferSens e₁
+    σ₂ :* τ₂ ← listen $ inferSens e₂
+    case (τ₁,τ₂) of
+      (𝕄T ℓ₁ _c₁ ηₘ₁ ηₙ₁ τ₁',𝕄T ℓ₂ _c₂ ηₘ₂ ηₙ₂ τ₂')
+        | meets
+          [ ℓ₁ ≡ ℓ₂
+          , ηₘ₁ ≡ ηₘ₂
+          , ηₙ₁ ≡ ηₙ₂
+          ]
+        → do σ₃ :* τ₃ ← 
+               listen $ 
+               mapEnvL contextTypeL (\ γ → dict[x₁ ↦ τ₁',x₂ ↦ τ₂'] ⩌ γ) $ 
+               inferSens e₃
+             let (ς₁ :* σ₃') = ifNone (zero :* σ₃) $ deleteView x₁ σ₃
+                 (ς₂ :* σ₃'') = ifNone (zero :* σ₃') $ deleteView x₂ σ₃'
+             tell $ ς₁ ⨵ σ₁
+             tell $ ς₂ ⨵ σ₂
+             tell $ ι (ηₘ₁ × ηₙ₁) ⨵ σ₃''
+             return $ 𝕄T ℓ₁ UClip ηₘ₁ ηₙ₁ τ₃
+      _ → error $ pprender $ (τ₁ :* τ₂)
   VarSE x → do
     γ ← askL contextTypeL
     case γ ⋕? x of
       None → undefined -- TypeSource Error
       Some τ → do
-        tell $ x ↦ (Sens $ Quantity one)
+        tell $ x ↦ ι 1
         return τ
   LetSE x e₁ e₂ → do
     σ₁ :* τ₁ ← listen $ inferSens e₁
@@ -316,7 +371,7 @@ inferSens eA = case extract eA of
     let xτs' = map (mapSnd (map normalizeRExp ∘ extract)) xτs
         xs = map fst xτs
     σ :* τ ← 
-      privToSens 
+      smFromPM 
       $ listen 
       $ mapEnvL contextKindL (\ δ → dict (map single ακs) ⩌ δ)
       $ mapEnvL contextTypeL (\ γ → dict (map single xτs') ⩌ γ)
@@ -325,18 +380,9 @@ inferSens eA = case extract eA of
     let τps = mapOn xτs' $ \ (x :* τ') → τ' :* ifNone null (σ ⋕? x)
     return $ (ακs :* τps) :⊸⋆: τ
 
-privToSens ∷ ErrorT (TypeError p) (ReaderT (Context p) (WriterT (𝕏 ⇰ Priv p RNF) ID)) a
-           → ErrorT (TypeError p) (ReaderT (Context p) (WriterT (𝕏 ⇰ Sens RNF) ID)) a
-privToSens = undefined
-
-sensToPriv ∷ ErrorT (TypeError p) (ReaderT (Context p) (WriterT (𝕏 ⇰ Sens RNF) ID)) a
-           → ErrorT (TypeError p) (ReaderT (Context p) (WriterT (𝕏 ⇰ Priv p RNF) ID)) a
-sensToPriv = undefined
-
-inferPriv ∷ PExpSource p 
-          → ErrorT (TypeError p) (ReaderT (Context p) (WriterT (𝕏 ⇰ Priv p RNF) ID)) (Type p RNF)
+inferPriv ∷ PExpSource p → PM p (Type p RNF)
 inferPriv eA = case extract eA of
-  ReturnPE e → sensToPriv $ inferSens e
+  ReturnPE e → pmFromSM $ inferSens e
   BindPE x e₁ e₂ → do
     τ₁ ← inferPriv e₁
     σ₂ :* τ₂ ← listen $ mapEnvL contextTypeL (\ γ → (x ↦ τ₁) ⩌ γ) $ inferPriv e₂
@@ -345,32 +391,54 @@ inferPriv eA = case extract eA of
     return τ₂
   EDLoopPE e₁ e₂ e₃ xs x₁ x₂ e₄ → do
     let xs' = pow xs
-    τ₁ ← sensToPriv $ inferSens e₁
-    τ₂ ← sensToPriv $ inferSens e₂
-    τ₃ ← sensToPriv $ inferSens e₃
+    τ₁ ← pmFromSM $ inferSens e₁
+    τ₂ ← pmFromSM $ inferSens e₂
+    τ₃ ← pmFromSM $ inferSens e₃
     σ₄ :* τ₄ ← listen $ mapEnvL contextTypeL (\ γ → dict [x₁ ↦ ℕT,x₂ ↦ τ₃] ⩌ γ) $ inferPriv e₄
-    let σ₄Keep = restrict xs' σ₄
+    let σ₄' = without (pow [x₁,x₂]) σ₄
+    let σ₄Keep = restrict xs' σ₄'
         σ₄KeepMax = joins $ values σ₄Keep
-        σ₄Toss = without xs' σ₄
-    case (τ₁,τ₂,σ₄KeepMax) of
-      (ℝˢT ηᵟ',ℝˢT ηₙ,Priv (Quantity (EDPriv ηᵋ ηᵟ))) | τ₄ ≡ τ₃ → do 
-        let ε = NatRNF 2 × ηᵋ × rootRNF (NatRNF 2 × ηₙ × logRNF (NatRNF 1 / ηᵟ'))
+        σ₄Toss = without xs' σ₄'
+    case (τ₁,τ₂,ιview @ (Pr 'ED RNF) σ₄KeepMax) of
+      (ℝˢT ηᵟ',ℕˢT ηₙ,Some (EDPriv ηᵋ ηᵟ)) | τ₄ ≡ τ₃ → do 
+        let ε = ι 2 × ηᵋ × root (ι 2 × ηₙ × log (ι 1 / ηᵟ'))
             δ = ηᵟ' + ηₙ × ηᵟ
         tell $ map (Priv ∘ truncate (Quantity $ EDPriv ε δ) ∘ unPriv) σ₄Keep
         tell $ map (Priv ∘ truncate Inf ∘ unPriv) σ₄Toss
         return τ₃
+      _ → error $ pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄ :* σ₄KeepMax :* σ₄Keep)
+  GaussPE e₁ (EDGaussParams e₂ e₃) xs e₄ → do
+    let xs' = pow xs
+    τ₁ ← pmFromSM $ inferSens e₁
+    τ₂ ← pmFromSM $ inferSens e₂
+    τ₃ ← pmFromSM $ inferSens e₃
+    σ₄ :* τ₄ ← pmFromSM $ listen $ inferSens e₄
+    let σ₄Keep = restrict xs' σ₄
+        σ₄KeepMax = joins $ values σ₄Keep
+        σ₄Toss = without xs' σ₄
+    case (τ₁,τ₂,τ₃,τ₄,ιview @ RNF σ₄KeepMax) of
+      (ℝˢT ηₛ,ℝˢT ηᵋ,ℝˢT ηᵟ,ℝT,Some ς) | ς ⊑ ηₛ → do
+        tell $ map (Priv ∘ truncate (Quantity $ EDPriv ηᵋ ηᵟ) ∘ unSens) σ₄Keep
+        tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
+        return ℝT
       _ → undefined -- TypeError
-  -- GaussPE e₁ e₂ e₃ xs e₄ → do
-  --   τ₁ ← sensToPriv $ inferSens δ γ e₁
-  --   τ₂ ← sensToPriv $ inferSens δ γ e₂
-  --   τ₃ ← sensToPriv $ inferSens δ γ e₃
-  --   σ₄ :* τ₄ ← sensToPriv $ listen $ inferSens δ γ e₄
-  --   let σ₄Keep = restrict xs' σ₄
-  --       σ₄KeepMax = joins $ values σ₄Keep
-  --       σ₄Toss = without xs' σ₄
-  --   case (τ₁,τ₂,τ₃,τ₄,σ₄KeepMax) of
-  --     (ℝˢT ηₛ,ℝˢT ηᵋ,ℝˢT ηᵟ,Sens (Quantity ς)) → do
-  --       tell $ map (Priv ∘ trruncate (Quantity $ 
+  MGaussPE e₁ (EDGaussParams e₂ e₃) xs e₄ → do
+    let xs' = pow xs
+    τ₁ ← pmFromSM $ inferSens e₁
+    τ₂ ← pmFromSM $ inferSens e₂
+    τ₃ ← pmFromSM $ inferSens e₃
+    σ₄ :* τ₄ ← pmFromSM $ listen $ inferSens e₄
+    let σ₄Keep = restrict xs' σ₄
+        σ₄KeepMax = joins $ values σ₄Keep
+        σ₄Toss = without xs' σ₄
+    case (τ₁,τ₂,τ₃,τ₄,ιview @ RNF σ₄KeepMax) of
+      (ℝˢT ηₛ,ℝˢT ηᵋ,ℝˢT ηᵟ,𝕄T L2 _c ηₘ ηₙ ℝT,Some ς) | ς ⊑ ηₛ → do
+        tell $ map (Priv ∘ truncate (Quantity $ EDPriv ηᵋ ηᵟ) ∘ unSens) σ₄Keep
+        tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
+        return $ 𝕄T LInf UClip ηₘ ηₙ ℝT
+      _ → error $ pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄ :* ιview @ RNF σ₄KeepMax)
+  GaussPE e₁ (RenyiGaussParams e₂ e₃) xs e₄ → undefined
+  GaussPE e₁ (ZCGaussParams e₂ e₃) xs e₄ → undefined
   _ → undefined
    
     
