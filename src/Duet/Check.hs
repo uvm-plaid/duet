@@ -60,41 +60,42 @@ inferKind δ = \case
 
 data TypeError p = TypeError
   { typeErrorTerm ∷ Doc
-  , typeErrorContext ∷ (𝕏 ⇰ TypePre p RNF)
-  , typeErrorType ∷ TypePre p RNF
+  , typeErrorContext ∷ (𝕏 ⇰ Type p RNF)
+  , typeErrorType ∷ Type p RNF
   , typeErrorExpected ∷ 𝐿 𝕊
   }
 makePrettyRecord ''TypeError
 
-anno ∷ a → Annotated FullContext a
-anno = Annotated $ FullContext null null null
+data Context p = Context
+  { contextKind ∷ 𝕏 ⇰ Kind
+  , contextType ∷ 𝕏 ⇰ Type p RNF
+  }
+makeLenses ''Context
+makePrettyRecord ''Context
 
-inferSens ∷ (Privacy p) 
-          ⇒ (𝕏 ⇰ Kind) 
-          → (𝕏 ⇰ TypePre p RNF) 
-          → SExp p 
-          → ErrorT (TypeError p) (WriterT (𝕏 ⇰ Sens RNF) ID) (TypePre p RNF)
-inferSens δ γ eA = case extract eA of
+inferSens ∷ SExpSource p 
+          → ErrorT (TypeError p) (ReaderT (Context p) (WriterT (𝕏 ⇰ Sens RNF) ID)) (Type p RNF)
+inferSens eA = case extract eA of
   ℕˢSE n → return $ ℕˢT $ NatRNF n
   ℝˢSE d → return $ ℝˢT $ NNRealRNF d
   DynSE e → do
-    τ ← inferSens δ γ e
+    τ ← inferSens e
     case τ of
       ℕˢT _η → return ℕT
       ℝˢT _η → return ℝT
       𝕀T _η → return ℕT
-      _ → throw $ TypeError (pretty $ annotatedTag eA) γ τ (list ["singleton nat","singleton real"])
+      _ → undefined -- TypeError
   ℕSE _n → return $ ℕT
   ℝSE _d → return $ ℝT
   RealSE e → do
-    τ ← inferSens δ γ e
+    τ ← inferSens e
     case τ of
       ℕT → return ℝT
       ℕˢT η → return $ ℝˢT η
       _ → undefined -- TypeError
   MaxSE e₁ e₂ → do
-    τ₁ ← inferSens δ γ e₁
-    τ₂ ← inferSens δ γ e₂
+    τ₁ ← inferSens e₁
+    τ₂ ← inferSens e₂
     case (τ₁,τ₂) of
       (ℕˢT η₁,ℕˢT η₂) → return $ ℕˢT $ η₁ ⊔ η₂
       (ℝˢT η₁,ℝˢT η₂) → return $ ℝˢT $ η₁ ⊔ η₂
@@ -104,8 +105,8 @@ inferSens δ γ eA = case extract eA of
       (𝔻T,𝔻T) → return 𝔻T
       _ → undefined -- TypeError
   MinSE e₁ e₂ → do
-    τ₁ ← inferSens δ γ e₁
-    τ₂ ← inferSens δ γ e₂
+    τ₁ ← inferSens e₁
+    τ₂ ← inferSens e₂
     case (τ₁,τ₂) of
       (ℕˢT η₁,ℕˢT η₂) → return $ ℕˢT $ η₁ ⊓ η₂
       (ℝˢT η₁,ℝˢT η₂) → return $ ℝˢT $ η₁ ⊓ η₂
@@ -115,8 +116,8 @@ inferSens δ γ eA = case extract eA of
       (𝔻T,𝔻T) → return 𝔻T
       _ → undefined -- TypeError
   PlusSE e₁ e₂ → do
-    τ₁ ← inferSens δ γ e₁
-    τ₂ ← inferSens δ γ e₂
+    τ₁ ← inferSens e₁
+    τ₂ ← inferSens e₂
     case (τ₁,τ₂) of
       (ℕˢT η₁,ℕˢT η₂) → return $ ℕˢT $ η₁ + η₂
       (ℝˢT η₁,ℝˢT η₂) → return $ ℝˢT $ η₁ + η₂
@@ -126,232 +127,236 @@ inferSens δ γ eA = case extract eA of
       (𝔻T,𝔻T) → return 𝔻T
       _ → undefined -- TypeError
   TimesSE e₁ e₂ → do
-    σ₁ :* τ₁ ← listen $ inferSens δ γ e₁
-    σ₂ :* τ₂ ← listen $ inferSens δ γ e₂
+    σ₁ :* τ₁ ← listen $ inferSens e₁
+    σ₂ :* τ₂ ← listen $ inferSens e₂
     case (τ₁,τ₂) of
       (ℕˢT η₁,ℕˢT η₂) → do tell $ σ₁ ⧺ σ₂ ; return $ ℕˢT $ η₁ × η₂
       (ℝˢT η₁,ℝˢT η₂) → do tell $ σ₁ ⧺ σ₂ ; return $ ℝˢT $ η₁ × η₂
       (𝕀T η₁,𝕀T η₂) →   do tell $ σ₁ ⧺ σ₂ ; return $ 𝕀T $ η₁ × η₂
       (ℕˢT η₁,ℕT) → do
-        tell $ σ₁ ⧺ map ((×) $ Sens $ Quantity η₁) σ₂
+        tell $ σ₁ ⧺ Sens (Quantity η₁) ⨵  σ₂
         return ℕT
       (ℕT,ℕˢT η₂) → do
-        tell $ map ((×) $ Sens $ Quantity η₂) σ₁ ⧺ σ₂
+        tell $ Sens (Quantity η₂) ⨵ σ₁ ⧺ σ₂
         return ℕT
       (ℝˢT η₁,ℝT) → do
-        tell $ σ₁ ⧺ map ((×) $ Sens $ Quantity η₁) σ₂
+        tell $ σ₁ ⧺ Sens (Quantity η₁) ⨵ σ₂
         return ℝT
       (ℝT,ℝˢT η₂) → do
-        tell $ map ((×) $ Sens $ Quantity η₂) σ₁ ⧺ σ₂
+        tell $ Sens (Quantity η₂) ⨵ σ₁ ⧺ σ₂
         return ℝT
       (𝕀T η₁,ℕT) → do
-        tell $ σ₁ ⧺ map ((×) $ Sens $ Quantity η₁) σ₂
+        tell $ σ₁ ⧺ Sens (Quantity η₁) ⨵ σ₂
         return ℕT
       (ℕT,𝕀T η₂) → do
-        tell $ map ((×) $ Sens $ Quantity η₂) σ₁ ⧺ σ₂
+        tell $ Sens (Quantity η₂) ⨵ σ₁ ⧺ σ₂
         return ℕT
       (ℕT,ℕT) → do tell $ σ₁ ⧺ σ₂ ; return ℕT
       (ℝT,ℝT) → do tell $ σ₁ ⧺ σ₂ ; return ℝT
       (𝔻T,𝔻T) → do tell $ σ₁ ⧺ σ₂ ; return 𝔻T
       _ → undefined -- TypeError
   DivSE e₁ e₂ → do
-    σ₁ :* τ₁ ← listen $ inferSens δ γ e₁
-    σ₂ :* τ₂ ← listen $ inferSens δ γ e₂
+    σ₁ :* τ₁ ← listen $ inferSens e₁
+    σ₂ :* τ₂ ← listen $ inferSens e₂
     case (τ₁,τ₂) of
       (ℝˢT η₁,ℝˢT η₂) → do tell $ σ₁ ⧺ σ₂ ; return $ ℝˢT $ η₁ / η₂
       (ℝˢT _η₁,ℝT) → do 
-        tell $ σ₁ ⧺ map ((×) $ Sens Inf) σ₂
+        tell $ σ₁ ⧺ Sens Inf ⨵ σ₂
         return $ ℝT
       (ℝT,ℝˢT η₂) → do 
-        tell $ map ((×) $ Sens $ Quantity $ one / η₂) σ₁ ⧺ σ₂ 
+        tell $ Sens (Quantity (one / η₂)) ⨵ σ₁ ⧺ σ₂ 
         return $ ℝT
       (ℝT,ℝT) → return ℝT
       (𝔻T,𝔻T) → return 𝔻T
       _ → undefined -- TypeError
   RootSE e → do
-    σ :* τ ← listen $ inferSens δ γ e
+    σ :* τ ← listen $ inferSens e
     case τ of
       ℝˢT η → do tell σ ; return $ ℝˢT $ rootRNF η
-      ℝT → do tell $ map ((×) $ Sens Inf) σ ; return ℝT
+      ℝT → do tell $ Sens Inf ⨵ σ ; return ℝT
       𝔻T → return 𝔻T
       _ → undefined -- TypeError
   LogSE e → do
-    σ :* τ ← listen $ inferSens δ γ e
+    σ :* τ ← listen $ inferSens e
     case τ of
       ℝˢT η → do tell σ ; return $ ℝˢT $ rootRNF η
-      ℝT → do tell $ map ((×) $ Sens Inf) σ ; return ℝT
+      ℝT → do tell $ Sens Inf ⨵ σ ; return ℝT
       𝔻T → return 𝔻T
       _ → undefined -- TypeError
   ModSE e₁ e₂ → do
-    σ₁ :* τ₁ ← listen $ inferSens δ γ e₁
-    σ₂ :* τ₂ ← listen $ inferSens δ γ e₂
+    σ₁ :* τ₁ ← listen $ inferSens e₁
+    σ₂ :* τ₂ ← listen $ inferSens e₂
     case (τ₁,τ₂) of
       (ℕˢT _η₁,ℕˢT _η₂) → do tell $ σ₁ ⧺ σ₂ ; return ℕT
       (𝕀T _η₁,𝕀T _η₂)   → do tell $ σ₁ ⧺ σ₂ ; return ℕT
       (ℕˢT η₁,ℕT) → do
-        tell $ σ₁ ⧺ map ((×) $ Sens $ Quantity η₁) σ₂
+        tell $ σ₁ ⧺ Sens (Quantity η₁) ⨵ σ₂
         return ℕT
       (ℕT,ℕˢT η₂) → do 
-        tell $ map ((×) $ Sens $ Quantity η₂) σ₁ ⧺ σ₂
+        tell $ Sens (Quantity η₂) ⨵ σ₁ ⧺ σ₂
         return ℕT
       (𝕀T η₁,ℕT) → do
-        tell $ σ₁ ⧺ map ((×) $ Sens $ Quantity η₁) σ₂
+        tell $ σ₁ ⧺ Sens (Quantity η₁) ⨵ σ₂
         return ℕT
       (ℕT,𝕀T η₂) → do
-        tell $ map ((×) $ Sens $ Quantity η₂) σ₁ ⧺ σ₂
+        tell $ Sens (Quantity η₂) ⨵ σ₁ ⧺ σ₂
         return ℕT
-      (ℕT,ℕT) → do tell $ map ((×) $ Sens Inf) $ σ₁ ⧺ σ₂ ; return ℕT
+      (ℕT,ℕT) → do tell $ Sens Inf ⨵ σ₁ ⧺ σ₂ ; return ℕT
       _ → undefined -- TypeError
   MinusSE e₁ e₂ → do
-    τ₁ ← inferSens δ γ e₁
-    τ₂ ← inferSens δ γ e₂
+    τ₁ ← inferSens e₁
+    τ₂ ← inferSens e₂
     case (τ₁,τ₂) of
       (ℝˢT _η₁,ℝˢT _η₂) → return ℝT
       (ℝT,ℝT) → return ℝT
       (𝔻T,𝔻T) → return 𝔻T
       _ → undefined -- TypeError
   MCreateSE ℓ e₁ e₂ x₁ x₂ e₃ → do
-    τ₁ ← inferSens δ γ e₁ 
-    τ₂ ← inferSens δ γ e₂
+    τ₁ ← inferSens e₁ 
+    τ₂ ← inferSens e₂
     case (τ₁,τ₂) of
       (𝕀T ηₘ,𝕀T ηₙ) → do
-        σ₃ :* τ₃ ← listen $ inferSens δ (dict [x₁ ↦ 𝕀T ηₘ,x₂ ↦ 𝕀T ηₙ] ⩌ γ) e₃
+        σ₃ :* τ₃ ← listen $ mapEnvL contextTypeL (\ γ → dict [x₁ ↦ 𝕀T ηₘ,x₂ ↦ 𝕀T ηₙ] ⩌ γ) $ inferSens e₃
         let σ₃' = without (pow [x₁,x₂]) σ₃
-        tell $ map ((×) $ Sens $ Quantity $ ηₘ × ηₙ) σ₃'
-        return $ 𝕄T ℓ UClip ηₘ ηₙ $ anno τ₃
+        tell $ Sens (Quantity $ ηₘ × ηₙ) ⨵ σ₃'
+        return $ 𝕄T ℓ UClip ηₘ ηₙ τ₃
       _ → undefined -- TypeError
   MIndexSE e₁ e₂ e₃ → do
-    τ₁ ← inferSens δ γ e₁
-    τ₂ ← inferSens δ γ e₂
-    τ₃ ← inferSens δ γ e₃
+    τ₁ ← inferSens e₁
+    τ₂ ← inferSens e₂
+    τ₃ ← inferSens e₃
     case (τ₁,τ₂,τ₃) of
-      (𝕄T _ℓ _c ηₘ ηₙ τ,𝕀T ηₘ',𝕀T ηₙ') | (ηₘ ≡ ηₘ') ⩓ (ηₙ ≡ ηₙ') → return $ extract τ
+      (𝕄T _ℓ _c ηₘ ηₙ τ,𝕀T ηₘ',𝕀T ηₙ') | (ηₘ ≡ ηₘ') ⩓ (ηₙ ≡ ηₙ') → return τ
       _ → undefined -- TypeError
   MUpdateSE e₁ e₂ e₃ e₄ → do
-    τ₁ ← inferSens δ γ e₁
-    τ₂ ← inferSens δ γ e₂
-    τ₃ ← inferSens δ γ e₃
-    τ₄ ← inferSens δ γ e₄
+    τ₁ ← inferSens e₁
+    τ₂ ← inferSens e₂
+    τ₃ ← inferSens e₃
+    τ₄ ← inferSens e₄
     case (τ₁,τ₂,τ₃,τ₄) of
-      (𝕄T ℓ c ηₘ ηₙ τ,𝕀T ηₘ',𝕀T ηₙ',τ') | (ηₘ ≡ ηₘ') ⩓ (ηₙ ≡ ηₙ') ⩓ (extract τ ≡ τ') → return $ 𝕄T ℓ c ηₘ ηₙ τ
+      (𝕄T ℓ c ηₘ ηₙ τ,𝕀T ηₘ',𝕀T ηₙ',τ') | (ηₘ ≡ ηₘ') ⩓ (ηₙ ≡ ηₙ') ⩓ (τ ≡ τ') → return $ 𝕄T ℓ c ηₘ ηₙ τ
       _ → undefined -- TypeError
   MRowsSE e → do
-    τ ← inferSens δ γ e
+    τ ← inferSens e
     case τ of
       𝕄T _ℓ _c ηₘ _ηₙ _τ' → return $ ℕˢT ηₘ
-      _ → undefined -- Type Error
+      _ → undefined -- TypeSource Error
   MColsSE e → do
-    τ ← inferSens δ γ e
+    τ ← inferSens e
     case τ of
       𝕄T _ℓ _c _ηₘ ηₙ _τ' → return $ ℕˢT ηₙ
-      _ → undefined -- Type Error
+      _ → undefined -- TypeSource Error
   MClipSE ℓ e → do
-    τ ← inferSens δ γ e
+    τ ← inferSens e
     case τ of
-      𝕄T ℓ' _c ηₘ ηₙ τ' | extract τ' ≡ 𝔻T → return $ 𝕄T ℓ' (NormClip ℓ) ηₘ ηₙ τ'
-      _ → undefined -- Type Error
+      𝕄T ℓ' _c ηₘ ηₙ τ' | τ' ≡ 𝔻T → return $ 𝕄T ℓ' (NormClip ℓ) ηₘ ηₙ τ'
+      _ → undefined -- TypeSource Error
   MConvertSE e → do
-    τ ← inferSens δ γ e
+    τ ← inferSens e
     case τ of
-      𝕄T _ℓ (NormClip ℓ) ηₘ ηₙ τ' | extract τ' ≡ 𝔻T → return $ 𝕄T ℓ UClip ηₘ ηₙ $ anno ℝT
-      _ → undefined -- Type Error
+      𝕄T _ℓ (NormClip ℓ) ηₘ ηₙ τ' | τ' ≡ 𝔻T → return $ 𝕄T ℓ UClip ηₘ ηₙ ℝT
+      _ → undefined -- TypeSource Error
   MLipGradSE _g e₁ e₂ e₃ → do
-    σ₁ :* τ₁ ← listen $ inferSens δ γ e₁
-    tell $ map ((×) $ Sens Inf) σ₁
-    τ₂ ← inferSens δ γ e₂
-    τ₃ ← inferSens δ γ e₃
+    σ₁ :* τ₁ ← listen $ inferSens e₁
+    tell $ Sens Inf ⨵ σ₁
+    τ₂ ← inferSens e₂
+    τ₃ ← inferSens e₃
     case (τ₁,τ₂,τ₃) of
       (𝕄T _ℓ₁ _c₁ ηₘ₁ ηₙ₁ τ₁',𝕄T _ℓ₂ (NormClip ℓ) ηₘ₂ ηₙ₂ τ₂',𝕄T _ℓ₃ _c₃ ηₘ₃ ηₙ₃ τ₃') 
         | meets
-          [ extract τ₁' ≡ ℝT
-          , extract τ₂' ≡ 𝔻T
-          , extract τ₃' ≡ 𝔻T
+          [ τ₁' ≡ ℝT
+          , τ₂' ≡ 𝔻T
+          , τ₃' ≡ 𝔻T
           , ηₘ₁ ≡ one
           , ηₙ₃ ≡ one
           , ηₙ₁ ≡ ηₙ₂
           , ηₘ₂ ≡ ηₘ₃
           ]
-        → return $ 𝕄T ℓ UClip one ηₙ₁ $ anno ℝT
-      _ → undefined -- Type Error
+        → return $ 𝕄T ℓ UClip one ηₙ₁ ℝT
+      _ → undefined -- TypeSource Error
   MMapSE e₁ x e₂ → do
-    σ₁ :* τ₁ ← listen $ inferSens δ γ e₁
+    σ₁ :* τ₁ ← listen $ inferSens e₁
     case τ₁ of
       𝕄T ℓ _c ηₘ ηₙ τ₁' → do
-        σ₂ :* τ₂ ← listen $ inferSens δ ((x ↦ extract τ₁') ⩌ γ) e₂
+        σ₂ :* τ₂ ← listen $ mapEnvL contextTypeL (\ γ → (x ↦ τ₁') ⩌ γ) $ inferSens e₂
         let (ς :* σ₂') = ifNone (zero :* σ₂) $ deleteView x σ₂
-        tell $ map ((×) ς) σ₁
-        tell $ map ((×) $ Sens $ Quantity $ ηₘ × ηₙ) σ₂'
-        return $ 𝕄T ℓ UClip ηₘ ηₙ $ anno τ₂ 
-      _  → undefined -- Type Error
-  VarSE x → case γ ⋕? x of
-    None → undefined -- Type Error
-    Some τ → do
-      tell $ x ↦ (Sens $ Quantity one)
-      return τ
+        tell $ ς ⨵ σ₁
+        tell $ Sens (Quantity $ ηₘ × ηₙ) ⨵ σ₂'
+        return $ 𝕄T ℓ UClip ηₘ ηₙ τ₂ 
+      _  → undefined -- TypeSource Error
+  VarSE x → do
+    γ ← askL contextTypeL
+    case γ ⋕? x of
+      None → undefined -- TypeSource Error
+      Some τ → do
+        tell $ x ↦ (Sens $ Quantity one)
+        return τ
   LetSE x e₁ e₂ → do
-    σ₁ :* τ₁ ← listen $ inferSens δ γ e₁
-    σ₂ :* τ₂ ← listen $ inferSens δ ((x ↦ τ₁) ⩌ γ) e₂
+    σ₁ :* τ₁ ← listen $ inferSens e₁
+    σ₂ :* τ₂ ← listen $ mapEnvL contextTypeL (\ γ → (x ↦ τ₁) ⩌ γ) $ inferSens e₂
     let (ς :* σ₂') = ifNone (zero :* σ₂) $ deleteView x σ₂
-    tell $ map ((×) ς) σ₁
+    tell $ ς ⨵ σ₁
     tell σ₂'
     return τ₂
   SFunSE x τ e → do
     let τ' = map normalizeRExp $ extract τ
-    σ :* τ'' ← listen $ inferSens δ ((x ↦ τ') ⩌ γ) e
+    σ :* τ'' ← listen $ mapEnvL contextTypeL (\ γ → (x ↦ τ') ⩌ γ) $ inferSens e
     let (ς :* σ') = ifNone (zero :* σ) $ deleteView x σ
     tell σ'
-    return $ anno τ' :⊸: (ς :* anno τ'')
+    return $ τ' :⊸: (ς :* τ'')
   AppSE e₁ e₂ → do
-    τ₁ ← inferSens δ γ e₁
-    σ₂ :* τ₂ ← listen $ inferSens δ γ e₂
+    τ₁ ← inferSens e₁
+    σ₂ :* τ₂ ← listen $ inferSens e₂
     case τ₁ of
-      τ₁' :⊸: (ς :* τ₂') | extract τ₁' ≡ τ₂ → do
-        tell $ map ((×) ς) σ₂
-        return $ extract τ₂'
-      _ → undefined -- Type Error
+      τ₁' :⊸: (ς :* τ₂') | τ₁' ≡ τ₂ → do
+        tell $ ς ⨵ σ₂
+        return τ₂'
+      _ → undefined -- TypeSource Error
   PFunSE ακs xτs e → do
     let xτs' = map (mapSnd (map normalizeRExp ∘ extract)) xτs
         xs = map fst xτs
-    σ :* τ ← privToSens $ listen $ inferPriv (dict (map single ακs) ⩌ δ) (dict (map single xτs') ⩌ γ) e
+    σ :* τ ← 
+      privToSens 
+      $ listen 
+      $ mapEnvL contextKindL (\ δ → dict (map single ακs) ⩌ δ)
+      $ mapEnvL contextTypeL (\ γ → dict (map single xτs') ⩌ γ)
+      $ inferPriv e
     tell $ map (Sens ∘ truncate Inf ∘ unPriv) $ without (pow xs) σ
-    let τps = mapOn xτs' $ \ (x :* τ') → anno τ' :* ifNone zero (σ ⋕? x)
-    return $ (ακs :* τps) :⊸⋆: anno τ
+    let τps = mapOn xτs' $ \ (x :* τ') → τ' :* ifNone null (σ ⋕? x)
+    return $ (ακs :* τps) :⊸⋆: τ
 
-privToSens ∷ (Privacy p)
-           ⇒ ErrorT (TypeError p) (WriterT (𝕏 ⇰ Priv p RNF) ID) a
-           → ErrorT (TypeError p) (WriterT (𝕏 ⇰ Sens RNF) ID) a
+privToSens ∷ ErrorT (TypeError p) (ReaderT (Context p) (WriterT (𝕏 ⇰ Priv p RNF) ID)) a
+           → ErrorT (TypeError p) (ReaderT (Context p) (WriterT (𝕏 ⇰ Sens RNF) ID)) a
 privToSens = undefined
 
-sensToPriv ∷ (Privacy p)
-           ⇒ ErrorT (TypeError p) (WriterT (𝕏 ⇰ Sens RNF) ID) a
-           → ErrorT (TypeError p) (WriterT (𝕏 ⇰ Priv p RNF) ID) a
+sensToPriv ∷ ErrorT (TypeError p) (ReaderT (Context p) (WriterT (𝕏 ⇰ Sens RNF) ID)) a
+           → ErrorT (TypeError p) (ReaderT (Context p) (WriterT (𝕏 ⇰ Priv p RNF) ID)) a
 sensToPriv = undefined
 
-inferPriv ∷ (Privacy p) 
-          ⇒ (𝕏 ⇰ Kind) 
-          → (𝕏 ⇰ TypePre p RNF) 
-          → PExp p 
-          → ErrorT (TypeError p) (WriterT (𝕏 ⇰ Priv p RNF) ID) (TypePre p RNF)
-inferPriv δ γ eA = case extract eA of
-  ReturnPE e → sensToPriv $ inferSens δ γ e
+inferPriv ∷ PExpSource p 
+          → ErrorT (TypeError p) (ReaderT (Context p) (WriterT (𝕏 ⇰ Priv p RNF) ID)) (Type p RNF)
+inferPriv eA = case extract eA of
+  ReturnPE e → sensToPriv $ inferSens e
   BindPE x e₁ e₂ → do
-    τ₁ ← inferPriv δ γ e₁
-    σ₂ :* τ₂ ← listen $ inferPriv δ ((x ↦ τ₁) ⩌ γ) e₂
+    τ₁ ← inferPriv e₁
+    σ₂ :* τ₂ ← listen $ mapEnvL contextTypeL (\ γ → (x ↦ τ₁) ⩌ γ) $ inferPriv e₂
     let σ₂' = delete x σ₂
-    tell σ₂
+    tell σ₂'
     return τ₂
   EDLoopPE e₁ e₂ e₃ xs x₁ x₂ e₄ → do
     let xs' = pow xs
-    τ₁ ← sensToPriv $ inferSens δ γ e₁
-    τ₂ ← sensToPriv $ inferSens δ γ e₂
-    τ₃ ← sensToPriv $ inferSens δ γ e₃
-    σ₄ :* τ₄ ← listen $ inferPriv δ (dict [x₁ ↦ ℕT,x₂ ↦ τ₃] ⩌ γ) e₄
+    τ₁ ← sensToPriv $ inferSens e₁
+    τ₂ ← sensToPriv $ inferSens e₂
+    τ₃ ← sensToPriv $ inferSens e₃
+    σ₄ :* τ₄ ← listen $ mapEnvL contextTypeL (\ γ → dict [x₁ ↦ ℕT,x₂ ↦ τ₃] ⩌ γ) $ inferPriv e₄
     let σ₄Keep = restrict xs' σ₄
         σ₄KeepMax = joins $ values σ₄Keep
         σ₄Toss = without xs' σ₄
     case (τ₁,τ₂,σ₄KeepMax) of
-      (ℝˢT ηᵟ,ℝˢT ηₙ,Priv (Quantity p)) | τ₄ ≡ τ₃ → do 
-        tell $ map (Priv ∘ truncate (Quantity $ edLoopBounds ηᵟ ηₙ p)∘ unPriv) σ₄Keep
+      (ℝˢT ηᵟ',ℝˢT ηₙ,Priv (Quantity (EDPriv ηᵋ ηᵟ))) | τ₄ ≡ τ₃ → do 
+        let ε = NatRNF 2 × ηᵋ × rootRNF (NatRNF 2 × ηₙ × logRNF (NatRNF 1 / ηᵟ'))
+            δ = ηᵟ' + ηₙ × ηᵟ
+        tell $ map (Priv ∘ truncate (Quantity $ EDPriv ε δ) ∘ unPriv) σ₄Keep
         tell $ map (Priv ∘ truncate Inf ∘ unPriv) σ₄Toss
         return τ₃
       _ → undefined -- TypeError
@@ -371,7 +376,7 @@ inferPriv δ γ eA = case extract eA of
     
     
     
--- infraRed :: PExp -> KEnv → TEnv -> (Type RNF, PEnv)
+-- infraRed :: PExp -> KEnv → TEnv -> (TypeSource RNF, PEnv)
 -- 
 -- infraRed (PBindE x e₁ e₂) δ γ = 
 --     let (τ₁, pγ₁) = infraRed e₁ δ γ
@@ -533,7 +538,7 @@ inferPriv δ γ eA = case extract eA of
 --     (t, InfP `privMultEnv` privSensCrossEnv sγ)
 -- 
 -- 
--- iterType :: [Var] -> [Type RNF] -> TEnv  -> Bool
+-- iterType :: [Var] -> [TypeSource RNF] -> TEnv  -> Bool
 -- iterType vl tl tenv = case (vl,tl) of
 --      ([],[]) -> True
 --      (v:vl',t:tl') ->  (tenv Map.! v  == t) && (iterType vl' tl' tenv) 
@@ -552,7 +557,7 @@ inferPriv δ γ eA = case extract eA of
 -- --     [] -> []
 -- --     v:varl' -> (penv Map.! v):(iterSens penv varl')
 -- 
--- -- iterU :: [Var] -> [Type] -> TEnv 
+-- -- iterU :: [Var] -> [TypeSource] -> TEnv 
 -- -- iterU varl typl = case (varl, typl) of
 -- --     ([],[]) -> Map.empty
 -- --     (v:varl', t:typl') -> Map.insert v t (iterU varl' typl')
@@ -573,11 +578,11 @@ inferPriv δ γ eA = case extract eA of
 --       each (zip αks τps) $ \case
 --         ((v,k),(τ,InfP)) → do
 --           out $ "\n Var:  " ⧺ v
---           out $ "Type: " ⧺ sho τ
+--           out $ "TypeSource: " ⧺ sho τ
 --           out $ "(ε,δ) privacy bound: " ⧺ "∞"
 --         ((v,k),(τ,EDPriv ε δ)) → do
 --           out $ "\n Var:  " ⧺ v
---           out $ "Type: " ⧺ sho τ
+--           out $ "TypeSource: " ⧺ sho τ
 --           out $ "(ε,δ) privacy bound: " ⧺ prettyRNF ε ⧺ ", " ⧺ prettyRNF δ
 -- 
 --   -- undefined

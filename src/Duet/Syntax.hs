@@ -21,47 +21,112 @@ data Clip = NormClip Norm | UClip
   deriving (Eq,Ord,Show)
 makePrettySum ''Clip
 
-newtype Sens e = Sens { unSens ∷ Quantity e }
+newtype Sens r = Sens { unSens ∷ Quantity r }
   deriving (Eq,Ord,Show,Functor,Additive,Multiplicative,Null,Append,Monoid,Bot,Join,JoinLattice)
 makePrettyUnion ''Sens
 
-newtype Priv p e = Priv { unPriv ∷ Quantity (p e) }
-  deriving (Eq,Ord,Show,Additive,Null,Append,Monoid,Bot,Join,JoinLattice)
-makePrettyUnion ''Priv
-instance (Functor p) ⇒ Functor (Priv p) where
-  map f (Priv q) = Priv $ mapp f q
+data PRIV = EPS | ED | RENYI | ZC | TC
+data PRIV_W (p ∷ PRIV) where
+  EPS_W ∷ PRIV_W 'EPS
+  ED_W ∷ PRIV_W 'ED
+  RENYI_W ∷ PRIV_W 'RENYI
+  ZC_W ∷ PRIV_W 'ZC
+  TC_W ∷ PRIV_W 'TC
+class PRIV_C (p ∷ PRIV) where priv ∷ PRIV_W p
 
-type Type p e = Annotated FullContext (TypePre p e)
-data TypePre p e =
-    ℕˢT e
-  | ℝˢT e
+data Pr (p ∷ PRIV) r where
+  EpsPriv ∷ r → Pr 'EPS r
+  EDPriv ∷ r → r → Pr 'ED r
+  RenyiPriv ∷ r → r → Pr 'RENYI r
+  ZCPriv ∷ r → Pr 'ZC r
+  TCPriv ∷ r → Pr 'TC r
+deriving instance (Eq r) ⇒ Eq (Pr p r)
+deriving instance (Ord r) ⇒ Ord (Pr p r)
+deriving instance (Show r) ⇒ Show (Pr p r)
+-- instance (Additive r,PRIV_C p) ⇒ Additive (Pr p r) where
+--   zero = case priv @ p of
+--     EPS_W → EpsPriv zero
+--     ED_W → EDPriv zero zero
+--     RENYI_W → RenyiPriv zero zero
+--     ZC_W → ZCPriv zero
+--     TC_W → TCPriv zero
+--   EpsPriv ε₁ + EpsPriv ε₂ = EpsPriv $ ε₁ + ε₂
+--   EDPriv ε₁ δ₁ + EDPriv ε₂ δ₂ = EDPriv (ε₁ + ε₂) (δ₁ + δ₂)
+--   RenyiPriv α₁ ε₁ + RenyiPriv _α₂ ε₂ = RenyiPriv α₁ (ε₁ + ε₂)
+--   ZCPriv ρ₁ + ZCPriv ρ₂ = ZCPriv $ ρ₁ + ρ₂
+--   TCPriv ψ₁ + TCPriv ψ₂ = TCPriv $ ψ₁ + ψ₂
+-- instance (Null r,PRIV_C p) ⇒ Null (Pr p r) where
+--   null = case priv @ p of
+--     EPS_W → EpsPriv null
+--     ED_W → EDPriv null null
+--     RENYI_W → RenyiPriv null null
+--     ZC_W → ZCPriv null
+--     TC_W → TCPriv null
+instance (Append r) ⇒ Append (Pr p r) where
+  EpsPriv ε₁ ⧺ EpsPriv ε₂ = EpsPriv $ ε₁ ⧺ ε₂
+  EDPriv ε₁ δ₁ ⧺ EDPriv ε₂ δ₂ = EDPriv (ε₁ ⧺ ε₂) (δ₁ ⧺ δ₂)
+  RenyiPriv α₁ ε₁ ⧺ RenyiPriv _α₂ ε₂ = RenyiPriv α₁ (ε₁ ⧺ ε₂)
+  ZCPriv ρ₁ ⧺ ZCPriv ρ₂ = ZCPriv $ ρ₁ ⧺ ρ₂
+  TCPriv ψ₁ ⧺ TCPriv ψ₂ = TCPriv $ ψ₁ ⧺ ψ₂
+-- instance (Monoid r,PRIV_C p) ⇒ Monoid (Pr p r)
+-- instance (Bot r,PRIV_C p) ⇒ Bot (Pr p r) where
+--   bot = case priv @ p of
+--     EPS_W → EpsPriv bot
+--     ED_W → EDPriv bot bot
+--     RENYI_W → RenyiPriv bot bot
+--     ZC_W → ZCPriv bot
+--     TC_W → TCPriv bot
+instance (Join r) ⇒ Join (Pr p r) where
+  EpsPriv ε₁ ⊔ EpsPriv ε₂ = EpsPriv $ ε₁ ⊔ ε₂
+  EDPriv ε₁ δ₁ ⊔ EDPriv ε₂ δ₂ = EDPriv (ε₁ ⊔ ε₂) (δ₁ ⊔ δ₂)
+  RenyiPriv α₁ ε₁ ⊔ RenyiPriv _α₂ ε₂ = RenyiPriv α₁ (ε₁ ⊔ ε₂)
+  ZCPriv ρ₁ ⊔ ZCPriv ρ₂ = ZCPriv $ ρ₁ ⊔ ρ₂
+  TCPriv ψ₁ ⊔ TCPriv ψ₂ = TCPriv $ ψ₁ ⊔ ψ₂
+-- instance (JoinLattice r,PRIV_C p) ⇒ JoinLattice (Pr p r)
+
+instance Functor (Pr p) where
+  map f (EpsPriv ε) = EpsPriv $ f ε
+  map f (EDPriv ε δ) = EDPriv (f ε) (f δ)
+  map f (RenyiPriv α ε) = RenyiPriv (f α) (f ε)
+  map f (ZCPriv ρ) = ZCPriv $ f ρ
+  map f (TCPriv ρ) = TCPriv $ f ρ
+
+newtype Priv p r = Priv { unPriv ∷ Quantity (Pr p r) }
+  deriving (Eq,Ord,Show,{-Additive,-}Null,Append,Monoid,Bot,Join,JoinLattice)
+instance Functor (Priv p) where map f = Priv ∘ mapp f ∘ unPriv
+makePrettyUnion ''Priv
+
+type TypeSource (p ∷ PRIV) r = Annotated FullContext (Type p r)
+data Type (p ∷ PRIV) r =
+    ℕˢT r
+  | ℝˢT r
   | ℕT
   | ℝT
   | 𝔻T
-  | 𝕀T e
-  | 𝕄T Norm Clip e e (Type p e)
-  | Type p e :+: Type p e
-  | Type p e :×: Type p e
-  | Type p e :&: Type p e
-  | Type p e :⊸: (Sens e ∧ Type p e)
-  | (𝐿 (𝕏 ∧ Kind) ∧ 𝐿 (Type p e ∧ Priv p e)) :⊸⋆: Type p e
+  | 𝕀T r
+  | 𝕄T Norm Clip r r (Type p r)
+  | Type p r :+: Type p r
+  | Type p r :×: Type p r
+  | Type p r :&: Type p r
+  | Type p r :⊸: (Sens r ∧ Type p r)
+  | (𝐿 (𝕏 ∧ Kind) ∧ 𝐿 (Type p r ∧ Priv p r)) :⊸⋆: Type p r
   deriving (Eq,Ord)
-makePrettySum ''TypePre
+makePrettySum ''Type
 
-instance (Functor p) ⇒ Functor (TypePre p) where
+instance Functor (Type p) where
   map f = \case
-    ℕˢT e → ℕˢT $ f e
-    ℝˢT e → ℝˢT $ f e
+    ℕˢT r → ℕˢT $ f r
+    ℝˢT r → ℝˢT $ f r
     ℕT → ℕT
     ℝT → ℝT
     𝔻T → 𝔻T
-    𝕀T e → 𝕀T (f e)
-    𝕄T ℓ c e₁ e₂ τ → 𝕄T ℓ c (f e₁) (f e₂) $ mapp f τ
-    τ₁ :+: τ₂ → mapp f τ₁ :+: mapp f τ₂
-    τ₁ :×: τ₂ → mapp f τ₁ :×: mapp f τ₂
-    τ₁ :&: τ₂ → mapp f τ₁ :&: mapp f τ₂
-    τ₁ :⊸: (s :* τ₂) → mapp f τ₁ :⊸: (map f s :*  mapp f τ₂)
-    (αks :* xτs) :⊸⋆: τ → (αks :* map (mapPair (mapp f) (map f)) xτs) :⊸⋆: mapp f τ
+    𝕀T r → 𝕀T (f r)
+    𝕄T ℓ c r₁ r₂ τ → 𝕄T ℓ c (f r₁) (f r₂) $ map f τ
+    τ₁ :+: τ₂ → map f τ₁ :+: map f τ₂
+    τ₁ :×: τ₂ → map f τ₁ :×: map f τ₂
+    τ₁ :&: τ₂ → map f τ₁ :&: map f τ₂
+    τ₁ :⊸: (s :* τ₂) → map f τ₁ :⊸: (map f s :*  map f τ₂)
+    (αks :* xτs) :⊸⋆: τ → (αks :* map (mapPair (map f) (map f)) xτs) :⊸⋆: map f τ
 
 -----------------
 -- Expressions --
@@ -71,75 +136,85 @@ data Grad = LR
   deriving (Eq,Ord,Show)
 makePrettySum ''Grad
 
-type SExp p = Annotated FullContext (SExpPre p)
-data SExpPre p = 
+type SExpSource (p ∷ PRIV) = Annotated FullContext (SExp p)
+data SExp (p ∷ PRIV) where
   -- numeric operations
-    ℕˢSE ℕ
-  | ℝˢSE 𝔻
-  | DynSE (SExp p)
-  | ℕSE ℕ
-  | ℝSE 𝔻
-  | RealSE (SExp p)
-  | MaxSE (SExp p) (SExp p)
-  | MinSE (SExp p) (SExp p)
-  | PlusSE (SExp p) (SExp p)
-  | TimesSE (SExp p) (SExp p)
-  | DivSE (SExp p) (SExp p)
-  | RootSE (SExp p)
-  | LogSE (SExp p)
-  | ModSE (SExp p) (SExp p)
-  | MinusSE (SExp p) (SExp p)
+  ℕˢSE ∷ ℕ → SExp p
+  ℝˢSE ∷ 𝔻 → SExp p
+  DynSE ∷ SExpSource p → SExp p
+  ℕSE ∷ ℕ → SExp p
+  ℝSE ∷ 𝔻 → SExp p
+  RealSE ∷ SExpSource p → SExp p
+  MaxSE ∷ SExpSource p → SExpSource p → SExp p
+  MinSE ∷ SExpSource p → SExpSource p → SExp p
+  PlusSE ∷ SExpSource p → SExpSource p → SExp p
+  TimesSE ∷ SExpSource p → SExpSource p → SExp p
+  DivSE ∷ SExpSource p → SExpSource p → SExp p
+  RootSE ∷ SExpSource p → SExp p
+  LogSE ∷ SExpSource p → SExp p
+  ModSE ∷ SExpSource p → SExpSource p → SExp p
+  MinusSE ∷ SExpSource p → SExpSource p → SExp p
   -- matrix operations
-  | MCreateSE Norm (SExp p) (SExp p) 𝕏 𝕏 (SExp p)
-  | MIndexSE (SExp p) (SExp p) (SExp p)
-  | MUpdateSE (SExp p) (SExp p) (SExp p) (SExp p)
-  | MRowsSE (SExp p)
-  | MColsSE (SExp p)
-  | MClipSE Norm (SExp p)
-  | MConvertSE (SExp p)
-  | MLipGradSE Grad (SExp p) (SExp p) (SExp p)
-  -- | MUnbGradSE (SExp p) (SExp p) (SExp p)
-  | MMapSE (SExp p) 𝕏 (SExp p)
-  -- | MMap2SE (SExp p) (SExp p) 𝕏 𝕏 (SExp p)
-  -- | MMapRowSE (SExp p) 𝕏 (SExp p)
-  -- | MMapRow2SE (SExp p) 𝕏 (SExp p)
-  -- | MFoldRowSE (SExp p) (SExp p) 𝕏 𝕏 (SExp p)
+  MCreateSE ∷ Norm  → SExpSource p → SExpSource p → 𝕏 → 𝕏 → SExpSource p → SExp p
+  MIndexSE ∷ SExpSource p → SExpSource p → SExpSource p → SExp p
+  MUpdateSE ∷ SExpSource p → SExpSource p → SExpSource p → SExpSource p → SExp p
+  MRowsSE ∷ SExpSource p → SExp p
+  MColsSE ∷ SExpSource p → SExp p
+  MClipSE ∷ Norm → SExpSource p → SExp p
+  MConvertSE ∷ SExpSource p → SExp p
+  MLipGradSE ∷ Grad → SExpSource p → SExpSource p → SExpSource p → SExp p
+  -- | MUnbGradSE (SExpSource p) (SExpSource p) (SExpSource p)
+  MMapSE ∷ SExpSource p → 𝕏  → SExpSource p → SExp p
+  -- | MMap2SE (SExpSource p) (SExpSource p) 𝕏 𝕏 (SExpSource p)
+  -- | MMapRowSE (SExpSource p) 𝕏 (SExpSource p)
+  -- | MMapRow2SE (SExpSource p) 𝕏 (SExpSource p)
+  -- | MFoldRowSE (SExpSource p) (SExpSource p) 𝕏 𝕏 (SExpSource p)
   -- connectives
-  -- | IfSE (SExp p) (SExp p) (SExp p)
-  -- | SLoopSE (SExp p) (SExp p) 𝕏 (SExp p)
-  -- | LoopSE (SExp p) (SExp p) 𝕏 (SExp p)
-  | VarSE 𝕏
-  | LetSE 𝕏 (SExp p) (SExp p)
-  | SFunSE 𝕏 (Type p RExp) (SExp p)
-  | AppSE (SExp p) (SExp p)
-  | PFunSE (𝐿 (𝕏 ∧ Kind)) (𝐿 (𝕏 ∧ Type p RExp)) (PExp p)
-  | InlSE (Type p RExp) (SExp p)
-  | InrSE (Type p RExp) (SExp p)
-  | CaseSE (SExp p) 𝕏 (SExp p) 𝕏 (SExp p)
-  | TupSE (SExp p) (SExp p)
-  | UntupSE 𝕏 𝕏 (SExp p) (SExp p)
-  | PairSE (SExp p) (SExp p)
-  | FstSE (SExp p)
-  | SndSE (SExp p)
-deriving instance (∀ a. Eq a ⇒ Eq (p a)) ⇒ Eq (SExpPre p)
-deriving instance (∀ a. Eq a ⇒ Eq (p a),∀ a. Ord a ⇒ Ord (p a)) ⇒ Ord (SExpPre p)
+  -- | IfSE (SExpSource p) (SExpSource p) (SExpSource p)
+  -- | SLoopSE (SExpSource p) (SExpSource p) 𝕏 (SExpSource p)
+  -- | LoopSE (SExpSource p) (SExpSource p) 𝕏 (SExpSource p)
+  VarSE ∷ 𝕏 → SExp p
+  LetSE ∷ 𝕏  → SExpSource p → SExpSource p → SExp p
+  SFunSE ∷ 𝕏  → TypeSource p RExp → SExpSource p → SExp p
+  AppSE ∷ SExpSource p → SExpSource p → SExp p
+  PFunSE ∷ 𝐿 (𝕏 ∧ Kind) → 𝐿 (𝕏 ∧ TypeSource p RExp) → PExpSource p → SExp p
+  InlSE ∷ TypeSource p RExp → SExpSource p → SExp p
+  InrSE ∷ TypeSource p RExp → SExpSource p → SExp p
+  CaseSE ∷ SExpSource p → 𝕏 → SExpSource p → 𝕏 → SExpSource p → SExp p
+  TupSE ∷ SExpSource p → SExpSource p → SExp p
+  UntupSE ∷ 𝕏 → 𝕏 → SExpSource p → SExpSource p → SExp p
+  PairSE ∷ SExpSource p → SExpSource p → SExp p
+  FstSE ∷ SExpSource p → SExp p
+  SndSE ∷ SExpSource p → SExp p
+  deriving (Eq,Ord)
 
-type PExp p = Annotated FullContext (PExpPre p)
-data PExpPre p =
-    ReturnPE (SExp p)
-  | BindPE 𝕏 (PExp p) (PExp p)
-  | AppPE (𝐿 RExp) (SExp p) (𝐿 𝕏)
-  | EDLoopPE (SExp p) (SExp p) (SExp p) (𝐿 𝕏) 𝕏 𝕏 (PExp p)
-  | LoopPE (SExp p) (SExp p) (𝐿 𝕏) 𝕏 𝕏 (PExp p)
-  | GaussPE (SExp p) (SExp p) (SExp p) (𝐿 𝕏) (SExp p)
-  | MGaussPE (SExp p) (SExp p) (SExp p) (𝐿 𝕏) (SExp p)
-  | PLaplaceE (SExp p) (SExp p) (𝐿 𝕏) (SExp p)
-  | PExponentialE (SExp p) (SExp p) (SExp p) 𝕏 (SExp p)
-  | PRRespE (SExp p) (SExp p) (𝐿 𝕏) (SExp p)
-  | PSampleE (SExp p) 𝕏 𝕏 𝕏 𝕏 (PExp p)
-  | PRandNatE (SExp p) (SExp p)
-deriving instance (∀ a. Eq a ⇒ Eq (p a)) ⇒ Eq (PExpPre p)
-deriving instance (∀ a. Eq a ⇒ Eq (p a),∀ a. Ord a ⇒ Ord (p a)) ⇒ Ord (PExpPre p)
+data GaussParams (p ∷ PRIV) where
+  EDGaussParams ∷ SExpSource 'ED → SExpSource 'ED → GaussParams 'ED
+  RenyiGaussParams ∷ SExpSource 'RENYI → SExpSource 'RENYI → GaussParams 'RENYI
+  ZCGaussParams ∷ SExpSource 'ZC → GaussParams 'ZC
+deriving instance Eq (GaussParams p)
+deriving instance Ord (GaussParams p)
 
-makePrettySum ''SExpPre
-makePrettySum ''PExpPre
+data LaplaceParams (p ∷ PRIV) where
+  EpsLaplaceParams ∷ SExpSource 'ZC → LaplaceParams 'ZC
+  EDLaplaceParams ∷ SExpSource 'ED → SExpSource 'ED → LaplaceParams 'ED
+  RenyiLaplaceParams ∷ SExpSource 'RENYI → SExpSource 'RENYI → LaplaceParams 'RENYI
+deriving instance Eq (LaplaceParams p)
+deriving instance Ord (LaplaceParams p)
+
+type PExpSource (p ∷ PRIV) = Annotated FullContext (PExp p)
+data PExp (p ∷ PRIV) where
+  ReturnPE ∷ SExpSource p → PExp p
+  BindPE ∷ 𝕏 → PExpSource p → PExpSource p → PExp p
+  AppPE ∷ 𝐿 RExp → SExpSource p → 𝐿 𝕏 → PExp p
+  EDLoopPE ∷ SExpSource 'ED → SExpSource 'ED → SExpSource 'ED → 𝐿 𝕏 → 𝕏 → 𝕏 → PExpSource 'ED → PExp 'ED
+  LoopPE ∷ SExpSource p → SExpSource p → 𝐿 𝕏 → 𝕏 → 𝕏 → PExpSource p → PExp p
+  GaussPE ∷ GaussParams p → SExpSource p → 𝐿 𝕏 → SExpSource p → PExp p
+  MGaussPE ∷ GaussParams p → SExpSource p → 𝐿 𝕏 → SExpSource p → PExp p
+  PLaplaceE ∷ LaplaceParams p → SExpSource p → 𝐿 𝕏 → SExpSource p → PExp p
+  -- PExponentialE ∷ SExpSource p → SExpSource p → SExpSource p → 𝕏  → SExpSource p → PExp p
+  -- PRRespE ∷ SExpSource p → SExpSource p → 𝐿 𝕏 → SExpSource p → PExp p
+  PSampleE ∷ SExpSource p → 𝕏 → 𝕏 → 𝕏 → 𝕏 → PExpSource p → PExp p
+  PRandNatE ∷ SExpSource p → SExpSource p → PExp p
+deriving instance Eq (PExp p)
+deriving instance Ord (PExp p)
