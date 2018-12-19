@@ -1,0 +1,37 @@
+-- frank wolfe (matching the paper)
+
+-- issues:
+-- 1. The paper has a bug: The call to exponential returns a signed number which
+--    gets used as an idx. This version returns a pair from exponential and (correctly)
+--    does the multiplication afterwards.
+-- 2. The paper has another bug: "n" is unbound in the 4th line.
+-- 3. This version doesn't do clipping (it assumes the input is clipped).
+-- 4. We need pairs
+-- 5. The paper version uses pattern matching, but this version uses fst[] and snd[]
+-- 6. We need vector update (↦)
+-- 7. We need idx arithmetic: j mod d better be an "idx d" even if j is an "idx 2d".
+-- 8. Doesn't parse
+-- 9. Doesn't typecheck
+
+let main = pλ m  : ℕ,
+              n  : ℕ,
+              ε  : ℝ⁺.
+              xs : 𝕄 [L∞ L∞|m,n] 𝔻, -- FIX: this is so we don't need clipping for now
+              ys : 𝕄 [L∞ U|m,1] 𝔻,
+              ε  : ℝ⁺[ε] ⇒
+  let k = ℕ[1000] in
+  let δ = ℝ⁺[1.0e-6] in
+  let d = cols xs in
+  let m₀ = mcreate[ L∞ | ℕ[1] , d ] { i , j ⇒ 0.0 } in
+  let idxs = mcreate[ L∞ | ℕ[1] , ℕ[1]⋅d ] { i , j ⇒ ⟨ j mod d, sign (j - dyn d) ⟩ } in
+
+  aloop[ δ ] k on m₀ <xs,ys> { t , θ ⇒
+    let μ = 1.0 / ((real t)+2.0) in
+    let s = ℝ⁺[1.0] / real (rows xs) in
+    p ← exponential[s, ε] idxs { x ⇒ let ⟨c, s⟩ = x in let g = ∇[ LR L∞ | θ ; xs , ys ] in ⟨ g#[0, c], s ⟩ } ;
+    let g₀ = mcreate[ L∞ | ℕ[1] , d ] { i , j ⇒ 0.0 } in
+    let gₚ = (let ⟨i, s⟩ = p in g₀#[0,i ↦ real (s ⋅ 100)]) in
+    return ((1.0-μ) ⋅ θ) + (μ ⋅ (100.0 ⋅ gₚ))
+  }
+in main
+

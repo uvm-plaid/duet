@@ -1,8 +1,9 @@
 NAME := duet
+ARGS := check examples/fw.ed.duet
 
 .PHONY: run
 run: $(NAME).cabal
-	stack run
+	stack run -- $(ARGS)
 
 .PHONY: interact
 interact: $(NAME).cabal

@@ -24,7 +24,7 @@ tokKeywords = list
   ,"ℕ","ℝ","ℝ⁺","𝔻","𝕀","𝕄"
   ,"LR","L2","U"
   ,"real"
-  ,"matrix","mcreate","clip","L∇","U∇","mmap"
+  ,"matrix","mcreate","clip","∇","mmap"
   ,"aloop","loop","mgauss","rows","cols"
   ,"L1","L2","L∞","U"
   ,"dyn","real"
@@ -32,8 +32,8 @@ tokKeywords = list
 
 tokPunctuation ∷ 𝐿 𝕊
 tokPunctuation = list
-  ["=",":","@",".","⇒","→","←"
-  ,"[","]","(",")","{","}","<",">",",",";","|"
+  ["=",":","@",".","⇒","→","←","#","↦"
+  ,"[","]","(",")","{","}","<",">",",",";","|","⟨","⟩"
   ,"⊔","⊓","+","⋅","/","√","log"
   ,"-","%","≟"
   ,"×","&","⊸","⊸⋆"
@@ -273,6 +273,19 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
       e₃ ← parSExp p
       parLit "}"
       return $ MCreateSE ℓ e₁ e₂ (var x₁) (var x₂) e₃
+  , mixF $ MixFPrefix 10 $ do
+      parLit "#"
+      parLit "["
+      e₂ ← parSExp p
+      parLit ","
+      e₃ ← parSExp p
+      e₄O ← pOptional $ do
+        parLit "↦"
+        parSExp p
+      parLit "]"
+      return $ case e₄O of
+        None → \ e₁ → MIndexSE e₁ e₂ e₃
+        Some e₄ → \ e₁ → MUpdateSE e₁ e₂ e₃ e₄
   , mixF $ MixFPrefix 10 $ const MRowsSE ^$ parLit "rows"
   , mixF $ MixFPrefix 10 $ const MColsSE ^$ parLit "cols"
   , mixF $ MixFPrefix 10 $ do
@@ -282,7 +295,7 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
       parLit "]"
       return $ MClipSE ℓ
   , mixF $ MixFTerminal $ do
-      parLit "L∇"
+      parLit "∇"
       parLit "["
       g ← parGrad
       parLit "|"
@@ -339,6 +352,13 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
       parLit "⇒"
       e ← parPExp p
       return $ PFunSE ακs xτs e
+  , mixF $ MixFTerminal $ do 
+       parLit "⟨"
+       e₁ ← parSExp p
+       parLit ","
+       e₂ ← parSExp p
+       parLit "⟩"
+       return $ TupSE e₁ e₂
   ]
 
 parPExp ∷ PRIV_W p → Parser Token (PExpSource p)
@@ -398,6 +418,23 @@ parPExp p = pWithContext "pexp" $ tries
         parLit "}"
         return $ MGaussPE e₁ (EDGaussParams e₂ e₃) xs e₄
       _ → abort
+  -- , case p of
+  --     ED_W → do 
+  --       parLit "exponential"
+  --       parLit "["
+  --       e₁ ← parSExp p
+  --       parLit ","
+  --       e₂ ← parSExp p
+  --       parLit ","
+  --       e₃ ← parSExp p
+  --       parLit "]"
+  --       parLit "<"
+  --       xs ← var ^^$ pManySepBy (parLit ",") parName
+  --       parLit ">"
+  --       parLit "{"
+  --       e₄ ← parSExp p
+  --       parLit "}"
+  --       return $ MExponentialPE e₁ (EDExponentialParams e₂ e₃) xs e₄
   ]
 
 tokSkip ∷ Token → 𝔹

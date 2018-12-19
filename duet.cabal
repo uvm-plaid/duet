@@ -4,10 +4,10 @@ cabal-version: 2.2
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 058a9c17e32c23a02d7de7df87d7d57d1201dd016b2888b483843ebe5c009015
+-- hash: 2e6a34f7ca992582b8292b37288104a0c2f114e4098deab6b3433f226ac1e64b
 
 name:           duet
-version:        0.0.0.1
+version:        0.0.0.0
 build-type:     Simple
 
 library
