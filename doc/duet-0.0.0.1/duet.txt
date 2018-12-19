@@ -5,22 +5,6 @@
 @package duet
 @version 0.0.0.1
 
-module Duet.Quantity
-data Quantity a
-Zero :: Quantity a
-Quantity :: a -> Quantity a
-Inf :: Quantity a
-truncate :: Quantity a -> Quantity b -> Quantity b
-class (forall a. Append a => Append (p a)) => Privacy p
-instance UVMHS.Lib.Pretty.Class.Pretty a => UVMHS.Lib.Pretty.Class.Pretty (Duet.Quantity.Quantity a)
-instance UVMHS.Core.Classes.Monoid.Null (Duet.Quantity.Quantity a)
-instance UVMHS.Core.Classes.Monoid.Append a => UVMHS.Core.Classes.Monoid.Append (Duet.Quantity.Quantity a)
-instance UVMHS.Core.Classes.Monoid.Append a => UVMHS.Core.Classes.Monoid.Monoid (Duet.Quantity.Quantity a)
-instance UVMHS.Core.Classes.Functor.Functor Duet.Quantity.Quantity
-instance GHC.Show.Show a => GHC.Show.Show (Duet.Quantity.Quantity a)
-instance GHC.Classes.Ord a => GHC.Classes.Ord (Duet.Quantity.Quantity a)
-instance GHC.Classes.Eq a => GHC.Classes.Eq (Duet.Quantity.Quantity a)
-
 module Duet.Var
 data 𝕏
 𝕏 :: 𝕊 -> 𝑂 ℕ -> 𝕏
@@ -29,7 +13,7 @@ data 𝕏
 𝕩GenL :: (⟢) 𝕏 (𝑂 ℕ)
 𝕩nameL :: (⟢) 𝕏 𝕊
 var :: 𝕊 -> 𝕏
-instance (UVMHS.Lib.Pretty.Class.Pretty UVMHS.Init.𝕊, UVMHS.Lib.Pretty.Class.Pretty (UVMHS.Init.𝑂 UVMHS.Init.ℕ)) => UVMHS.Lib.Pretty.Class.Pretty Duet.Var.𝕏
+instance UVMHS.Lib.Pretty.Class.Pretty Duet.Var.𝕏
 instance GHC.Show.Show Duet.Var.𝕏
 instance GHC.Classes.Ord Duet.Var.𝕏
 instance GHC.Classes.Eq Duet.Var.𝕏
@@ -66,6 +50,16 @@ NNRealRA :: 𝔻 -> RAtom
 InvRA :: RSP -> RAtom
 RootRA :: RSP -> RAtom
 LogRA :: RSP -> RAtom
+symRNFL :: (⌲) RNF (𝑃 (𝑃 RSP))
+nNRealRNFL :: (⌲) RNF 𝔻
+natRNFL :: (⌲) RNF ℕ
+ppRAtom :: RAtom -> Doc
+ppProd :: (RAtom ⇰ ℕ) -> Doc
+ppSum :: ((RAtom ⇰ ℕ) ⇰ ℕ) -> Doc
+ppRSP :: RSP -> Doc
+ppMin :: 𝑃 RSP -> Doc
+ppMax :: 𝑃 (𝑃 RSP) -> Doc
+ppRNF :: RNF -> Doc
 prettyRAtom :: RAtom -> 𝕊
 prettyRSP :: RSP -> 𝕊
 prettyRNF :: RNF -> 𝕊
@@ -84,21 +78,28 @@ expRNF :: RNF -> ℕ -> RNF
 invRNF :: RNF -> RNF
 rootRNF :: RNF -> RNF
 logRNF :: RNF -> RNF
-normalizeRExp :: RExpPre -> RNF
-instance (UVMHS.Lib.Pretty.Class.Pretty Duet.Var.𝕏, UVMHS.Lib.Pretty.Class.Pretty UVMHS.Init.𝔻, UVMHS.Lib.Pretty.Class.Pretty Duet.RExp.RSP) => UVMHS.Lib.Pretty.Class.Pretty Duet.RExp.RAtom
+normalizeRExpPre :: RExpPre -> RNF
+normalizeRExp :: RExp -> RNF
+instance UVMHS.Core.Lens.HasPrism Duet.RExp.RNF UVMHS.Init.ℕ
+instance UVMHS.Core.Lens.HasPrism Duet.RExp.RNF UVMHS.Init.𝔻
+instance UVMHS.Lib.Pretty.Class.Pretty Duet.RExp.RNF
 instance UVMHS.Core.Classes.Lattice.Bot Duet.RExp.RNF
 instance UVMHS.Core.Classes.Lattice.Join Duet.RExp.RNF
 instance UVMHS.Core.Classes.Lattice.JoinLattice Duet.RExp.RNF
 instance UVMHS.Core.Classes.Lattice.Meet Duet.RExp.RNF
-instance UVMHS.Core.Classes.Arithmetic.Additive Duet.RExp.RNF
+instance UVMHS.Core.Classes.Arithmetic.Zero Duet.RExp.RNF
+instance UVMHS.Core.Classes.Arithmetic.Plus Duet.RExp.RNF
+instance UVMHS.Core.Classes.Arithmetic.One Duet.RExp.RNF
+instance UVMHS.Core.Classes.Arithmetic.Times Duet.RExp.RNF
+instance UVMHS.Core.Classes.Arithmetic.Divide Duet.RExp.RNF
+instance UVMHS.Core.Classes.Arithmetic.Root Duet.RExp.RNF
+instance UVMHS.Core.Classes.Arithmetic.Log Duet.RExp.RNF
 instance UVMHS.Core.Classes.Arithmetic.Multiplicative Duet.RExp.RNF
-instance UVMHS.Core.Classes.Arithmetic.Divisible Duet.RExp.RNF
+instance UVMHS.Core.Classes.Arithmetic.Additive Duet.RExp.RNF
 instance UVMHS.Core.Classes.Monoid.Null Duet.RExp.RNF
 instance UVMHS.Core.Classes.Monoid.Append Duet.RExp.RNF
 instance UVMHS.Core.Classes.Monoid.Monoid Duet.RExp.RNF
 instance UVMHS.Core.Classes.Lattice.POrd Duet.RExp.RNF
-instance UVMHS.Lib.Pretty.Class.Pretty ((Duet.RExp.RAtom UVMHS.Init.⇰ UVMHS.Init.ℕ) UVMHS.Init.⇰ UVMHS.Init.ℕ) => UVMHS.Lib.Pretty.Class.Pretty Duet.RExp.RSP
-instance (UVMHS.Lib.Pretty.Class.Pretty UVMHS.Init.ℕ, UVMHS.Lib.Pretty.Class.Pretty UVMHS.Init.𝔻, UVMHS.Lib.Pretty.Class.Pretty (UVMHS.Init.𝑃 (UVMHS.Init.𝑃 Duet.RExp.RSP))) => UVMHS.Lib.Pretty.Class.Pretty Duet.RExp.RNF
 instance GHC.Show.Show Duet.RExp.RNF
 instance GHC.Classes.Ord Duet.RExp.RNF
 instance GHC.Classes.Eq Duet.RExp.RNF
@@ -112,11 +113,47 @@ instance (UVMHS.Lib.Pretty.Class.Pretty Duet.Var.𝕏, UVMHS.Lib.Pretty.Class.Pr
 instance GHC.Classes.Ord Duet.RExp.RExpPre
 instance GHC.Classes.Eq Duet.RExp.RExpPre
 
+module Duet.Quantity
+data Quantity a
+Zero :: Quantity a
+Quantity :: a -> Quantity a
+Inf :: Quantity a
+infL :: forall (a_amD2 :: Type). (⌲) (Quantity a_amD2) ()
+quantityL :: forall (a_amD2 :: Type). (⌲) (Quantity a_amD2) a_amD2
+zeroL :: forall (a_amD2 :: Type). (⌲) (Quantity a_amD2) ()
+truncate :: Quantity a -> Quantity b -> Quantity a
+class (Functor p, forall a. Eq a => Eq (p a), forall a. Additive a => Additive (p a), forall a. Append a => Append (p a), forall a. Join a => Join (p a)) => Privacy p
+edLoopBounds :: Privacy p => RNF -> RNF -> p RNF -> p RNF
+loopBounds :: Privacy p => RNF -> p RNF -> p RNF
+instance UVMHS.Core.Lens.HasPrism a b => UVMHS.Core.Lens.HasPrism (Duet.Quantity.Quantity a) b
+instance UVMHS.Core.Classes.Arithmetic.Zero (Duet.Quantity.Quantity a)
+instance UVMHS.Core.Classes.Arithmetic.Plus a => UVMHS.Core.Classes.Arithmetic.Plus (Duet.Quantity.Quantity a)
+instance UVMHS.Core.Classes.Arithmetic.Plus a => UVMHS.Core.Classes.Arithmetic.Additive (Duet.Quantity.Quantity a)
+instance UVMHS.Core.Classes.Arithmetic.One a => UVMHS.Core.Classes.Arithmetic.One (Duet.Quantity.Quantity a)
+instance UVMHS.Core.Classes.Arithmetic.Times a => UVMHS.Core.Classes.Arithmetic.Times (Duet.Quantity.Quantity a)
+instance UVMHS.Core.Classes.Arithmetic.Multiplicative a => UVMHS.Core.Classes.Arithmetic.Multiplicative (Duet.Quantity.Quantity a)
+instance UVMHS.Core.Classes.Monoid.Null (Duet.Quantity.Quantity a)
+instance UVMHS.Core.Classes.Monoid.Append a => UVMHS.Core.Classes.Monoid.Append (Duet.Quantity.Quantity a)
+instance UVMHS.Core.Classes.Monoid.Append a => UVMHS.Core.Classes.Monoid.Monoid (Duet.Quantity.Quantity a)
+instance UVMHS.Core.Classes.Monoid.Unit a => UVMHS.Core.Classes.Monoid.Unit (Duet.Quantity.Quantity a)
+instance UVMHS.Core.Classes.Monoid.Cross a => UVMHS.Core.Classes.Monoid.Cross (Duet.Quantity.Quantity a)
+instance UVMHS.Core.Classes.Monoid.Prodoid a => UVMHS.Core.Classes.Monoid.Prodoid (Duet.Quantity.Quantity a)
+instance UVMHS.Core.Classes.Lattice.Bot (Duet.Quantity.Quantity a)
+instance UVMHS.Core.Classes.Lattice.Join a => UVMHS.Core.Classes.Lattice.Join (Duet.Quantity.Quantity a)
+instance UVMHS.Core.Classes.Lattice.Join a => UVMHS.Core.Classes.Lattice.JoinLattice (Duet.Quantity.Quantity a)
+instance UVMHS.Core.Classes.Lattice.Top (Duet.Quantity.Quantity a)
+instance UVMHS.Core.Classes.Lattice.Meet a => UVMHS.Core.Classes.Lattice.Meet (Duet.Quantity.Quantity a)
+instance UVMHS.Core.Classes.Lattice.Meet a => UVMHS.Core.Classes.Lattice.MeetLattice (Duet.Quantity.Quantity a)
+instance (UVMHS.Core.Classes.Lattice.Join a, UVMHS.Core.Classes.Lattice.Meet a) => UVMHS.Core.Classes.Lattice.Lattice (Duet.Quantity.Quantity a)
+instance UVMHS.Core.Classes.Functor.Functor Duet.Quantity.Quantity
+instance GHC.Show.Show a => GHC.Show.Show (Duet.Quantity.Quantity a)
+instance GHC.Classes.Ord a => GHC.Classes.Ord (Duet.Quantity.Quantity a)
+instance GHC.Classes.Eq a => GHC.Classes.Eq (Duet.Quantity.Quantity a)
+
 module Duet.Syntax
-type Kind = Annotated FullContext KindPre
-data KindPre
-ℕK :: KindPre
-ℝK :: KindPre
+data Kind
+ℕK :: Kind
+ℝK :: Kind
 data Norm
 L1 :: Norm
 L2 :: Norm
@@ -124,130 +161,193 @@ LInf :: Norm
 data Clip
 NormClip :: Norm -> Clip
 UClip :: Clip
-newtype Sens e
-Sens :: Quantity e -> Sens e
-[unSens] :: Sens e -> Quantity e
-newtype Priv p e
-Priv :: Quantity (p e) -> Priv p e
-[unPriv] :: Priv p e -> Quantity (p e)
-type Type p e = Annotated FullContext (TypePre p e)
-data TypePre p e
-ℕˢT :: e -> TypePre p e
-ℝˢT :: e -> TypePre p e
-ℕT :: TypePre p e
-ℝT :: TypePre p e
-𝔻T :: TypePre p e
-𝕀T :: e -> TypePre p e
-𝕄T :: Norm -> Clip -> e -> e -> Type p e -> TypePre p e
-(:+:) :: Type p e -> Type p e -> TypePre p e
-(:×:) :: Type p e -> Type p e -> TypePre p e
-(:&:) :: Type p e -> Type p e -> TypePre p e
-(:⊸:) :: Type p e -> (Sens e ∧ Type p e) -> TypePre p e
-(:⊸⋆:) :: (𝐿 (𝕏 ∧ Kind) ∧ 𝐿 (Type p e ∧ Priv p e)) -> Type p e -> TypePre p e
+newtype Sens r
+Sens :: Quantity r -> Sens r
+[unSens] :: Sens r -> Quantity r
+data PRIV
+EPS :: PRIV
+ED :: PRIV
+RENYI :: PRIV
+ZC :: PRIV
+TC :: PRIV
+data PRIV_W (p :: PRIV)
+[EPS_W] :: PRIV_W  'EPS
+[ED_W] :: PRIV_W  'ED
+[RENYI_W] :: PRIV_W  'RENYI
+[ZC_W] :: PRIV_W  'ZC
+[TC_W] :: PRIV_W  'TC
+class PRIV_C (p :: PRIV)
+priv :: PRIV_C p => PRIV_W p
+data Pr (p :: PRIV) r
+[EpsPriv] :: r -> Pr  'EPS r
+[EDPriv] :: r -> r -> Pr  'ED r
+[RenyiPriv] :: r -> r -> Pr  'RENYI r
+[ZCPriv] :: r -> Pr  'ZC r
+[TCPriv] :: r -> r -> Pr  'TC r
+newtype Priv p r
+Priv :: Quantity (Pr p r) -> Priv p r
+[unPriv] :: Priv p r -> Quantity (Pr p r)
+type TypeSource (p :: PRIV) r = Annotated FullContext (Type p r)
+data Type (p :: PRIV) r
+ℕˢT :: r -> Type r
+ℝˢT :: r -> Type r
+ℕT :: Type r
+ℝT :: Type r
+𝔻T :: Type r
+𝕀T :: r -> Type r
+𝕄T :: Norm -> Clip -> r -> r -> Type p r -> Type r
+(:+:) :: Type p r -> Type p r -> Type r
+(:×:) :: Type p r -> Type p r -> Type r
+(:&:) :: Type p r -> Type p r -> Type r
+(:⊸:) :: Type p r -> (Sens r ∧ Type p r) -> Type r
+(:⊸⋆:) :: (𝐿 (𝕏 ∧ Kind) ∧ 𝐿 (Type p r ∧ Priv p r)) -> Type p r -> Type r
 data Grad
 LR :: Grad
-type SExp p = Annotated FullContext (SExpPre p)
-data SExpPre p
-ℕˢSE :: ℕ -> SExpPre p
-ℝˢSE :: 𝔻 -> SExpPre p
-DynSE :: SExp p -> SExpPre p
-ℕSE :: ℕ -> SExpPre p
-ℝSE :: 𝔻 -> SExpPre p
-RealSE :: SExp p -> SExpPre p
-MaxSE :: SExp p -> SExp p -> SExpPre p
-MinSE :: SExp p -> SExp p -> SExpPre p
-PlusSE :: SExp p -> SExp p -> SExpPre p
-TimesSE :: SExp p -> SExp p -> SExpPre p
-DivSE :: SExp p -> SExp p -> SExpPre p
-RootSE :: SExp p -> SExpPre p
-LogSE :: SExp p -> SExpPre p
-ModSE :: SExp p -> SExp p -> SExpPre p
-MinusSE :: SExp p -> SExp p -> SExpPre p
-MCreateSE :: Norm -> SExp p -> SExp p -> 𝕏 -> 𝕏 -> SExp p -> SExpPre p
-MIndexSE :: SExp p -> SExp p -> SExp p -> SExpPre p
-MUpdateSE :: SExp p -> SExp p -> SExp p -> SExp p -> SExpPre p
-MRowsSE :: SExp p -> SExpPre p
-MColsSE :: SExp p -> SExpPre p
-MClipSE :: Norm -> SExp p -> SExpPre p
-MConvertSE :: SExp p -> SExpPre p
-MLipGradSE :: Grad -> Norm -> SExp p -> SExp p -> SExp p -> SExpPre p
-MUnbGradSE :: Grad -> SExp p -> SExp p -> SExp p -> SExpPre p
-MMapSE :: SExp p -> 𝕏 -> SExp p -> SExpPre p
-MMap2SE :: SExp p -> SExp p -> 𝕏 -> 𝕏 -> SExp p -> SExpPre p
-MMapRowSE :: SExp p -> 𝕏 -> SExp p -> SExpPre p
-MMapRow2SE :: SExp p -> 𝕏 -> SExp p -> SExpPre p
-MFoldRowSE :: SExp p -> SExp p -> 𝕏 -> 𝕏 -> SExp p -> SExpPre p
-IfSE :: SExp p -> SExp p -> SExp p -> SExpPre p
-SLoopSE :: SExp p -> SExp p -> 𝕏 -> SExp p -> SExpPre p
-LoopSE :: SExp p -> SExp p -> 𝕏 -> SExp p -> SExpPre p
-VarSE :: 𝕏 -> SExpPre p
-LetSE :: 𝕏 -> SExp p -> SExp p -> SExpPre p
-SFunSE :: 𝕏 -> Type p RExp -> SExp p -> SExpPre p
-AppSE :: SExp p -> SExp p -> SExpPre p
-PFunSE :: 𝐿 (𝕏 ∧ Kind) -> 𝐿 (𝕏 ∧ Type p RExp) -> PExp p -> SExpPre p
-InlSE :: Type p RExp -> SExp p -> SExpPre p
-InrSE :: Type p RExp -> SExp p -> SExpPre p
-CaseSE :: SExp p -> 𝕏 -> SExp p -> 𝕏 -> SExp p -> SExpPre p
-TupSE :: SExp p -> SExp p -> SExpPre p
-UntupSE :: 𝕏 -> 𝕏 -> SExp p -> SExp p -> SExpPre p
-PairSE :: SExp p -> SExp p -> SExpPre p
-FstSE :: SExp p -> SExpPre p
-SndSE :: SExp p -> SExpPre p
-type PExp p = Annotated FullContext (PExpPre p)
-data PExpPre p
-ReturnPE :: SExp p -> PExpPre p
-BindPE :: 𝕏 -> PExp p -> PExp p -> PExpPre p
-AppPE :: 𝐿 RExp -> SExp p -> 𝐿 𝕏 -> PExpPre p
-LoopPE :: SExp p -> SExp p -> SExp p -> 𝐿 𝕏 -> 𝕏 -> 𝕏 -> PExp p -> PExpPre p
-GaussPE :: SExp p -> SExp p -> SExp p -> 𝐿 𝕏 -> SExp p -> PExpPre p
-MGaussPE :: SExp p -> SExp p -> SExp p -> 𝐿 𝕏 -> SExp p -> PExpPre p
-PLaplaceE :: SExp p -> SExp p -> 𝐿 𝕏 -> SExp p -> PExpPre p
-PExponentialE :: SExp p -> SExp p -> SExp p -> 𝕏 -> SExp p -> PExpPre p
-PRRespE :: SExp p -> SExp p -> 𝐿 𝕏 -> SExp p -> PExpPre p
-PSampleE :: SExp p -> 𝕏 -> 𝕏 -> 𝕏 -> 𝕏 -> PExp p -> PExpPre p
-PRandNatE :: SExp p -> SExp p -> PExpPre p
-instance (UVMHS.Lib.Pretty.Class.Pretty (Duet.Syntax.SExp p), UVMHS.Lib.Pretty.Class.Pretty Duet.Var.𝕏, UVMHS.Lib.Pretty.Class.Pretty (Duet.Syntax.PExp p), UVMHS.Lib.Pretty.Class.Pretty (UVMHS.Init.𝐿 Duet.RExp.RExp), UVMHS.Lib.Pretty.Class.Pretty (UVMHS.Init.𝐿 Duet.Var.𝕏)) => UVMHS.Lib.Pretty.Class.Pretty (Duet.Syntax.PExpPre p)
-instance (UVMHS.Lib.Pretty.Class.Pretty UVMHS.Init.ℕ, UVMHS.Lib.Pretty.Class.Pretty UVMHS.Init.𝔻, UVMHS.Lib.Pretty.Class.Pretty (Duet.Syntax.SExp p), UVMHS.Lib.Pretty.Class.Pretty Duet.Syntax.Norm, UVMHS.Lib.Pretty.Class.Pretty Duet.Var.𝕏, UVMHS.Lib.Pretty.Class.Pretty Duet.Syntax.Grad, UVMHS.Lib.Pretty.Class.Pretty (Duet.Syntax.Type p Duet.RExp.RExp), UVMHS.Lib.Pretty.Class.Pretty (UVMHS.Init.𝐿 (Duet.Var.𝕏 UVMHS.Init.∧ Duet.Syntax.Kind)), UVMHS.Lib.Pretty.Class.Pretty (UVMHS.Init.𝐿 (Duet.Var.𝕏 UVMHS.Init.∧ Duet.Syntax.Type p Duet.RExp.RExp)), UVMHS.Lib.Pretty.Class.Pretty (Duet.Syntax.PExp p)) => UVMHS.Lib.Pretty.Class.Pretty (Duet.Syntax.SExpPre p)
-instance (forall a. GHC.Classes.Eq a => GHC.Classes.Eq (p a)) => GHC.Classes.Eq (Duet.Syntax.SExpPre p)
-instance (forall a. GHC.Classes.Eq a => GHC.Classes.Eq (p a), forall a. GHC.Classes.Ord a => GHC.Classes.Ord (p a)) => GHC.Classes.Ord (Duet.Syntax.SExpPre p)
-instance (forall a. GHC.Classes.Eq a => GHC.Classes.Eq (p a)) => GHC.Classes.Eq (Duet.Syntax.PExpPre p)
-instance (forall a. GHC.Classes.Eq a => GHC.Classes.Eq (p a), forall a. GHC.Classes.Ord a => GHC.Classes.Ord (p a)) => GHC.Classes.Ord (Duet.Syntax.PExpPre p)
+type SExpSource (p :: PRIV) = Annotated FullContext (SExp p)
+data SExp (p :: PRIV)
+[ℕˢSE] :: ℕ -> SExp p
+[ℝˢSE] :: 𝔻 -> SExp p
+[DynSE] :: SExpSource p -> SExp p
+[ℕSE] :: ℕ -> SExp p
+[ℝSE] :: 𝔻 -> SExp p
+[RealSE] :: SExpSource p -> SExp p
+[MaxSE] :: SExpSource p -> SExpSource p -> SExp p
+[MinSE] :: SExpSource p -> SExpSource p -> SExp p
+[PlusSE] :: SExpSource p -> SExpSource p -> SExp p
+[TimesSE] :: SExpSource p -> SExpSource p -> SExp p
+[DivSE] :: SExpSource p -> SExpSource p -> SExp p
+[RootSE] :: SExpSource p -> SExp p
+[LogSE] :: SExpSource p -> SExp p
+[ModSE] :: SExpSource p -> SExpSource p -> SExp p
+[MinusSE] :: SExpSource p -> SExpSource p -> SExp p
+[MCreateSE] :: Norm -> SExpSource p -> SExpSource p -> 𝕏 -> 𝕏 -> SExpSource p -> SExp p
+[MIndexSE] :: SExpSource p -> SExpSource p -> SExpSource p -> SExp p
+[MUpdateSE] :: SExpSource p -> SExpSource p -> SExpSource p -> SExpSource p -> SExp p
+[MRowsSE] :: SExpSource p -> SExp p
+[MColsSE] :: SExpSource p -> SExp p
+[MClipSE] :: Norm -> SExpSource p -> SExp p
+[MConvertSE] :: SExpSource p -> SExp p
+[MLipGradSE] :: Grad -> SExpSource p -> SExpSource p -> SExpSource p -> SExp p
+
+-- | MUnbGradSE (SExpSource p) (SExpSource p) (SExpSource p)
+[MMapSE] :: SExpSource p -> 𝕏 -> SExpSource p -> SExp p
+[MMap2SE] :: SExpSource p -> SExpSource p -> 𝕏 -> 𝕏 -> SExpSource p -> SExp p
+
+-- | MMapRowSE (SExpSource p) 𝕏 (SExpSource p) | MMapRow2SE (SExpSource p)
+--   𝕏 (SExpSource p) | MFoldRowSE (SExpSource p) (SExpSource p) 𝕏 𝕏
+--   (SExpSource p) connectives | IfSE (SExpSource p) (SExpSource p)
+--   (SExpSource p) | SLoopSE (SExpSource p) (SExpSource p) 𝕏 (SExpSource
+--   p) | LoopSE (SExpSource p) (SExpSource p) 𝕏 (SExpSource p)
+[VarSE] :: 𝕏 -> SExp p
+[LetSE] :: 𝕏 -> SExpSource p -> SExpSource p -> SExp p
+[SFunSE] :: 𝕏 -> TypeSource p RExp -> SExpSource p -> SExp p
+[AppSE] :: SExpSource p -> SExpSource p -> SExp p
+[PFunSE] :: 𝐿 (𝕏 ∧ Kind) -> 𝐿 (𝕏 ∧ TypeSource p RExp) -> PExpSource p -> SExp p
+[InlSE] :: TypeSource p RExp -> SExpSource p -> SExp p
+[InrSE] :: TypeSource p RExp -> SExpSource p -> SExp p
+[CaseSE] :: SExpSource p -> 𝕏 -> SExpSource p -> 𝕏 -> SExpSource p -> SExp p
+[TupSE] :: SExpSource p -> SExpSource p -> SExp p
+[UntupSE] :: 𝕏 -> 𝕏 -> SExpSource p -> SExpSource p -> SExp p
+[PairSE] :: SExpSource p -> SExpSource p -> SExp p
+[FstSE] :: SExpSource p -> SExp p
+[SndSE] :: SExpSource p -> SExp p
+data GaussParams (p :: PRIV)
+[EDGaussParams] :: SExpSource  'ED -> SExpSource  'ED -> GaussParams  'ED
+[RenyiGaussParams] :: SExpSource  'RENYI -> SExpSource  'RENYI -> GaussParams  'RENYI
+[ZCGaussParams] :: SExpSource  'ZC -> SExpSource  'ZC -> GaussParams  'ZC
+data LaplaceParams (p :: PRIV)
+[EpsLaplaceParams] :: SExpSource  'EPS -> LaplaceParams  'EPS
+[EDLaplaceParams] :: SExpSource  'ED -> SExpSource  'ED -> LaplaceParams  'ED
+[RenyiLaplaceParams] :: SExpSource  'RENYI -> SExpSource  'RENYI -> LaplaceParams  'RENYI
+type PExpSource (p :: PRIV) = Annotated FullContext (PExp p)
+data PExp (p :: PRIV)
+[ReturnPE] :: SExpSource p -> PExp p
+[BindPE] :: 𝕏 -> PExpSource p -> PExpSource p -> PExp p
+[AppPE] :: 𝐿 RExp -> SExpSource p -> 𝐿 𝕏 -> PExp p
+[EDLoopPE] :: SExpSource  'ED -> SExpSource  'ED -> SExpSource  'ED -> 𝐿 𝕏 -> 𝕏 -> 𝕏 -> PExpSource  'ED -> PExp  'ED
+[LoopPE] :: SExpSource p -> SExpSource p -> 𝐿 𝕏 -> 𝕏 -> 𝕏 -> PExpSource p -> PExp p
+[GaussPE] :: SExpSource p -> GaussParams p -> 𝐿 𝕏 -> SExpSource p -> PExp p
+[MGaussPE] :: SExpSource p -> GaussParams p -> 𝐿 𝕏 -> SExpSource p -> PExp p
+[PLaplaceE] :: SExpSource p -> LaplaceParams p -> 𝐿 𝕏 -> SExpSource p -> PExp p
+[PSampleE] :: SExpSource p -> 𝕏 -> 𝕏 -> 𝕏 -> 𝕏 -> PExpSource p -> PExp p
+[PRandNatE] :: SExpSource p -> SExpSource p -> PExp p
+instance GHC.Classes.Ord (Duet.Syntax.SExp p)
+instance GHC.Classes.Eq (Duet.Syntax.SExp p)
+instance GHC.Classes.Eq (Duet.Syntax.GaussParams p)
+instance GHC.Classes.Ord (Duet.Syntax.GaussParams p)
+instance GHC.Classes.Eq (Duet.Syntax.LaplaceParams p)
+instance GHC.Classes.Ord (Duet.Syntax.LaplaceParams p)
+instance GHC.Classes.Eq (Duet.Syntax.PExp p)
+instance GHC.Classes.Ord (Duet.Syntax.PExp p)
+instance UVMHS.Lib.Pretty.Class.Pretty (Duet.Syntax.SExp p)
+instance UVMHS.Lib.Pretty.Class.Pretty (Duet.Syntax.PExp p)
 instance UVMHS.Lib.Pretty.Class.Pretty Duet.Syntax.Grad
 instance GHC.Show.Show Duet.Syntax.Grad
 instance GHC.Classes.Ord Duet.Syntax.Grad
 instance GHC.Classes.Eq Duet.Syntax.Grad
-instance (UVMHS.Lib.Pretty.Class.Pretty e, UVMHS.Lib.Pretty.Class.Pretty Duet.Syntax.Norm, UVMHS.Lib.Pretty.Class.Pretty Duet.Syntax.Clip, UVMHS.Lib.Pretty.Class.Pretty (Duet.Syntax.Type p e), UVMHS.Lib.Pretty.Class.Pretty (Duet.Syntax.Sens e UVMHS.Init.∧ Duet.Syntax.Type p e), UVMHS.Lib.Pretty.Class.Pretty (UVMHS.Init.𝐿 (Duet.Var.𝕏 UVMHS.Init.∧ Duet.Syntax.Kind) UVMHS.Init.∧ UVMHS.Init.𝐿 (Duet.Syntax.Type p e UVMHS.Init.∧ Duet.Syntax.Priv p e))) => UVMHS.Lib.Pretty.Class.Pretty (Duet.Syntax.TypePre p e)
-instance UVMHS.Core.Classes.Functor.Functor p => UVMHS.Core.Classes.Functor.Functor (Duet.Syntax.TypePre p)
-instance (GHC.Classes.Ord e, GHC.Classes.Ord (p e)) => GHC.Classes.Ord (Duet.Syntax.TypePre p e)
-instance (GHC.Classes.Eq e, GHC.Classes.Eq (p e)) => GHC.Classes.Eq (Duet.Syntax.TypePre p e)
-instance forall k (p :: k -> *) (e :: k). UVMHS.Lib.Pretty.Class.Pretty (Duet.Quantity.Quantity (p e)) => UVMHS.Lib.Pretty.Class.Pretty (Duet.Syntax.Priv p e)
-instance UVMHS.Core.Classes.Functor.Functor p => UVMHS.Core.Classes.Functor.Functor (Duet.Syntax.Priv p)
-instance forall k (p :: k -> *) (e :: k). UVMHS.Core.Classes.Monoid.Append (p e) => UVMHS.Core.Classes.Monoid.Monoid (Duet.Syntax.Priv p e)
-instance forall k (p :: k -> *) (e :: k). UVMHS.Core.Classes.Monoid.Append (p e) => UVMHS.Core.Classes.Monoid.Append (Duet.Syntax.Priv p e)
-instance forall k (p :: k -> *) (e :: k). UVMHS.Core.Classes.Monoid.Null (Duet.Syntax.Priv p e)
-instance forall k (p :: k -> *) (e :: k). GHC.Show.Show (p e) => GHC.Show.Show (Duet.Syntax.Priv p e)
-instance forall k (p :: k -> *) (e :: k). GHC.Classes.Ord (p e) => GHC.Classes.Ord (Duet.Syntax.Priv p e)
-instance forall k (p :: k -> *) (e :: k). GHC.Classes.Eq (p e) => GHC.Classes.Eq (Duet.Syntax.Priv p e)
-instance UVMHS.Lib.Pretty.Class.Pretty (Duet.Quantity.Quantity e) => UVMHS.Lib.Pretty.Class.Pretty (Duet.Syntax.Sens e)
-instance UVMHS.Core.Classes.Monoid.Append e => UVMHS.Core.Classes.Monoid.Monoid (Duet.Syntax.Sens e)
-instance UVMHS.Core.Classes.Monoid.Append e => UVMHS.Core.Classes.Monoid.Append (Duet.Syntax.Sens e)
-instance UVMHS.Core.Classes.Monoid.Null (Duet.Syntax.Sens e)
+instance GHC.Classes.Ord r => GHC.Classes.Ord (Duet.Syntax.Type p r)
+instance GHC.Classes.Eq r => GHC.Classes.Eq (Duet.Syntax.Type p r)
+instance (UVMHS.Core.Classes.Lattice.Join r, UVMHS.Core.Classes.Lattice.Meet r) => UVMHS.Core.Classes.Lattice.JoinLattice (Duet.Syntax.Priv p r)
+instance (UVMHS.Core.Classes.Lattice.Join r, UVMHS.Core.Classes.Lattice.Meet r) => UVMHS.Core.Classes.Lattice.Join (Duet.Syntax.Priv p r)
+instance UVMHS.Core.Classes.Lattice.Bot (Duet.Syntax.Priv p r)
+instance (UVMHS.Core.Classes.Monoid.Append r, UVMHS.Core.Classes.Lattice.Meet r) => UVMHS.Core.Classes.Monoid.Monoid (Duet.Syntax.Priv p r)
+instance (UVMHS.Core.Classes.Monoid.Append r, UVMHS.Core.Classes.Lattice.Meet r) => UVMHS.Core.Classes.Monoid.Append (Duet.Syntax.Priv p r)
+instance UVMHS.Core.Classes.Monoid.Null (Duet.Syntax.Priv p r)
+instance GHC.Show.Show r => GHC.Show.Show (Duet.Syntax.Priv p r)
+instance GHC.Classes.Ord r => GHC.Classes.Ord (Duet.Syntax.Priv p r)
+instance GHC.Classes.Eq r => GHC.Classes.Eq (Duet.Syntax.Priv p r)
+instance (UVMHS.Core.Classes.Lattice.Join r, UVMHS.Core.Classes.Lattice.Meet r) => UVMHS.Core.Classes.Lattice.Lattice (Duet.Syntax.Sens r)
+instance UVMHS.Core.Classes.Lattice.Meet r => UVMHS.Core.Classes.Lattice.MeetLattice (Duet.Syntax.Sens r)
+instance UVMHS.Core.Classes.Lattice.Meet r => UVMHS.Core.Classes.Lattice.Meet (Duet.Syntax.Sens r)
+instance UVMHS.Core.Classes.Lattice.Top (Duet.Syntax.Sens r)
+instance UVMHS.Core.Classes.Lattice.Join r => UVMHS.Core.Classes.Lattice.JoinLattice (Duet.Syntax.Sens r)
+instance UVMHS.Core.Classes.Lattice.Join r => UVMHS.Core.Classes.Lattice.Join (Duet.Syntax.Sens r)
+instance UVMHS.Core.Classes.Lattice.Bot (Duet.Syntax.Sens r)
+instance (UVMHS.Core.Classes.Monoid.Append r, UVMHS.Core.Classes.Monoid.Unit r, UVMHS.Core.Classes.Monoid.Cross r) => UVMHS.Core.Classes.Monoid.Prodoid (Duet.Syntax.Sens r)
+instance UVMHS.Core.Classes.Monoid.Cross r => UVMHS.Core.Classes.Monoid.Cross (Duet.Syntax.Sens r)
+instance UVMHS.Core.Classes.Monoid.Unit r => UVMHS.Core.Classes.Monoid.Unit (Duet.Syntax.Sens r)
+instance UVMHS.Core.Classes.Monoid.Append r => UVMHS.Core.Classes.Monoid.Monoid (Duet.Syntax.Sens r)
+instance UVMHS.Core.Classes.Monoid.Append r => UVMHS.Core.Classes.Monoid.Append (Duet.Syntax.Sens r)
+instance UVMHS.Core.Classes.Monoid.Null (Duet.Syntax.Sens r)
+instance (UVMHS.Core.Classes.Arithmetic.Plus r, UVMHS.Core.Classes.Arithmetic.One r, UVMHS.Core.Classes.Arithmetic.Times r) => UVMHS.Core.Classes.Arithmetic.Multiplicative (Duet.Syntax.Sens r)
+instance UVMHS.Core.Classes.Arithmetic.Times r => UVMHS.Core.Classes.Arithmetic.Times (Duet.Syntax.Sens r)
+instance UVMHS.Core.Classes.Arithmetic.One r => UVMHS.Core.Classes.Arithmetic.One (Duet.Syntax.Sens r)
+instance UVMHS.Core.Classes.Arithmetic.Plus r => UVMHS.Core.Classes.Arithmetic.Additive (Duet.Syntax.Sens r)
+instance UVMHS.Core.Classes.Arithmetic.Plus r => UVMHS.Core.Classes.Arithmetic.Plus (Duet.Syntax.Sens r)
+instance UVMHS.Core.Classes.Arithmetic.Zero (Duet.Syntax.Sens r)
 instance UVMHS.Core.Classes.Functor.Functor Duet.Syntax.Sens
-instance GHC.Show.Show e => GHC.Show.Show (Duet.Syntax.Sens e)
-instance GHC.Classes.Ord e => GHC.Classes.Ord (Duet.Syntax.Sens e)
-instance GHC.Classes.Eq e => GHC.Classes.Eq (Duet.Syntax.Sens e)
-instance UVMHS.Lib.Pretty.Class.Pretty Duet.Syntax.Norm => UVMHS.Lib.Pretty.Class.Pretty Duet.Syntax.Clip
+instance GHC.Show.Show r => GHC.Show.Show (Duet.Syntax.Sens r)
+instance GHC.Classes.Ord r => GHC.Classes.Ord (Duet.Syntax.Sens r)
+instance GHC.Classes.Eq r => GHC.Classes.Eq (Duet.Syntax.Sens r)
 instance GHC.Show.Show Duet.Syntax.Clip
 instance GHC.Classes.Ord Duet.Syntax.Clip
 instance GHC.Classes.Eq Duet.Syntax.Clip
-instance UVMHS.Lib.Pretty.Class.Pretty Duet.Syntax.Norm
 instance GHC.Show.Show Duet.Syntax.Norm
 instance GHC.Classes.Ord Duet.Syntax.Norm
 instance GHC.Classes.Eq Duet.Syntax.Norm
-instance UVMHS.Lib.Pretty.Class.Pretty Duet.Syntax.KindPre
-instance GHC.Show.Show Duet.Syntax.KindPre
-instance GHC.Classes.Ord Duet.Syntax.KindPre
-instance GHC.Classes.Eq Duet.Syntax.KindPre
+instance GHC.Show.Show Duet.Syntax.Kind
+instance GHC.Classes.Ord Duet.Syntax.Kind
+instance GHC.Classes.Eq Duet.Syntax.Kind
+instance GHC.Classes.Eq r => GHC.Classes.Eq (Duet.Syntax.Pr p r)
+instance GHC.Classes.Ord r => GHC.Classes.Ord (Duet.Syntax.Pr p r)
+instance GHC.Show.Show r => GHC.Show.Show (Duet.Syntax.Pr p r)
+instance UVMHS.Core.Classes.Functor.Functor (Duet.Syntax.Type p)
+instance UVMHS.Core.Classes.Functor.Functor (Duet.Syntax.Priv p)
+instance UVMHS.Core.Lens.HasPrism (Duet.Quantity.Quantity (Duet.Syntax.Pr p r)) s => UVMHS.Core.Lens.HasPrism (Duet.Syntax.Priv p r) s
+instance (UVMHS.Core.Classes.Monoid.Append r, UVMHS.Core.Classes.Lattice.Meet r) => UVMHS.Core.Classes.Monoid.Append (Duet.Syntax.Pr p r)
+instance (UVMHS.Core.Classes.Lattice.Join r, UVMHS.Core.Classes.Lattice.Meet r) => UVMHS.Core.Classes.Lattice.Join (Duet.Syntax.Pr p r)
+instance UVMHS.Core.Classes.Functor.Functor (Duet.Syntax.Pr p)
+instance UVMHS.Core.Lens.HasPrism (Duet.Quantity.Quantity r) s => UVMHS.Core.Lens.HasPrism (Duet.Syntax.Sens r) s
+
+module Duet.Pretty
+instance UVMHS.Lib.Pretty.Class.Pretty r => UVMHS.Lib.Pretty.Class.Pretty (Duet.Syntax.Sens r)
+instance UVMHS.Lib.Pretty.Class.Pretty r => UVMHS.Lib.Pretty.Class.Pretty (Duet.Syntax.Priv p r)
+instance UVMHS.Lib.Pretty.Class.Pretty e => UVMHS.Lib.Pretty.Class.Pretty (Duet.Quantity.Quantity e)
+instance UVMHS.Lib.Pretty.Class.Pretty Duet.Syntax.Kind
+instance UVMHS.Lib.Pretty.Class.Pretty Duet.Syntax.Norm
+instance UVMHS.Lib.Pretty.Class.Pretty Duet.Syntax.Clip
+instance UVMHS.Lib.Pretty.Class.Pretty r => UVMHS.Lib.Pretty.Class.Pretty (Duet.Syntax.Pr p r)
+instance UVMHS.Lib.Pretty.Class.Pretty r => UVMHS.Lib.Pretty.Class.Pretty (Duet.Syntax.Type p r)
 
 module Duet.Parser
 data Token
@@ -279,12 +379,13 @@ parRExp :: Parser Token RExp
 parNorm :: Parser Token Norm
 parClip :: Parser Token Clip
 parSens :: Parser Token (Sens RExp)
-parPriv :: Parser Token (Priv ID RExp)
+parPriv :: Parser Token (Priv p RExp)
 parSpace :: Parser Token ()
-parType :: Parser Token (Type ID RExp)
+parTypeSource :: Parser Token (TypeSource p RExp)
+parType :: Parser Token (Type p RExp)
 parGrad :: Parser Token Grad
-parSExp :: Parser Token (SExp ID)
-parPExp :: Parser Token (PExp ID)
+parSExp :: PRIV_W p -> Parser Token (SExpSource p)
+parPExp :: PRIV_W p -> Parser Token (PExpSource p)
 tokSkip :: Token -> 𝔹
 instance (UVMHS.Lib.Pretty.Class.Pretty UVMHS.Init.𝕊, UVMHS.Lib.Pretty.Class.Pretty UVMHS.Init.ℤ, UVMHS.Lib.Pretty.Class.Pretty UVMHS.Init.𝔻) => UVMHS.Lib.Pretty.Class.Pretty Duet.Parser.Token
 instance GHC.Show.Show Duet.Parser.Token
@@ -292,17 +393,50 @@ instance GHC.Classes.Ord Duet.Parser.Token
 instance GHC.Classes.Eq Duet.Parser.Token
 
 module Duet.Check
-inferKind :: (𝕏 ⇰ KindPre) -> RExpPre -> 𝑂 KindPre
+inferKind :: (𝕏 ⇰ Kind) -> RExpPre -> 𝑂 Kind
 data TypeError p
-TypeError :: Doc -> (𝕏 ⇰ Type p RNF) -> TypePre p RNF -> 𝐿 𝕊 -> TypeError p
+TypeError :: Doc -> (𝕏 ⇰ Type p RNF) -> Type p RNF -> 𝐿 𝕊 -> TypeError p
 [typeErrorTerm] :: TypeError p -> Doc
 [typeErrorContext] :: TypeError p -> 𝕏 ⇰ Type p RNF
-[typeErrorType] :: TypeError p -> TypePre p RNF
+[typeErrorType] :: TypeError p -> Type p RNF
 [typeErrorExpected] :: TypeError p -> 𝐿 𝕊
-inferSens :: Privacy p => (𝕏 ⇰ Kind) -> (𝕏 ⇰ Type p RNF) -> SExp p -> ErrorT (TypeError p) (WriterT (𝕏 ⇰ Sens RNF) ID) (TypePre p RNF)
-instance (UVMHS.Lib.Pretty.Class.Pretty UVMHS.Lib.Pretty.Core.Doc, UVMHS.Lib.Pretty.Class.Pretty (Duet.Var.𝕏 UVMHS.Init.⇰ Duet.Syntax.Type p Duet.RExp.RNF), UVMHS.Lib.Pretty.Class.Pretty (Duet.Syntax.TypePre p Duet.RExp.RNF), UVMHS.Lib.Pretty.Class.Pretty (UVMHS.Init.𝐿 UVMHS.Init.𝕊)) => UVMHS.Lib.Pretty.Class.Pretty (Duet.Check.TypeError p)
+data Context p
+Context :: (𝕏 ⇰ Kind) -> (𝕏 ⇰ Type p RNF) -> Context p
+[contextKind] :: Context p -> 𝕏 ⇰ Kind
+[contextType] :: Context p -> 𝕏 ⇰ Type p RNF
+contextTypeL :: forall (p_aWOE :: PRIV). (⟢) (Context p_aWOE) ((⇰) 𝕏 (Type p_aWOE RNF))
+contextKindL :: forall (p_aWOE :: PRIV). (⟢) (Context p_aWOE) ((⇰) 𝕏 Kind)
+newtype SM p a
+SM :: ReaderT (Context p) (WriterT (𝕏 ⇰ Sens RNF) (ErrorT (TypeError p) ID)) a -> SM p a
+[unSM] :: SM p a -> ReaderT (Context p) (WriterT (𝕏 ⇰ Sens RNF) (ErrorT (TypeError p) ID)) a
+mkSM :: ((𝕏 ⇰ Kind) -> (𝕏 ⇰ Type p RNF) -> TypeError p ∨ ((𝕏 ⇰ Sens RNF) ∧ a)) -> SM p a
+runSM :: (𝕏 ⇰ Kind) -> (𝕏 ⇰ Type p RNF) -> SM p a -> TypeError p ∨ ((𝕏 ⇰ Sens RNF) ∧ a)
+newtype PM p a
+PM :: ReaderT (Context p) (WriterT (𝕏 ⇰ Priv p RNF) (ErrorT (TypeError p) ID)) a -> PM p a
+[unPM] :: PM p a -> ReaderT (Context p) (WriterT (𝕏 ⇰ Priv p RNF) (ErrorT (TypeError p) ID)) a
+mkPM :: ((𝕏 ⇰ Kind) -> (𝕏 ⇰ Type p RNF) -> TypeError p ∨ ((𝕏 ⇰ Priv p RNF) ∧ a)) -> PM p a
+runPM :: (𝕏 ⇰ Kind) -> (𝕏 ⇰ Type p RNF) -> PM p a -> TypeError p ∨ ((𝕏 ⇰ Priv p RNF) ∧ a)
+smFromPM :: PM p a -> SM p a
+pmFromSM :: SM p a -> PM p a
+inferSens :: SExpSource p -> SM p (Type p RNF)
+inferPriv :: PExpSource p -> PM p (Type p RNF)
+instance UVMHS.Core.Effects.MonadWriter (Duet.Var.𝕏 UVMHS.Init.⇰ Duet.Syntax.Priv p Duet.RExp.RNF) (Duet.Check.PM p)
+instance UVMHS.Core.Effects.MonadReader (Duet.Check.Context p) (Duet.Check.PM p)
+instance UVMHS.Core.Effects.MonadError (Duet.Check.TypeError p) (Duet.Check.PM p)
+instance UVMHS.Core.Classes.Monad.Monad (Duet.Check.PM p)
+instance UVMHS.Core.Classes.Monad.Bind (Duet.Check.PM p)
+instance UVMHS.Core.Classes.Monad.Return (Duet.Check.PM p)
+instance UVMHS.Core.Classes.Functor.Functor (Duet.Check.PM p)
+instance UVMHS.Core.Effects.MonadWriter (Duet.Var.𝕏 UVMHS.Init.⇰ Duet.Syntax.Sens Duet.RExp.RNF) (Duet.Check.SM p)
+instance UVMHS.Core.Effects.MonadReader (Duet.Check.Context p) (Duet.Check.SM p)
+instance UVMHS.Core.Effects.MonadError (Duet.Check.TypeError p) (Duet.Check.SM p)
+instance UVMHS.Core.Classes.Monad.Monad (Duet.Check.SM p)
+instance UVMHS.Core.Classes.Monad.Bind (Duet.Check.SM p)
+instance UVMHS.Core.Classes.Monad.Return (Duet.Check.SM p)
+instance UVMHS.Core.Classes.Functor.Functor (Duet.Check.SM p)
+instance (UVMHS.Lib.Pretty.Class.Pretty (Duet.Var.𝕏 UVMHS.Init.⇰ Duet.Syntax.Kind), UVMHS.Lib.Pretty.Class.Pretty (Duet.Var.𝕏 UVMHS.Init.⇰ Duet.Syntax.Type p Duet.RExp.RNF)) => UVMHS.Lib.Pretty.Class.Pretty (Duet.Check.Context p)
+instance (UVMHS.Lib.Pretty.Class.Pretty UVMHS.Lib.Pretty.Core.Doc, UVMHS.Lib.Pretty.Class.Pretty (Duet.Var.𝕏 UVMHS.Init.⇰ Duet.Syntax.Type p Duet.RExp.RNF), UVMHS.Lib.Pretty.Class.Pretty (Duet.Syntax.Type p Duet.RExp.RNF), UVMHS.Lib.Pretty.Class.Pretty (UVMHS.Init.𝐿 UVMHS.Init.𝕊)) => UVMHS.Lib.Pretty.Class.Pretty (Duet.Check.TypeError p)
 
 module Duet
 
-module Main
-main :: IO ()
+module Duet.Z

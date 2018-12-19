@@ -28,12 +28,18 @@ doc:
 	stack haddock
 	cp -r `stack path --local-doc-root` ./
 
-$(NAME).cabal: package.yaml
-	hpack --force
-
 .PHONY: clean
 clean:
-	stack clean
+	stack clean --full
 	rm -f $(NAME).cabal
+	rm -rf doc
 
+.PHONY: hoogle
+hoogle:
+	stack hoogle -- generate --local
+	(sleep 1 && open http://localhost:8080/?scope=package%3A$(NAME)) &
+	stack hoogle -- server --local --port=8080
+
+$(NAME).cabal: package.yaml
+	hpack --force
 

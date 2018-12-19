@@ -3,30 +3,31 @@ module Duet.Quantity where
 import UVMHS
 
 import Duet.RExp
-import Duet.AddToUVMHS
 
 data Quantity a = Zero | Quantity a | Inf
   deriving (Eq,Ord,Show)
 
 makePrisms ''Quantity
-makePrettySum ''Quantity
 
 instance (HasPrism a b) ⇒ HasPrism (Quantity a) b where hasPrism = (hasPrism @ a @ b) ⊚ (quantityL @ a)
 
-instance (Additive a) ⇒ Additive (Quantity a) where
-  zero = Zero
+instance Zero (Quantity a) where zero = Zero
+instance (Plus a) ⇒ Plus (Quantity a) where
   Zero + x = x
   x + Zero = x
   Inf + _ = Inf
   _ + Inf = Inf
   Quantity x + Quantity y = Quantity $ x + y
-instance (Multiplicative a) ⇒ Multiplicative (Quantity a) where
-  one = Quantity one
+instance (Plus a) ⇒ Additive (Quantity a)
+
+instance (One a) ⇒ One (Quantity a) where one = Quantity one
+instance (Times a) ⇒ Times (Quantity a) where
   Zero × _ = Zero
   _ × Zero = Zero
   Inf × _ = Inf
   _ × Inf = Inf
   Quantity x × Quantity y = Quantity $ x × y
+instance (Multiplicative a) ⇒ Multiplicative (Quantity a)
 
 instance Null (Quantity a) where null = Zero
 instance (Append a) ⇒ Append (Quantity a) where 
@@ -36,6 +37,15 @@ instance (Append a) ⇒ Append (Quantity a) where
   _ ⧺ Inf = Inf
   Quantity x ⧺ Quantity y = Quantity $ x ⧺ y
 instance Append a ⇒ Monoid (Quantity a)
+
+instance (Unit a) ⇒ Unit (Quantity a) where unit = Quantity unit
+instance (Cross a) ⇒ Cross (Quantity a) where
+  Zero ⨳ _ = Zero
+  _ ⨳ Zero = Zero
+  Inf ⨳ _ = Inf
+  _ ⨳ Inf = Inf
+  Quantity x ⨳ Quantity y = Quantity $ x ⨳ y
+instance (Prodoid a) ⇒ Prodoid (Quantity a)
 
 instance Bot (Quantity a) where bot = Zero
 instance (Join a) ⇒ Join (Quantity a) where
@@ -54,6 +64,7 @@ instance (Meet a) ⇒ Meet (Quantity a) where
   Inf ⊓ y = y
   Quantity x ⊓ Quantity y = Quantity $ x ⊓ y
 instance (Meet a) ⇒ MeetLattice (Quantity a)
+instance (Join a,Meet a) ⇒ Lattice (Quantity a)
 
 instance Functor Quantity where
   map f = \case

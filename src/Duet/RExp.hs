@@ -1,9 +1,8 @@
 module Duet.RExp where
 
-import UVMHS hiding (log)
+import UVMHS
 
 import Duet.Var
-import Duet.AddToUVMHS
 
 cart' ∷ 𝐿 a → 𝐿 (𝐿 a) → 𝐿 (𝐿 a)
 cart' Nil _xss = Nil
@@ -62,7 +61,7 @@ interpRExp γ = \case
   PlusRE e₁ e₂ → interpRExp γ (extract e₁) + interpRExp γ (extract e₂)
   TimesRE e₁ e₂ → interpRExp γ (extract e₁) × interpRExp γ (extract e₂)
   DivRE e₁ e₂ → interpRExp γ (extract e₁) / interpRExp γ (extract e₂)
-  RootRE e → sqrt $ interpRExp γ $ extract e
+  RootRE e → root $ interpRExp γ $ extract e
   LogRE e → log $ interpRExp γ $ extract e
 
 data RNF = 
@@ -185,7 +184,7 @@ interpRAtom γ = \case
   VarRA x → γ ⋕! x
   NNRealRA r → r
   InvRA xs² → 1.0 / interpRSP γ xs²
-  RootRA xs² → sqrt $ interpRSP γ xs²
+  RootRA xs² → root $ interpRSP γ xs²
   LogRA xs² → log $ interpRSP γ xs²
 
 interpRSP ∷ (𝕏 ⇰ 𝔻) → RSP → 𝔻
@@ -281,8 +280,8 @@ invRNF (SymRNF xs⁴) = SymRNF $ pow $ do
     return $ RSP $ (InvRA xs² ↦ 1) ↦ 1
 
 rootRNF ∷ RNF → RNF
-rootRNF (NatRNF n) = NNRealRNF $ sqrt $ dbl n
-rootRNF (NNRealRNF r) = NNRealRNF $ sqrt $ r
+rootRNF (NatRNF n) = NNRealRNF $ root $ dbl n
+rootRNF (NNRealRNF r) = NNRealRNF $ root $ r
 rootRNF (SymRNF xs⁴) = SymRNF $ pow $ do
   xs³ ← list xs⁴
   return $ pow $ do
@@ -304,28 +303,31 @@ instance JoinLattice RNF
 
 instance Meet RNF where (⊓) = maxRNF
 
-instance Additive RNF where {zero = NatRNF 0;(+) = plusRNF}
-instance Multiplicative RNF where {one = NatRNF 1;(×) = timesRNF}
-instance Divisible RNF where e₁ / e₂ = e₁ `timesRNF` invRNF e₂
+instance Zero RNF where zero = NatRNF 0
+instance Plus RNF where (+) = plusRNF
+instance One RNF where one = NatRNF 1
+instance Times RNF where (×) = timesRNF
+instance Divide RNF where e₁ / e₂ = e₁ `timesRNF` invRNF e₂
+instance Root RNF where root = rootRNF
+instance Log RNF where log = logRNF
+
+instance Multiplicative RNF
+instance Additive RNF
 
 instance Null RNF where null = zero
 instance Append RNF where (⧺) = (+)
 instance Monoid RNF
 
-instance Root RNF where root = rootRNF
-instance Log RNF where log = logRNF
-
-
 instance POrd RNF where
-  NatRNF  n₁  ⊑ NatRNF  n₂  = n₁ ≤ n₂
-  NatRNF  n₁  ⊑ NNRealRNF r₂  = dbl n₁ ≤ r₂
-  NNRealRNF r₁  ⊑ NatRNF  n₂  = r₁ ≤ dbl n₂
-  NatRNF  n₁  ⊑ SymRNF  ys⁴ = natSymRNF n₁ ⊆ ys⁴
-  SymRNF  xs⁴ ⊑ NatRNF  n₂  = xs⁴ ⊆ natSymRNF n₂
+  NatRNF    n₁  ⊑ NatRNF    n₂  = n₁ ≤ n₂
+  NatRNF    n₁  ⊑ NNRealRNF r₂  = dbl n₁ ≤ r₂
+  NNRealRNF r₁  ⊑ NatRNF    n₂  = r₁ ≤ dbl n₂
+  NatRNF    n₁  ⊑ SymRNF    ys⁴ = natSymRNF n₁ ⊆ ys⁴
+  SymRNF    xs⁴ ⊑ NatRNF    n₂  = xs⁴ ⊆ natSymRNF n₂
   NNRealRNF r₁  ⊑ NNRealRNF r₂  = r₁ ≤ r₂
-  NNRealRNF r₁  ⊑ SymRNF  ys⁴ = realSymRNF r₁ ⊆ ys⁴
-  SymRNF  xs⁴ ⊑ NNRealRNF r₂  = xs⁴ ⊆ realSymRNF r₂
-  SymRNF  xs⁴ ⊑ SymRNF  ys⁴ = xs⁴ ⊆ ys⁴
+  NNRealRNF r₁  ⊑ SymRNF    ys⁴ = realSymRNF r₁ ⊆ ys⁴
+  SymRNF    xs⁴ ⊑ NNRealRNF r₂  = xs⁴ ⊆ realSymRNF r₂
+  SymRNF    xs⁴ ⊑ SymRNF    ys⁴ = xs⁴ ⊆ ys⁴
 
 normalizeRExpPre ∷ RExpPre → RNF
 normalizeRExpPre (VarRE x) = varRNF x

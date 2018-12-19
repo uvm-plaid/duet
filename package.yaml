@@ -47,15 +47,13 @@ library:
     - src
   dependencies:
     - base
-    - containers
     - uvmhs
 
-executables:
-  duet:
-    source-dirs:
-      - src
-    main: Main.hs
-    dependencies:
-      - base
-      - containers
-      - uvmhs
+executable:
+  source-dirs:
+    - main
+  main: Main.hs
+  dependencies:
+    - base
+    - uvmhs
+    - duet

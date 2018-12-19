@@ -112,7 +112,7 @@ parNNDbl = pShaped "nn-dbl" $ \ t → do
     False → abort
 
 parKind ∷ Parser Token Kind
-parKind = pWithContext "kind" $ tries
+parKind = pNew "kind" $ tries
   [ do parLit "ℕ" ; return ℕK
   , do parLit "ℝ⁺" ; return ℝK
   ]

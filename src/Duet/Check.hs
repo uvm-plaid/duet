@@ -1,14 +1,14 @@
 module Duet.Check where
 
-import UVMHS hiding (log)
+import UVMHS
 
+import Duet.Pretty ()
 import Duet.Syntax
 import Duet.RExp
 import Duet.Var
 import Duet.Quantity
-import Duet.AddToUVMHS
 
-inferKind ∷ 𝕏 ⇰ KindPre → RExpPre → 𝑂 KindPre
+inferKind ∷ 𝕏 ⇰ Kind → RExpPre → 𝑂 Kind
 inferKind δ = \case
   VarRE x → return $ δ ⋕! x
   NatRE _ → return $ ℕK
@@ -160,8 +160,8 @@ inferSens eA = case extract eA of
       (𝔻T,𝔻T) → return 𝔻T
       _ → undefined -- TypeError
   TimesSE e₁ e₂ → do
-    σ₁ :* τ₁ ← listen $ inferSens e₁
-    σ₂ :* τ₂ ← listen $ inferSens e₂
+    σ₁ :* τ₁ ← hijack $ inferSens e₁
+    σ₂ :* τ₂ ← hijack $ inferSens e₂
     case (τ₁,τ₂) of
       (ℕˢT η₁,ℕˢT η₂) → do tell $ σ₁ ⧺ σ₂ ; return $ ℕˢT $ η₁ × η₂
       (ℝˢT η₁,ℝˢT η₂) → do tell $ σ₁ ⧺ σ₂ ; return $ ℝˢT $ η₁ × η₂
@@ -189,8 +189,8 @@ inferSens eA = case extract eA of
       (𝔻T,𝔻T) → do tell $ σ₁ ⧺ σ₂ ; return 𝔻T
       _ → error $ pprender $ (τ₁ :* τ₂)
   DivSE e₁ e₂ → do
-    σ₁ :* τ₁ ← listen $ inferSens e₁
-    σ₂ :* τ₂ ← listen $ inferSens e₂
+    σ₁ :* τ₁ ← hijack $ inferSens e₁
+    σ₂ :* τ₂ ← hijack $ inferSens e₂
     case (τ₁,τ₂) of
       (ℝˢT η₁,ℝˢT η₂) → do tell $ σ₁ ⧺ σ₂ ; return $ ℝˢT $ η₁ / η₂
       (ℝˢT _η₁,ℝT) → do 
@@ -203,22 +203,22 @@ inferSens eA = case extract eA of
       (𝔻T,𝔻T) → return 𝔻T
       _ → undefined -- TypeError
   RootSE e → do
-    σ :* τ ← listen $ inferSens e
+    σ :* τ ← hijack $ inferSens e
     case τ of
       ℝˢT η → do tell σ ; return $ ℝˢT $ rootRNF η
       ℝT → do tell $ top ⨵ σ ; return ℝT
       𝔻T → return 𝔻T
       _ → undefined -- TypeError
   LogSE e → do
-    σ :* τ ← listen $ inferSens e
+    σ :* τ ← hijack $ inferSens e
     case τ of
       ℝˢT η → do tell σ ; return $ ℝˢT $ rootRNF η
       ℝT → do tell $ top ⨵ σ ; return ℝT
       𝔻T → return 𝔻T
       _ → undefined -- TypeError
   ModSE e₁ e₂ → do
-    σ₁ :* τ₁ ← listen $ inferSens e₁
-    σ₂ :* τ₂ ← listen $ inferSens e₂
+    σ₁ :* τ₁ ← hijack $ inferSens e₁
+    σ₂ :* τ₂ ← hijack $ inferSens e₂
     case (τ₁,τ₂) of
       (ℕˢT _η₁,ℕˢT _η₂) → do tell $ σ₁ ⧺ σ₂ ; return ℕT
       (𝕀T _η₁,𝕀T _η₂)   → do tell $ σ₁ ⧺ σ₂ ; return ℕT
@@ -249,7 +249,7 @@ inferSens eA = case extract eA of
     τ₂ ← inferSens e₂
     case (τ₁,τ₂) of
       (ℕˢT ηₘ,ℕˢT ηₙ) → do
-        σ₃ :* τ₃ ← listen $ mapEnvL contextTypeL (\ γ → dict [x₁ ↦ 𝕀T ηₘ,x₂ ↦ 𝕀T ηₙ] ⩌ γ) $ inferSens e₃
+        σ₃ :* τ₃ ← hijack $ mapEnvL contextTypeL (\ γ → dict [x₁ ↦ 𝕀T ηₘ,x₂ ↦ 𝕀T ηₙ] ⩌ γ) $ inferSens e₃
         let σ₃' = without (pow [x₁,x₂]) σ₃
         tell $ ι (ηₘ × ηₙ) ⨵ σ₃'
         return $ 𝕄T ℓ UClip ηₘ ηₙ τ₃
@@ -270,12 +270,12 @@ inferSens eA = case extract eA of
       (𝕄T ℓ c ηₘ ηₙ τ,𝕀T ηₘ',𝕀T ηₙ',τ') | (ηₘ ≡ ηₘ') ⩓ (ηₙ ≡ ηₙ') ⩓ (τ ≡ τ') → return $ 𝕄T ℓ c ηₘ ηₙ τ
       _ → undefined -- TypeError
   MRowsSE e → do
-    _ :* τ ← listen $ inferSens e
+    _ :* τ ← hijack $ inferSens e
     case τ of
       𝕄T _ℓ _c ηₘ _ηₙ _τ' → return $ ℕˢT ηₘ
       _ → undefined -- TypeSource Error
   MColsSE e → do
-    _ :* τ ← listen $ inferSens e
+    _ :* τ ← hijack $ inferSens e
     case τ of
       𝕄T _ℓ _c _ηₘ ηₙ _τ' → return $ ℕˢT ηₙ
       _ → undefined -- TypeSource Error
@@ -290,10 +290,10 @@ inferSens eA = case extract eA of
       𝕄T _ℓ (NormClip ℓ) ηₘ ηₙ τ' | τ' ≡ 𝔻T → return $ 𝕄T ℓ UClip ηₘ ηₙ ℝT
       _ → undefined -- TypeSource Error
   MLipGradSE _g e₁ e₂ e₃ → do
-    σ₁ :* τ₁ ← listen $ inferSens e₁
+    σ₁ :* τ₁ ← hijack $ inferSens e₁
     tell $ top ⨵ σ₁
-    σ₂ :* τ₂ ← listen $ inferSens e₂
-    σ₃ :* τ₃ ← listen $ inferSens e₃
+    σ₂ :* τ₂ ← hijack $ inferSens e₂
+    σ₃ :* τ₃ ← hijack $ inferSens e₃
     case (τ₁,τ₂,τ₃) of
       (𝕄T _ℓ₁ _c₁ ηₘ₁ ηₙ₁ τ₁',𝕄T _ℓ₂ (NormClip ℓ) ηₘ₂ ηₙ₂ τ₂',𝕄T _ℓ₃ _c₃ ηₘ₃ ηₙ₃ τ₃') 
         | meets
@@ -309,18 +309,18 @@ inferSens eA = case extract eA of
              return $ 𝕄T ℓ UClip one ηₙ₁ ℝT
       _ → undefined -- TypeSource Error
   MMapSE e₁ x e₂ → do
-    σ₁ :* τ₁ ← listen $ inferSens e₁
+    σ₁ :* τ₁ ← hijack $ inferSens e₁
     case τ₁ of
       𝕄T ℓ _c ηₘ ηₙ τ₁' → do
-        σ₂ :* τ₂ ← listen $ mapEnvL contextTypeL (\ γ → (x ↦ τ₁') ⩌ γ) $ inferSens e₂
-        let (ς :* σ₂') = ifNone (zero :* σ₂) $ deleteView x σ₂
+        σ₂ :* τ₂ ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ₁') ⩌ γ) $ inferSens e₂
+        let (ς :* σ₂') = ifNone (zero :* σ₂) $ dview x σ₂
         tell $ ς ⨵ σ₁
         tell $ ι (ηₘ × ηₙ) ⨵ σ₂'
         return $ 𝕄T ℓ UClip ηₘ ηₙ τ₂ 
       _  → undefined -- TypeSource Error
   MMap2SE e₁ e₂ x₁ x₂ e₃ → do
-    σ₁ :* τ₁ ← listen $ inferSens e₁
-    σ₂ :* τ₂ ← listen $ inferSens e₂
+    σ₁ :* τ₁ ← hijack $ inferSens e₁
+    σ₂ :* τ₂ ← hijack $ inferSens e₂
     case (τ₁,τ₂) of
       (𝕄T ℓ₁ _c₁ ηₘ₁ ηₙ₁ τ₁',𝕄T ℓ₂ _c₂ ηₘ₂ ηₙ₂ τ₂')
         | meets
@@ -329,11 +329,11 @@ inferSens eA = case extract eA of
           , ηₙ₁ ≡ ηₙ₂
           ]
         → do σ₃ :* τ₃ ← 
-               listen $ 
-               mapEnvL contextTypeL (\ γ → dict[x₁ ↦ τ₁',x₂ ↦ τ₂'] ⩌ γ) $ 
+               hijack $ 
+               mapEnvL contextTypeL (\ γ → dict [x₁ ↦ τ₁',x₂ ↦ τ₂'] ⩌ γ) $ 
                inferSens e₃
-             let (ς₁ :* σ₃') = ifNone (zero :* σ₃) $ deleteView x₁ σ₃
-                 (ς₂ :* σ₃'') = ifNone (zero :* σ₃') $ deleteView x₂ σ₃'
+             let (ς₁ :* σ₃') = ifNone (zero :* σ₃) $ dview x₁ σ₃
+                 (ς₂ :* σ₃'') = ifNone (zero :* σ₃') $ dview x₂ σ₃'
              tell $ ς₁ ⨵ σ₁
              tell $ ς₂ ⨵ σ₂
              tell $ ι (ηₘ₁ × ηₙ₁) ⨵ σ₃''
@@ -347,21 +347,21 @@ inferSens eA = case extract eA of
         tell $ x ↦ ι 1
         return τ
   LetSE x e₁ e₂ → do
-    σ₁ :* τ₁ ← listen $ inferSens e₁
-    σ₂ :* τ₂ ← listen $ mapEnvL contextTypeL (\ γ → (x ↦ τ₁) ⩌ γ) $ inferSens e₂
-    let (ς :* σ₂') = ifNone (zero :* σ₂) $ deleteView x σ₂
+    σ₁ :* τ₁ ← hijack $ inferSens e₁
+    σ₂ :* τ₂ ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ₁) ⩌ γ) $ inferSens e₂
+    let (ς :* σ₂') = ifNone (zero :* σ₂) $ dview x σ₂
     tell $ ς ⨵ σ₁
     tell σ₂'
     return τ₂
   SFunSE x τ e → do
     let τ' = map normalizeRExp $ extract τ
-    σ :* τ'' ← listen $ mapEnvL contextTypeL (\ γ → (x ↦ τ') ⩌ γ) $ inferSens e
-    let (ς :* σ') = ifNone (zero :* σ) $ deleteView x σ
+    σ :* τ'' ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ') ⩌ γ) $ inferSens e
+    let (ς :* σ') = ifNone (zero :* σ) $ dview x σ
     tell σ'
     return $ τ' :⊸: (ς :* τ'')
   AppSE e₁ e₂ → do
     τ₁ ← inferSens e₁
-    σ₂ :* τ₂ ← listen $ inferSens e₂
+    σ₂ :* τ₂ ← hijack $ inferSens e₂
     case τ₁ of
       τ₁' :⊸: (ς :* τ₂') | τ₁' ≡ τ₂ → do
         tell $ ς ⨵ σ₂
@@ -372,9 +372,9 @@ inferSens eA = case extract eA of
         xs = map fst xτs
     σ :* τ ← 
       smFromPM 
-      $ listen 
-      $ mapEnvL contextKindL (\ δ → dict (map single ακs) ⩌ δ)
-      $ mapEnvL contextTypeL (\ γ → dict (map single xτs') ⩌ γ)
+      $ hijack 
+      $ mapEnvL contextKindL (\ δ → assoc ακs ⩌ δ)
+      $ mapEnvL contextTypeL (\ γ → assoc xτs' ⩌ γ)
       $ inferPriv e
     tell $ map (Sens ∘ truncate Inf ∘ unPriv) $ without (pow xs) σ
     let τps = mapOn xτs' $ \ (x :* τ') → τ' :* ifNone null (σ ⋕? x)
@@ -385,7 +385,7 @@ inferPriv eA = case extract eA of
   ReturnPE e → pmFromSM $ inferSens e
   BindPE x e₁ e₂ → do
     τ₁ ← inferPriv e₁
-    σ₂ :* τ₂ ← listen $ mapEnvL contextTypeL (\ γ → (x ↦ τ₁) ⩌ γ) $ inferPriv e₂
+    σ₂ :* τ₂ ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ₁) ⩌ γ) $ inferPriv e₂
     let σ₂' = delete x σ₂
     tell σ₂'
     return τ₂
@@ -394,7 +394,7 @@ inferPriv eA = case extract eA of
     τ₁ ← pmFromSM $ inferSens e₁
     τ₂ ← pmFromSM $ inferSens e₂
     τ₃ ← pmFromSM $ inferSens e₃
-    σ₄ :* τ₄ ← listen $ mapEnvL contextTypeL (\ γ → dict [x₁ ↦ ℕT,x₂ ↦ τ₃] ⩌ γ) $ inferPriv e₄
+    σ₄ :* τ₄ ← hijack $ mapEnvL contextTypeL (\ γ → dict [x₁ ↦ ℕT,x₂ ↦ τ₃] ⩌ γ) $ inferPriv e₄
     let σ₄' = without (pow [x₁,x₂]) σ₄
     let σ₄Keep = restrict xs' σ₄'
         σ₄KeepMax = joins $ values σ₄Keep
@@ -412,7 +412,7 @@ inferPriv eA = case extract eA of
     τ₁ ← pmFromSM $ inferSens e₁
     τ₂ ← pmFromSM $ inferSens e₂
     τ₃ ← pmFromSM $ inferSens e₃
-    σ₄ :* τ₄ ← pmFromSM $ listen $ inferSens e₄
+    σ₄ :* τ₄ ← pmFromSM $ hijack $ inferSens e₄
     let σ₄Keep = restrict xs' σ₄
         σ₄KeepMax = joins $ values σ₄Keep
         σ₄Toss = without xs' σ₄
@@ -427,7 +427,7 @@ inferPriv eA = case extract eA of
     τ₁ ← pmFromSM $ inferSens e₁
     τ₂ ← pmFromSM $ inferSens e₂
     τ₃ ← pmFromSM $ inferSens e₃
-    σ₄ :* τ₄ ← pmFromSM $ listen $ inferSens e₄
+    σ₄ :* τ₄ ← pmFromSM $ hijack $ inferSens e₄
     let σ₄Keep = restrict xs' σ₄
         σ₄KeepMax = joins $ values σ₄Keep
         σ₄Toss = without xs' σ₄

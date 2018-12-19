@@ -5,31 +5,28 @@ import UVMHS
 import Duet.Quantity
 import Duet.Var
 import Duet.RExp
-import Duet.AddToUVMHS
 
-type Kind = Annotated FullContext KindPre
-data KindPre =
+data Kind =
     ℕK
   | ℝK
   deriving (Eq,Ord,Show)
-makePrettySum ''KindPre
 
 data Norm = L1 | L2 | LInf
   deriving (Eq,Ord,Show)
-makePrettySum ''Norm
 
 data Clip = NormClip Norm | UClip
   deriving (Eq,Ord,Show)
-makePrettySum ''Clip
 
 newtype Sens r = Sens { unSens ∷ Quantity r }
   deriving 
   (Eq,Ord,Show,Functor
-  ,Additive,Multiplicative
+  ,Zero,Plus,Additive
+  ,One,Times,Multiplicative
   ,Null,Append,Monoid
+  ,Unit,Cross,Prodoid
   ,Bot,Join,JoinLattice
-  ,Top,Meet,MeetLattice)
-makePrettyUnion ''Sens
+  ,Top,Meet,MeetLattice
+  ,Lattice)
 
 instance (HasPrism (Quantity r) s) ⇒ HasPrism (Sens r) s where
   hasPrism = Prism
@@ -56,54 +53,18 @@ deriving instance (Eq r) ⇒ Eq (Pr p r)
 deriving instance (Ord r) ⇒ Ord (Pr p r)
 deriving instance (Show r) ⇒ Show (Pr p r)
 
-instance (Pretty r) ⇒ Pretty (Pr p r) where
-  pretty = \case
-    EpsPriv r → pretty r
-    EDPriv r₁ r₂ → pretty $ pretty r₁ :* pretty r₂
-    RenyiPriv r₁ r₂ → pretty $ pretty r₁ :* pretty r₂
-    ZCPriv r  → pretty r
-    TCPriv r₁ r₂ → pretty $ pretty r₁ :* pretty r₂
-
--- instance (Additive r,PRIV_C p) ⇒ Additive (Pr p r) where
---   zero = case priv @ p of
---     EPS_W → EpsPriv zero
---     ED_W → EDPriv zero zero
---     RENYI_W → RenyiPriv zero zero
---     ZC_W → ZCPriv zero
---     TC_W → TCPriv zero
---   EpsPriv ε₁ + EpsPriv ε₂ = EpsPriv $ ε₁ + ε₂
---   EDPriv ε₁ δ₁ + EDPriv ε₂ δ₂ = EDPriv (ε₁ + ε₂) (δ₁ + δ₂)
---   RenyiPriv α₁ ε₁ + RenyiPriv _α₂ ε₂ = RenyiPriv α₁ (ε₁ + ε₂)
---   ZCPriv ρ₁ + ZCPriv ρ₂ = ZCPriv $ ρ₁ + ρ₂
---   TCPriv ψ₁ + TCPriv ψ₂ = TCPriv $ ψ₁ + ψ₂
--- instance (Null r,PRIV_C p) ⇒ Null (Pr p r) where
---   null = case priv @ p of
---     EPS_W → EpsPriv null
---     ED_W → EDPriv null null
---     RENYI_W → RenyiPriv null null
---     ZC_W → ZCPriv null
---     TC_W → TCPriv null
 instance (Append r,Meet r) ⇒ Append (Pr p r) where
   EpsPriv ε₁ ⧺ EpsPriv ε₂ = EpsPriv $ ε₁ ⧺ ε₂
   EDPriv ε₁ δ₁ ⧺ EDPriv ε₂ δ₂ = EDPriv (ε₁ ⧺ ε₂) (δ₁ ⧺ δ₂)
   RenyiPriv α₁ ε₁ ⧺ RenyiPriv α₂ ε₂ = RenyiPriv (α₁ ⊓ α₂) (ε₁ ⧺ ε₂)
   ZCPriv ρ₁ ⧺ ZCPriv ρ₂ = ZCPriv $ ρ₁ ⧺ ρ₂
   TCPriv ρ₁ ω₁ ⧺ TCPriv ρ₂ ω₂ = TCPriv (ρ₁ ⧺ ρ₂) (ω₁ ⊓ ω₂)
--- instance (Monoid r,PRIV_C p) ⇒ Monoid (Pr p r)
--- instance (Bot r,PRIV_C p) ⇒ Bot (Pr p r) where
---   bot = case priv @ p of
---     EPS_W → EpsPriv bot
---     ED_W → EDPriv bot bot
---     RENYI_W → RenyiPriv bot bot
---     ZC_W → ZCPriv bot
---     TC_W → TCPriv bot
 instance (Join r,Meet r) ⇒ Join (Pr p r) where
   EpsPriv ε₁ ⊔ EpsPriv ε₂ = EpsPriv $ ε₁ ⊔ ε₂
   EDPriv ε₁ δ₁ ⊔ EDPriv ε₂ δ₂ = EDPriv (ε₁ ⊔ ε₂) (δ₁ ⊔ δ₂)
   RenyiPriv α₁ ε₁ ⊔ RenyiPriv α₂ ε₂ = RenyiPriv (α₁ ⊓ α₂) (ε₁ ⊔ ε₂)
   ZCPriv ρ₁ ⊔ ZCPriv ρ₂ = ZCPriv $ ρ₁ ⊔ ρ₂
   TCPriv ρ₁ ω₁ ⊔ TCPriv ρ₂ ω₂ = TCPriv (ρ₁ ⊔ ρ₂) (ω₁ ⊓ ω₂)
--- instance (JoinLattice r,PRIV_C p) ⇒ JoinLattice (Pr p r)
 
 instance Functor (Pr p) where
   map f (EpsPriv ε) = EpsPriv $ f ε
@@ -113,9 +74,11 @@ instance Functor (Pr p) where
   map f (TCPriv ρ ω) = TCPriv (f ρ) (f ω)
 
 newtype Priv p r = Priv { unPriv ∷ Quantity (Pr p r) }
-  deriving (Eq,Ord,Show,{-Additive,-}Null,Append,Monoid,Bot,Join,JoinLattice)
+  deriving 
+  (Eq,Ord,Show
+  ,Null,Append,Monoid
+  ,Bot,Join,JoinLattice)
 instance Functor (Priv p) where map f = Priv ∘ mapp f ∘ unPriv
-makePrettyUnion ''Priv
 
 instance (HasPrism (Quantity (Pr p r)) s) ⇒ HasPrism (Priv p r) s where
   hasPrism = Prism
@@ -138,7 +101,6 @@ data Type (p ∷ PRIV) r =
   | Type p r :⊸: (Sens r ∧ Type p r)
   | (𝐿 (𝕏 ∧ Kind) ∧ 𝐿 (Type p r ∧ Priv p r)) :⊸⋆: Type p r
   deriving (Eq,Ord)
-makePrettySum ''Type
 
 instance Functor (Type p) where
   map f = \case
