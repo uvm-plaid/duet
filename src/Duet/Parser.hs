@@ -25,7 +25,7 @@ tokKeywords = list
   ,"LR","L2","U"
   ,"real"
   ,"matrix","mcreate","clip","∇","mmap"
-  ,"aloop","loop","mgauss","rows","cols"
+  ,"aloop","loop","mgauss","rows","cols","exponential"
   ,"L1","L2","L∞","U"
   ,"dyn","real"
   ]
@@ -273,7 +273,7 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
       e₃ ← parSExp p
       parLit "}"
       return $ MCreateSE ℓ e₁ e₂ (var x₁) (var x₂) e₃
-  , mixF $ MixFPrefix 10 $ do
+  , mixF $ MixFPostfix 10 $ do
       parLit "#"
       parLit "["
       e₂ ← parSExp p
@@ -330,11 +330,22 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
   , mixF $ MixFTerminal $ VarSE ∘ var ^$ parName
   , mixF $ MixFPrefix 1 $ do
       parLit "let"
-      x ← parName
-      parLit "="
-      e₁ ← parSExp p
-      parLit "in"
-      return $ \ e₂ → LetSE (var x) e₁ e₂
+      tries
+        [ do x ← parName
+             parLit "="
+             e₁ ← parSExp p
+             parLit "in"
+             return $ \ e₂ → LetSE (var x) e₁ e₂
+        , do parLit "⟨"
+             x ← parName
+             parLit ","
+             y ← parName
+             parLit "⟩"
+             parLit "="
+             e₁ ← parSExp p
+             parLit "in"
+             return $ \ e₂ → UntupSE (var x) (var y) e₁ e₂
+        ]
   , mixF $ MixFInfixL 10 $ const AppSE ^$ parSpace
   , mixF $ MixFTerminal $ do
       parLit "pλ"
@@ -418,23 +429,25 @@ parPExp p = pWithContext "pexp" $ tries
         parLit "}"
         return $ MGaussPE e₁ (EDGaussParams e₂ e₃) xs e₄
       _ → abort
-  -- , case p of
-  --     ED_W → do 
-  --       parLit "exponential"
-  --       parLit "["
-  --       e₁ ← parSExp p
-  --       parLit ","
-  --       e₂ ← parSExp p
-  --       parLit ","
-  --       e₃ ← parSExp p
-  --       parLit "]"
-  --       parLit "<"
-  --       xs ← var ^^$ pManySepBy (parLit ",") parName
-  --       parLit ">"
-  --       parLit "{"
-  --       e₄ ← parSExp p
-  --       parLit "}"
-  --       return $ MExponentialPE e₁ (EDExponentialParams e₂ e₃) xs e₄
+  , case p of
+      ED_W → do 
+        parLit "exponential"
+        parLit "["
+        e₁ ← parSExp p
+        parLit ","
+        e₂ ← parSExp p
+        parLit "]"
+        e₃ ← parSExp p
+        parLit "<"
+        xs ← var ^^$ pManySepBy (parLit ",") parName
+        parLit ">"
+        parLit "{"
+        x ← var ^$ parName
+        parLit "⇒"
+        e₄ ← parSExp p
+        parLit "}"
+        return $ ExponentialPE e₁ (EDExponentialParams e₂) e₃ xs x e₄
+      _ → abort
   ]
 
 tokSkip ∷ Token → 𝔹

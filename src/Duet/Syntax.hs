@@ -191,6 +191,11 @@ data LaplaceParams (p ∷ PRIV) where
 deriving instance Eq (LaplaceParams p)
 deriving instance Ord (LaplaceParams p)
 
+data ExponentialParams (p ∷ PRIV) where
+  EDExponentialParams ∷ SExpSource 'ED → ExponentialParams 'ED
+deriving instance Eq (ExponentialParams p)
+deriving instance Ord (ExponentialParams p)
+
 type PExpSource (p ∷ PRIV) = Annotated FullContext (PExp p)
 data PExp (p ∷ PRIV) where
   ReturnPE ∷ SExpSource p → PExp p
@@ -200,11 +205,11 @@ data PExp (p ∷ PRIV) where
   LoopPE ∷ SExpSource p → SExpSource p → 𝐿 𝕏 → 𝕏 → 𝕏 → PExpSource p → PExp p
   GaussPE ∷ SExpSource p → GaussParams p → 𝐿 𝕏 → SExpSource p → PExp p
   MGaussPE ∷ SExpSource p → GaussParams p → 𝐿 𝕏 → SExpSource p → PExp p
-  PLaplaceE ∷ SExpSource p → LaplaceParams p → 𝐿 𝕏 → SExpSource p → PExp p
-  -- PExponentialE ∷ SExpSource p → SExpSource p → SExpSource p → 𝕏  → SExpSource p → PExp p
+  LaplacePE ∷ SExpSource p → LaplaceParams p → 𝐿 𝕏 → SExpSource p → PExp p
+  ExponentialPE ∷ SExpSource p → ExponentialParams p → SExpSource p → 𝐿 𝕏 → 𝕏  → SExpSource p → PExp p
   -- PRRespE ∷ SExpSource p → SExpSource p → 𝐿 𝕏 → SExpSource p → PExp p
-  PSampleE ∷ SExpSource p → 𝕏 → 𝕏 → 𝕏 → 𝕏 → PExpSource p → PExp p
-  PRandNatE ∷ SExpSource p → SExpSource p → PExp p
+  SamplePE ∷ SExpSource p → 𝕏 → 𝕏 → 𝕏 → 𝕏 → PExpSource p → PExp p
+  RandNatPE ∷ SExpSource p → SExpSource p → PExp p
 deriving instance Eq (PExp p)
 deriving instance Ord (PExp p)
 

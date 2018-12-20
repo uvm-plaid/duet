@@ -28,7 +28,7 @@ let main = pλ m  : ℕ,
   aloop[ δ ] k on m₀ <xs,ys> { t , θ ⇒
     let μ = 1.0 / ((real t)+2.0) in
     let s = ℝ⁺[1.0] / real (rows xs) in
-    p ← exponential[s, ε] idxs { x ⇒ let ⟨c, s⟩ = x in let g = ∇[ LR L∞ | θ ; xs , ys ] in ⟨ g#[0, c], s ⟩ } ;
+    p ← exponential[s, ε] idxs <xs,ys> { x ⇒ let ⟨c, s⟩ = x in let g = ∇[ LR | θ ; xs , ys ] in ⟨ g#[0, c], s ⟩ } ;
     let g₀ = mcreate[ L∞ | ℕ[1] , d ] { i , j ⇒ 0.0 } in
     let gₚ = (let ⟨i, s⟩ = p in g₀#[0,i ↦ real (s ⋅ 100)]) in
     return ((1.0-μ) ⋅ θ) + (μ ⋅ (100.0 ⋅ gₚ))
