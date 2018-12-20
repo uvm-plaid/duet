@@ -5,6 +5,10 @@ ARGS := check examples/fw.ed.duet
 run: $(NAME).cabal
 	stack run -- $(ARGS)
 
+.PHONY: run-profile
+run-profile: $(NAME).cabal
+	stack run --profile -- $(ARGS)
+
 .PHONY: interact
 interact: $(NAME).cabal
 	stack ghci $(NAME)
