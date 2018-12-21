@@ -23,7 +23,7 @@ let main = pλ m  : ℕ,
   let δ = ℝ⁺[1.0e-6] in
   let d = cols xs in
   let m₀ = mcreate[ L∞ | ℕ[1] , d ] { i , j ⇒ 0.0 } in
-  let idxs = mcreate[ L∞ | ℕ[1] , ℕ[1]⋅d ] { i , j ⇒ ⟨ j % d, {-sign-}(dyn j - dyn d) ⟩ } in
+  let idxs = mcreate[ L∞ | ℕ[1] , ℕ[1]⋅d ] { i , j ⇒ ⟨ j % dyn d, {-sign-}(dyn j - dyn d) ⟩ } in
 
   aloop[ δ ] k on m₀ <xs,ys> { t , θ ⇒
     let μ = 1.0 / ((real t)+2.0) in

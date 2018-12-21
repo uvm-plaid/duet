@@ -228,9 +228,10 @@ inferSens eA = case extract eA of
       (ℕT,ℕˢT η₂) → do 
         tell $ ι η₂ ⨵ σ₁ ⧺ σ₂
         return ℕT
+      -- TODO: check that this is ok
       (𝕀T η₁,ℕT) → do
         tell $ σ₁ ⧺ ι η₁ ⨵ σ₂
-        return ℕT
+        return $ 𝕀T η₁
       (ℕT,𝕀T η₂) → do
         tell $ ι η₂ ⨵ σ₁ ⧺ σ₂
         return ℕT
