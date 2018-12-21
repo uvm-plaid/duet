@@ -90,8 +90,8 @@ tokDuet = list $ concat
 parLit ∷ 𝕊 → Parser Token ()
 parLit = void ∘ pLit ∘ TokenLiteral
 
-parName ∷ Parser Token 𝕊
-parName = pShaped "name" $ view tokenNameL
+parVar ∷ Parser Token 𝕏
+parVar = var ^$ pShaped "name" $ view tokenNameL
 
 parInt ∷ Parser Token ℤ
 parInt = pShaped "int" $ view tokenIntegerL
@@ -119,7 +119,7 @@ parKind = pNew "kind" $ tries
 
 parRExp ∷ Parser Token RExp
 parRExp = mixfixParserWithContext "rexp" $ concat
-  [ mixF $ MixFTerminal $ VarRE ∘ var ^$ parName
+  [ mixF $ MixFTerminal $ VarRE ^$ parVar
   , mixF $ MixFTerminal $ NatRE ^$ parNat
   , mixF $ MixFTerminal $ NNRealRE ^$ parNNDbl
   , mixF $ MixFInfixL 2 $ const MaxRE ^$ parLit "⊔"
@@ -205,10 +205,10 @@ parType = mixfixParser $ concat
   , mix $ MixPrefix 2 $ do
       parLit "∀"
       ακs ← pOneOrMoreSepBy (parLit ",") $ do
-        α ← parName
+        α ← parVar
         parLit ":"
         κ ← parKind
-        return $ var α :* κ
+        return $ α :* κ
       parLit "."
       τps ← pOneOrMoreSepBy (parLit ",") $ do
         τ ← parType
@@ -266,13 +266,13 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
       e₂ ← parSExp p
       parLit "]"
       parLit "{"
-      x₁ ← parName
+      x₁ ← parVar
       parLit ","
-      x₂ ← parName
+      x₂ ← parVar
       parLit "⇒"
       e₃ ← parSExp p
       parLit "}"
-      return $ MCreateSE ℓ e₁ e₂ (var x₁) (var x₂) e₃
+      return $ MCreateSE ℓ e₁ e₂ x₁ x₂ e₃
   , mixF $ MixFPostfix 10 $ do
       parLit "#"
       parLit "["
@@ -314,12 +314,12 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
         e₂ ← parSExp p
         return e₂
       parLit "{"
-      x₁ ← var ^$ parName
+      x₁ ← parVar
       e₂x₂O ← case e₂O of
         None → return None
         Some e₂ → do
           parLit ","
-          x₂ ← var ^$ parName
+          x₂ ← parVar
           return $ Some $ e₂ :* x₂
       parLit "⇒"
       e₃ ← parSExp p
@@ -327,39 +327,39 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
       return $ case e₂x₂O of
         None → MMapSE e₁ x₁ e₃
         Some (e₂ :* x₂) → MMap2SE e₁ e₂ x₁ x₂ e₃
-  , mixF $ MixFTerminal $ VarSE ∘ var ^$ parName
+  , mixF $ MixFTerminal $ VarSE ^$ parVar
   , mixF $ MixFPrefix 1 $ do
       parLit "let"
       tries
-        [ do x ← parName
+        [ do x ← parVar
              parLit "="
              e₁ ← parSExp p
              parLit "in"
-             return $ \ e₂ → LetSE (var x) e₁ e₂
+             return $ \ e₂ → LetSE x e₁ e₂
         , do parLit "⟨"
-             x ← parName
+             x ← parVar
              parLit ","
-             y ← parName
+             y ← parVar
              parLit "⟩"
              parLit "="
              e₁ ← parSExp p
              parLit "in"
-             return $ \ e₂ → UntupSE (var x) (var y) e₁ e₂
+             return $ \ e₂ → UntupSE x y e₁ e₂
         ]
   , mixF $ MixFInfixL 10 $ const AppSE ^$ parSpace
   , mixF $ MixFTerminal $ do
       parLit "pλ"
       ακs ← pOneOrMoreSepBy (parLit ",") $ do
-        α ← parName
+        α ← parVar
         parLit ":"
         κ ← parKind
-        return $ var α :* κ
+        return $ α :* κ
       parLit "."
       xτs ← pOneOrMoreSepBy (parLit ",") $ do
-        x ← parName
+        x ← parVar
         parLit ":"
         τ ← parTypeSource
-        return $ var x :* τ
+        return $ x :* τ
       parLit "⇒"
       e ← parPExp p
       return $ PFunSE ακs xτs e
@@ -375,16 +375,16 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
 parPExp ∷ PRIV_W p → Parser Token (PExpSource p)
 parPExp p = pWithContext "pexp" $ tries
   [ do parLit "let"
-       x ← parName
+       x ← parVar
        parLit "="
        e₁ ← parSExp p
        parLit "in"
        e₂ ← parPExp p
-       return $ BindPE (var x) (ReturnPE %⋅ e₁) e₂
+       return $ BindPE x (ReturnPE %⋅ e₁) e₂
   , do parLit "return"
        e ← parSExp p
        return $ ReturnPE e
-  , do x ← var ^$ parName
+  , do x ← parVar
        parLit "←"
        e₁ ← parPExp p
        parLit ";"
@@ -400,12 +400,12 @@ parPExp p = pWithContext "pexp" $ tries
         parLit "on"
         e₃ ← parSExp p
         parLit "<"
-        xs ← var ^^$ pManySepBy (parLit ",") parName
+        xs ← pManySepBy (parLit ",") parVar
         parLit ">"
         parLit "{"
-        x₁ ← var ^$ parName
+        x₁ ← parVar
         parLit ","
-        x₂ ← var ^$ parName
+        x₂ ← parVar
         parLit "⇒"
         e₄ ← parPExp p
         parLit "}"
@@ -422,7 +422,7 @@ parPExp p = pWithContext "pexp" $ tries
         e₃ ← parSExp p
         parLit "]"
         parLit "<"
-        xs ← var ^^$ pManySepBy (parLit ",") parName
+        xs ← pManySepBy (parLit ",") parVar
         parLit ">"
         parLit "{"
         e₄ ← parSExp p
@@ -439,14 +439,32 @@ parPExp p = pWithContext "pexp" $ tries
         parLit "]"
         e₃ ← parSExp p
         parLit "<"
-        xs ← var ^^$ pManySepBy (parLit ",") parName
+        xs ← pManySepBy (parLit ",") parVar
         parLit ">"
         parLit "{"
-        x ← var ^$ parName
+        x ← parVar
         parLit "⇒"
         e₄ ← parSExp p
         parLit "}"
         return $ ExponentialPE e₁ (EDExponentialParams e₂) e₃ xs x e₄
+      _ → abort
+  , case p of
+      ED_W → do
+        parLit "sample"
+        parLit "["
+        e₁ ← parSExp p
+        parLit "]"
+        e₂ ← parSExp p
+        parLit ","
+        e₃ ← parSExp p
+        parLit "{"
+        x₁ ← parVar
+        parLit ","
+        x₂ ← parVar
+        parLit "⇒"
+        e₄ ← parPExp p
+        parLit "}"
+        return $ SamplePE e₁ e₂ e₃ x₁ x₂ e₄
       _ → abort
   ]
 
