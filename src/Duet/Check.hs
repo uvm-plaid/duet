@@ -342,7 +342,7 @@ inferSens eA = case extract eA of
   VarSE x → do
     γ ← askL contextTypeL
     case γ ⋕? x of
-      None → undefined -- TypeSource Error
+      None → error $ fromString (show x) -- TypeSource Error
       Some τ → do
         tell $ x ↦ ι 1
         return τ
@@ -379,6 +379,11 @@ inferSens eA = case extract eA of
     tell $ map (Sens ∘ truncate Inf ∘ unPriv) $ without (pow xs) σ
     let τps = mapOn xτs' $ \ (x :* τ') → τ' :* ifNone null (σ ⋕? x)
     return $ (ακs :* τps) :⊸⋆: τ
+  TupSE e₁ e₂ → do
+    τ₁ ← inferSens e₁
+    τ₂ ← inferSens e₂
+    return $ τ₁ :×: τ₂
+  e → error $ fromString $ show e
 
 inferPriv ∷ PExpSource p → PM p (Type p RNF)
 inferPriv eA = case extract eA of
