@@ -235,15 +235,16 @@ inferSens eA = case extract eA of
         tell $ ι η₂ ⨵ σ₁ ⧺ σ₂
         return ℕT
       (ℕT,ℕT) → do tell $ top ⨵ σ₁ ⧺ σ₂ ; return ℕT
-      _ → undefined -- TypeError
+      _ → error $ pprender $ (τ₁ :* τ₂) -- TypeError
   MinusSE e₁ e₂ → do
     τ₁ ← inferSens e₁
     τ₂ ← inferSens e₂
     case (τ₁,τ₂) of
       (ℝˢT _η₁,ℝˢT _η₂) → return ℝT
+      (ℕT,ℕT) → return ℕT
       (ℝT,ℝT) → return ℝT
       (𝔻T,𝔻T) → return 𝔻T
-      _ → undefined -- TypeError
+      _ → error $ pprender $ (τ₁ :* τ₂) -- TypeError
   MCreateSE ℓ e₁ e₂ x₁ x₂ e₃ → do
     τ₁ ← inferSens e₁ 
     τ₂ ← inferSens e₂
