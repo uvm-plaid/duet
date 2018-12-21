@@ -228,22 +228,24 @@ inferSens eA = case extract eA of
       (ℕT,ℕˢT η₂) → do 
         tell $ ι η₂ ⨵ σ₁ ⧺ σ₂
         return ℕT
+      -- TODO: check that this is ok
       (𝕀T η₁,ℕT) → do
         tell $ σ₁ ⧺ ι η₁ ⨵ σ₂
-        return ℕT
+        return $ 𝕀T η₁
       (ℕT,𝕀T η₂) → do
         tell $ ι η₂ ⨵ σ₁ ⧺ σ₂
         return ℕT
       (ℕT,ℕT) → do tell $ top ⨵ σ₁ ⧺ σ₂ ; return ℕT
-      _ → undefined -- TypeError
+      _ → error $ pprender $ (τ₁ :* τ₂) -- TypeError
   MinusSE e₁ e₂ → do
     τ₁ ← inferSens e₁
     τ₂ ← inferSens e₂
     case (τ₁,τ₂) of
       (ℝˢT _η₁,ℝˢT _η₂) → return ℝT
+      (ℕT,ℕT) → return ℕT
       (ℝT,ℝT) → return ℝT
       (𝔻T,𝔻T) → return 𝔻T
-      _ → undefined -- TypeError
+      _ → error $ pprender $ (τ₁ :* τ₂) -- TypeError
   MCreateSE ℓ e₁ e₂ x₁ x₂ e₃ → do
     τ₁ ← inferSens e₁ 
     τ₂ ← inferSens e₂
@@ -260,7 +262,8 @@ inferSens eA = case extract eA of
     τ₃ ← inferSens e₃
     case (τ₁,τ₂,τ₃) of
       (𝕄T _ℓ _c ηₘ ηₙ τ,𝕀T ηₘ',𝕀T ηₙ') | (ηₘ ≡ ηₘ') ⩓ (ηₙ ≡ ηₙ') → return τ
-      _ → undefined -- TypeError
+      -- had error: duet: ⟨⟨𝕄 [L∞ U|1,n] ℝ,ℕ⟩,ℕ⟩
+      _ → error $ pprender $ (τ₁ :* τ₂ :* τ₃) -- TypeError
   MUpdateSE e₁ e₂ e₃ e₄ → do
     τ₁ ← inferSens e₁
     τ₂ ← inferSens e₂
@@ -342,7 +345,7 @@ inferSens eA = case extract eA of
   VarSE x → do
     γ ← askL contextTypeL
     case γ ⋕? x of
-      None → undefined -- TypeSource Error
+      None → error $ fromString (show x) -- TypeSource Error
       Some τ → do
         tell $ x ↦ ι 1
         return τ
@@ -379,6 +382,23 @@ inferSens eA = case extract eA of
     tell $ map (Sens ∘ truncate Inf ∘ unPriv) $ without (pow xs) σ
     let τps = mapOn xτs' $ \ (x :* τ') → τ' :* ifNone null (σ ⋕? x)
     return $ (ακs :* τps) :⊸⋆: τ
+  TupSE e₁ e₂ → do
+    τ₁ ← inferSens e₁
+    τ₂ ← inferSens e₂
+    return $ τ₁ :×: τ₂
+  UntupSE x₁ x₂ e₁ e₂ → do
+    σ₁ :* τₜ ← hijack $ inferSens e₁
+    case τₜ of
+      (τ₁ :×: τ₂) → do
+        σ₂ :* τ₃ ← hijack $ mapEnvL contextTypeL (\ γ → (x₁ ↦ τ₁) ⩌ (x₂ ↦ τ₂) ⩌ γ) $ inferSens e₂
+        let (ς₁ :* σ₂') = ifNone (zero :* σ₂) $ dview x₁ σ₂
+            (ς₂ :* σ₂'') = ifNone (zero :* σ₂') $ dview x₂ σ₂'
+        tell $ (ς₁ ⊔ ς₂) ⨵ σ₁
+        tell σ₂''
+        return τ₃
+      _ → error $ pprender $ τₜ
+
+  e → error $ fromString $ show e
 
 inferPriv ∷ PExpSource p → PM p (Type p RNF)
 inferPriv eA = case extract eA of
@@ -439,7 +459,23 @@ inferPriv eA = case extract eA of
       _ → error $ pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄ :* ιview @ RNF σ₄KeepMax)
   GaussPE e₁ (RenyiGaussParams e₂ e₃) xs e₄ → undefined
   GaussPE e₁ (ZCGaussParams e₂ e₃) xs e₄ → undefined
-  _ → undefined
+  ExponentialPE e₁ (EDExponentialParams e₂) e₃ xs x e₄ → do
+    let xs' = pow xs
+    τ₁ ← pmFromSM $ inferSens e₁
+    τ₂ ← pmFromSM $ inferSens e₂
+    𝕄T _ℓ _c ηₘ _ηₙ τ₃ ← pmFromSM $ inferSens e₃
+    σ₄ :* τ₄ ← pmFromSM $ hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ₃) ⩌ γ) $ inferSens e₄
+    let σ₄Keep = restrict xs' σ₄
+        σ₄KeepMax = joins $ values σ₄Keep
+        σ₄Toss = without xs' σ₄
+    case (τ₁,τ₂,ιview @ RNF σ₄KeepMax) of
+      (ℝˢT ηₛ,ℝˢT ηᵋ,Some ς) | (ς ⊑ ηₛ) ⩓ (τ₄ ≡ τ₃) ⩓ (ηₘ ≡ one) → do
+        tell $ map (Priv ∘ truncate (Quantity $ EDPriv ηᵋ zero) ∘ unSens) σ₄Keep
+        tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
+        return $ τ₃
+      _ → error $ pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄ :* ιview @ RNF σ₄KeepMax)
+    
+  e → error $ fromString $ show e
    
     
     

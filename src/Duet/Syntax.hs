@@ -100,7 +100,7 @@ data Type (p ∷ PRIV) r =
   | Type p r :&: Type p r
   | Type p r :⊸: (Sens r ∧ Type p r)
   | (𝐿 (𝕏 ∧ Kind) ∧ 𝐿 (Type p r ∧ Priv p r)) :⊸⋆: Type p r
-  deriving (Eq,Ord)
+  deriving (Eq,Ord,Show)
 
 instance Functor (Type p) where
   map f = \case
@@ -124,6 +124,12 @@ instance Functor (Type p) where
 data Grad = LR
   deriving (Eq,Ord,Show)
 makePrettySum ''Grad
+
+instance Show FullContext where
+  show = chars ∘ ppshow
+
+instance Show RExpPre where
+  show = chars ∘ ppshow
 
 type SExpSource (p ∷ PRIV) = Annotated FullContext (SExp p)
 data SExp (p ∷ PRIV) where
@@ -175,7 +181,7 @@ data SExp (p ∷ PRIV) where
   PairSE ∷ SExpSource p → SExpSource p → SExp p
   FstSE ∷ SExpSource p → SExp p
   SndSE ∷ SExpSource p → SExp p
-  deriving (Eq,Ord)
+  deriving (Eq,Ord,Show)
 
 data GaussParams (p ∷ PRIV) where
   EDGaussParams ∷ SExpSource 'ED → SExpSource 'ED → GaussParams 'ED
@@ -183,6 +189,7 @@ data GaussParams (p ∷ PRIV) where
   ZCGaussParams ∷ SExpSource 'ZC → SExpSource 'ZC → GaussParams 'ZC
 deriving instance Eq (GaussParams p)
 deriving instance Ord (GaussParams p)
+deriving instance Show (GaussParams p)
 
 data LaplaceParams (p ∷ PRIV) where
   EpsLaplaceParams ∷ SExpSource 'EPS → LaplaceParams 'EPS
@@ -190,11 +197,13 @@ data LaplaceParams (p ∷ PRIV) where
   RenyiLaplaceParams ∷ SExpSource 'RENYI → SExpSource 'RENYI → LaplaceParams 'RENYI
 deriving instance Eq (LaplaceParams p)
 deriving instance Ord (LaplaceParams p)
+deriving instance Show (LaplaceParams p)
 
 data ExponentialParams (p ∷ PRIV) where
   EDExponentialParams ∷ SExpSource 'ED → ExponentialParams 'ED
 deriving instance Eq (ExponentialParams p)
 deriving instance Ord (ExponentialParams p)
+deriving instance Show (ExponentialParams p)
 
 type PExpSource (p ∷ PRIV) = Annotated FullContext (PExp p)
 data PExp (p ∷ PRIV) where
@@ -212,6 +221,7 @@ data PExp (p ∷ PRIV) where
   RandNatPE ∷ SExpSource p → SExpSource p → PExp p
 deriving instance Eq (PExp p)
 deriving instance Ord (PExp p)
+deriving instance Show (PExp p)
 
 instance Pretty (SExp p) where pretty _ = ppLit "SEXP"
 instance Pretty (PExp p) where pretty _ = ppLit "PEXP"
