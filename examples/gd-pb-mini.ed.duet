@@ -1,0 +1,29 @@
+-- gradient descent 
+-- per-iteration bound
+-- with minibatching
+let main = pλ m  : ℕ,
+              n  : ℕ,
+              ε  : ℝ⁺,
+              k  : ℕ,
+              δ  : ℝ⁺,
+              δ′ : ℝ⁺,
+              b  : ℕ
+              .
+              xs : 𝕄 [L2 U|m,n] 𝔻 ,
+              ys : 𝕄 [L2 U|m,1] 𝔻 ,
+              ε  : ℝ⁺[ε],
+              k  : ℕ[k],
+              δ  : ℝ⁺[δ],
+              δ′ : ℝ⁺[δ′],
+              η  : ℝ,
+              b  : ℕ[b]
+              ⇒
+  let m₀ = mcreate[ L2 | ℕ[1] , cols xs ] { i , j ⇒ 0.0 } in
+  let b = ℕ[50] in
+  aloop[ δ′ ] k on m₀ <xs,ys> { t , θ ⇒ 
+    g ← sample[ b ] xs, ys {xs', ys' ⇒ 
+        let s = ℝ⁺[1.0] / real (rows xs') in
+        mgauss[ s , ε , δ ] { xs' ys' . ∇[ LR | θ ; clip[L2] xs' , ys' ] } };
+    return θ - η ⋅ g
+  }
+in main

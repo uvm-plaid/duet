@@ -1,4 +1,5 @@
 -- gradient descent
+-- per-iteration bound
 let main = pλ m  : ℕ,
               n  : ℕ,
               ε  : ℝ⁺,
@@ -6,18 +7,14 @@ let main = pλ m  : ℕ,
               δ  : ℝ⁺,
               δ′ : ℝ⁺
               .
-              xs : 𝕄[L2 U|m,n] 𝔻,
-              ys : 𝕄[L2 U|m,1] 𝔻,
+              xs : 𝕄 [L2 U|m,n] 𝔻 ,
+              ys : 𝕄 [L2 U|m,1] 𝔻 ,
               ε  : ℝ⁺[ε],
               k  : ℕ[k],
               δ  : ℝ⁺[δ],
               δ′ : ℝ⁺[δ′],
               η  : ℝ
               ⇒
-  -- let k  = ℕ[1000] in
-  -- let δ  = ℝ⁺[0.000001] in
-  -- let δ′ = ℝ⁺[0.000001] in
-  -- let η  = ℝ⁺[0.1] in
   let m₀ = mcreate[ L∞ | ℕ[1] , cols xs ] { i , j ⇒ 0.0 } in
   aloop[ δ′ ] k on m₀ <xs,ys> { a, θ ⇒ 
     let s = ℝ⁺[1.0] / real (rows xs) in
@@ -25,3 +22,4 @@ let main = pλ m  : ℕ,
     return mmap θ , mmap g { x ⇒ η ⋅ x } { x , y ⇒ x - y }
   }
 in main
+

@@ -218,7 +218,7 @@ data PExp (p ∷ PRIV) where
   LaplacePE ∷ SExpSource p → LaplaceParams p → 𝐿 𝕏 → SExpSource p → PExp p
   ExponentialPE ∷ SExpSource p → ExponentialParams p → SExpSource p → 𝐿 𝕏 → 𝕏  → SExpSource p → PExp p
   -- PRRespE ∷ SExpSource p → SExpSource p → 𝐿 𝕏 → SExpSource p → PExp p
-  SamplePE ∷ SExpSource p → 𝕏 → 𝕏 → 𝕏 → 𝕏 → PExpSource p → PExp p
+  SamplePE ∷ SExpSource p → SExpSource p → SExpSource p → 𝕏 → 𝕏 → PExpSource p → PExp p
   RandNatPE ∷ SExpSource p → SExpSource p → PExp p
 deriving instance Eq (PExp p)
 deriving instance Ord (PExp p)
