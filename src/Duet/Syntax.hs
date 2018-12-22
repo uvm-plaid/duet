@@ -155,6 +155,7 @@ data SExp (p ∷ PRIV) where
   MUpdateSE ∷ SExpSource p → SExpSource p → SExpSource p → SExpSource p → SExp p
   MRowsSE ∷ SExpSource p → SExp p
   MColsSE ∷ SExpSource p → SExp p
+  IdxSE ∷ SExpSource p → SExp p
   MClipSE ∷ Norm → SExpSource p → SExp p
   MConvertSE ∷ SExpSource p → SExp p
   MLipGradSE ∷ Grad → SExpSource p → SExpSource p → SExpSource p → SExp p

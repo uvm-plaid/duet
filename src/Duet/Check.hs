@@ -187,7 +187,7 @@ inferSens eA = case extract eA of
       (ℕT,ℕT) → do tell $ σ₁ ⧺ σ₂ ; return ℕT
       (ℝT,ℝT) → do tell $ σ₁ ⧺ σ₂ ; return ℝT
       (𝔻T,𝔻T) → do tell $ σ₁ ⧺ σ₂ ; return 𝔻T
-      _ → error $ pprender $ (τ₁ :* τ₂)
+      _ → error $ "Times error: " ⧺ (pprender $ (τ₁ :* τ₂))
   DivSE e₁ e₂ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
     σ₂ :* τ₂ ← hijack $ inferSens e₂
@@ -236,7 +236,7 @@ inferSens eA = case extract eA of
         tell $ ι η₂ ⨵ σ₁ ⧺ σ₂
         return ℕT
       (ℕT,ℕT) → do tell $ top ⨵ σ₁ ⧺ σ₂ ; return ℕT
-      _ → error $ pprender $ (τ₁ :* τ₂) -- TypeError
+      _ → error $ "Mod error: " ⧺ (pprender $ (τ₁ :* τ₂)) -- TypeError
   MinusSE e₁ e₂ → do
     τ₁ ← inferSens e₁
     τ₂ ← inferSens e₂
@@ -245,7 +245,7 @@ inferSens eA = case extract eA of
       (ℕT,ℕT) → return ℕT
       (ℝT,ℝT) → return ℝT
       (𝔻T,𝔻T) → return 𝔻T
-      _ → error $ pprender $ (τ₁ :* τ₂) -- TypeError
+      _ → error $ "Minus error: " ⧺ (pprender $ (τ₁ :* τ₂)) -- TypeError
   MCreateSE ℓ e₁ e₂ x₁ x₂ e₃ → do
     τ₁ ← inferSens e₁ 
     τ₂ ← inferSens e₂
@@ -261,17 +261,19 @@ inferSens eA = case extract eA of
     τ₂ ← inferSens e₂
     τ₃ ← inferSens e₃
     case (τ₁,τ₂,τ₃) of
-      (𝕄T _ℓ _c ηₘ ηₙ τ,𝕀T ηₘ',𝕀T ηₙ') | (ηₘ ≡ ηₘ') ⩓ (ηₙ ≡ ηₙ') → return τ
+      (𝕄T _ℓ _c ηₘ ηₙ τ,𝕀T ηₘ',𝕀T ηₙ') → return τ -- | (ηₘ' ≤ ηₘ) ⩓ (ηₙ' ≤ ηₙ) → return τ
       -- had error: duet: ⟨⟨𝕄 [L∞ U|1,n] ℝ,ℕ⟩,ℕ⟩
-      _ → error $ pprender $ (τ₁ :* τ₂ :* τ₃) -- TypeError
+      _ → error $ "Index error: " ⧺ (pprender $ (τ₁ :* τ₂ :* τ₃)) -- TypeError
   MUpdateSE e₁ e₂ e₃ e₄ → do
     τ₁ ← inferSens e₁
     τ₂ ← inferSens e₂
     τ₃ ← inferSens e₃
     τ₄ ← inferSens e₄
     case (τ₁,τ₂,τ₃,τ₄) of
-      (𝕄T ℓ c ηₘ ηₙ τ,𝕀T ηₘ',𝕀T ηₙ',τ') | (ηₘ ≡ ηₘ') ⩓ (ηₙ ≡ ηₙ') ⩓ (τ ≡ τ') → return $ 𝕄T ℓ c ηₘ ηₙ τ
-      _ → undefined -- TypeError
+      -- TODO: why does this check fail for FW?
+      (𝕄T ℓ c ηₘ ηₙ τ,𝕀T ηₘ',𝕀T ηₙ',τ') | {-(ηₘ' ≤ ηₘ) ⩓ -}(ηₙ' ≤ ηₙ) ⩓ (τ ≡ τ') →
+                                          return $ 𝕄T ℓ c ηₘ ηₙ τ
+      _ → error $ "Update error: " ⧺ (pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄)) -- TypeError
   MRowsSE e → do
     _ :* τ ← hijack $ inferSens e
     case τ of
@@ -341,7 +343,7 @@ inferSens eA = case extract eA of
              tell $ ς₂ ⨵ σ₂
              tell $ ι (ηₘ₁ × ηₙ₁) ⨵ σ₃''
              return $ 𝕄T ℓ₁ UClip ηₘ₁ ηₙ₁ τ₃
-      _ → error $ pprender $ (τ₁ :* τ₂)
+      _ → error $ "Map2 error: " ⧺ (pprender $ (τ₁ :* τ₂))
   VarSE x → do
     γ ← askL contextTypeL
     case γ ⋕? x of
@@ -369,7 +371,7 @@ inferSens eA = case extract eA of
       τ₁' :⊸: (ς :* τ₂') | τ₁' ≡ τ₂ → do
         tell $ ς ⨵ σ₂
         return τ₂'
-      _ → undefined -- TypeSource Error
+      _ → error $ "Application error: " ⧺ (pprender $ (τ₁ :* τ₂)) -- TypeSource Error
   PFunSE ακs xτs e → do
     let xτs' = map (mapSnd (map normalizeRExp ∘ extract)) xτs
         xs = map fst xτs
@@ -396,7 +398,12 @@ inferSens eA = case extract eA of
         tell $ (ς₁ ⊔ ς₂) ⨵ σ₁
         tell σ₂''
         return τ₃
-      _ → error $ pprender $ τₜ
+      _ → error $ "Untup error: " ⧺ (pprender $ τₜ)
+  IdxSE e → do
+    σ :* τ ← hijack $ inferSens e
+    case τ of
+      ℕˢT η → do tell σ ; return $ 𝕀T $ rootRNF η
+      _ → undefined -- TypeError
 
   e → error $ fromString $ show e
 
@@ -426,7 +433,7 @@ inferPriv eA = case extract eA of
         tell $ map (Priv ∘ truncate (Quantity $ EDPriv ε δ) ∘ unPriv) σ₄Keep
         tell $ map (Priv ∘ truncate Inf ∘ unPriv) σ₄Toss
         return τ₃
-      _ → error $ pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄ :* σ₄KeepMax :* σ₄Keep)
+      _ → error $ "EDloop error: " ⧺ (pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄ :* σ₄KeepMax :* σ₄Keep))
   GaussPE e₁ (EDGaussParams e₂ e₃) xs e₄ → do
     let xs' = pow xs
     τ₁ ← pmFromSM $ inferSens e₁
@@ -456,7 +463,7 @@ inferPriv eA = case extract eA of
         tell $ map (Priv ∘ truncate (Quantity $ EDPriv ηᵋ ηᵟ) ∘ unSens) σ₄Keep
         tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
         return $ 𝕄T LInf UClip ηₘ ηₙ ℝT
-      _ → error $ pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄ :* ιview @ RNF σ₄KeepMax)
+      _ → error $ "MGauss error: " ⧺ (pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄ :* ιview @ RNF σ₄KeepMax))
   GaussPE e₁ (RenyiGaussParams e₂ e₃) xs e₄ → undefined
   GaussPE e₁ (ZCGaussParams e₂ e₃) xs e₄ → undefined
   ExponentialPE e₁ (EDExponentialParams e₂) e₃ xs x e₄ → do
@@ -469,11 +476,11 @@ inferPriv eA = case extract eA of
         σ₄KeepMax = joins $ values σ₄Keep
         σ₄Toss = without xs' σ₄
     case (τ₁,τ₂,ιview @ RNF σ₄KeepMax) of
-      (ℝˢT ηₛ,ℝˢT ηᵋ,Some ς) | (ς ⊑ ηₛ) ⩓ (τ₄ ≡ τ₃) ⩓ (ηₘ ≡ one) → do
+      (ℝˢT ηₛ,ℝˢT ηᵋ,Some ς) | (ς ⊑ ηₛ) ⩓ (τ₄ ≡ ℝT) ⩓ (ηₘ ≡ one) → do
         tell $ map (Priv ∘ truncate (Quantity $ EDPriv ηᵋ zero) ∘ unSens) σ₄Keep
         tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
         return $ τ₃
-      _ → error $ pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄ :* ιview @ RNF σ₄KeepMax)
+      _ → error $ "Exponential error: " ⧺ (pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄ :* ιview @ RNF σ₄KeepMax))
     
   e → error $ fromString $ show e
    

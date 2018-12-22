@@ -3,6 +3,9 @@ module Main where
 import UVMHS
 import Duet
 
+initEnv = dict [ var "sign" ↦ (ℝT :⊸: (ι 1 :* ℝT))
+               ] ⩌ dø
+
 main ∷ IO ()
 main = do
   (tohs ∘ list) ^⋅ args ≫= \case
@@ -21,7 +24,7 @@ main = do
       do pprint $ ppHeader "PARSING" ; flushOut
       e ← parseIO (pSkip tokSkip $ pFinal $ parSExp ED_W) $ stream ts
       do pprint $ ppHeader "TYPE CHECKING" ; flushOut
-      let r = runSM dø dø $ inferSens e
+      let r = runSM dø initEnv $ inferSens e
       do pprint $ ppHeader "DONE" ; flushOut
       do pprint r ; flushOut
     _ → do

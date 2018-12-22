@@ -24,7 +24,7 @@ tokKeywords = list
   ,"ℕ","ℝ","ℝ⁺","𝔻","𝕀","𝕄"
   ,"LR","L2","U"
   ,"real"
-  ,"matrix","mcreate","clip","∇","mmap"
+  ,"matrix","mcreate","clip","∇","mmap","idx"
   ,"aloop","loop","mgauss","rows","cols","exponential"
   ,"L1","L2","L∞","U"
   ,"dyn","real"
@@ -288,6 +288,7 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
         Some e₄ → \ e₁ → MUpdateSE e₁ e₂ e₃ e₄
   , mixF $ MixFPrefix 10 $ const MRowsSE ^$ parLit "rows"
   , mixF $ MixFPrefix 10 $ const MColsSE ^$ parLit "cols"
+  , mixF $ MixFPrefix 10 $ const IdxSE ^$ parLit "idx"
   , mixF $ MixFPrefix 10 $ do
       parLit "clip"
       parLit "["
