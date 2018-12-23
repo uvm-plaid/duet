@@ -217,7 +217,7 @@ data PExp (p ∷ PRIV) where
   MGaussPE ∷ SExpSource p → GaussParams p → 𝐿 𝕏 → SExpSource p → PExp p
   LaplacePE ∷ SExpSource p → LaplaceParams p → 𝐿 𝕏 → SExpSource p → PExp p
   ExponentialPE ∷ SExpSource p → ExponentialParams p → SExpSource p → 𝐿 𝕏 → 𝕏  → SExpSource p → PExp p
-  -- PRRespE ∷ SExpSource p → SExpSource p → 𝐿 𝕏 → SExpSource p → PExp p
+  RRespPE ∷ SExpSource p → SExpSource p → 𝐿 𝕏 → SExpSource p → PExp p
   SamplePE ∷ SExpSource p → SExpSource p → SExpSource p → 𝕏 → 𝕏 → PExpSource p → PExp p
   RandNatPE ∷ SExpSource p → SExpSource p → PExp p
 deriving instance Eq (PExp p)

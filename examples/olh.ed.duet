@@ -1,0 +1,14 @@
+-- optimized local hashing
+let main = pλ d  : ℕ,
+              p  : ℕ,
+              ε  : ℝ⁺
+              .
+              d  : ℕ[d],
+              p  : ℕ[p],
+              x  : ℕ,
+              ε  : ℝ⁺[ε]
+              ⇒
+  a ← rand-nat[1, dyn p];
+  b ← rand-nat[0, dyn p];
+  rand-resp[d + ℕ[1], ε] <x> { ((a ⋅ x + b) mod p) mod (d + ℕ[1]) }
+in main

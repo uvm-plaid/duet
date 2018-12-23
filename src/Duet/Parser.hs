@@ -25,7 +25,8 @@ tokKeywords = list
   ,"LR","L2","U"
   ,"real"
   ,"matrix","mcreate","clip","∇","mmap","idx"
-  ,"aloop","loop","mgauss","rows","cols","exponential"
+  ,"aloop","loop","mgauss","rows","cols","exponential","rand-resp"
+  ,"sample","rand-nat"
   ,"L1","L2","L∞","U"
   ,"dyn","real"
   ]
@@ -34,7 +35,7 @@ tokPunctuation ∷ 𝐿 𝕊
 tokPunctuation = list
   ["=",":","@",".","⇒","→","←","#","↦"
   ,"[","]","(",")","{","}","<",">",",",";","|","⟨","⟩"
-  ,"⊔","⊓","+","⋅","/","√","log"
+  ,"⊔","⊓","+","⋅","/","√","㏒"
   ,"-","%","≟"
   ,"×","&","⊸","⊸⋆"
   ]
@@ -451,6 +452,22 @@ parPExp p = pWithContext "pexp" $ tries
       _ → abort
   , case p of
       ED_W → do
+        parLit "rand-resp"
+        parLit "["
+        e₁ ← parSExp p
+        parLit ","
+        e₂ ← parSExp p
+        parLit "]"
+        parLit "<"
+        xs ← pManySepBy (parLit ",") parVar
+        parLit ">"
+        parLit "{"
+        e₃ ← parSExp p
+        parLit "}"
+        return $ RRespPE e₁ e₂ xs e₃
+      _ → abort
+  , case p of
+      ED_W → do
         parLit "sample"
         parLit "["
         e₁ ← parSExp p
@@ -467,6 +484,13 @@ parPExp p = pWithContext "pexp" $ tries
         parLit "}"
         return $ SamplePE e₁ e₂ e₃ x₁ x₂ e₄
       _ → abort
+  , do parLit "rand-nat"
+       parLit "["
+       e₁ ← parSExp p
+       parLit ","
+       e₂ ← parSExp p
+       parLit "]"
+       return $ RandNatPE e₁ e₂
   ]
 
 tokSkip ∷ Token → 𝔹

@@ -23,7 +23,7 @@ let main = pλ m  : ℕ,
   aloop[ δ′ ] k on m₀ <xs,ys> { t , θ ⇒ 
     g ← sample[ b ] xs, ys {xs', ys' ⇒ 
         let s = ℝ⁺[1.0] / real (rows xs') in
-        mgauss[ s , ε , δ ] { xs' ys' . ∇[ LR | θ ; clip[L2] xs' , ys' ] } };
+        mgauss[ s , ε , δ ] <xs',ys'> { ∇[ LR | θ ; clip[L2] xs' , ys' ] } };
     return θ - η ⋅ g
   }
 in main

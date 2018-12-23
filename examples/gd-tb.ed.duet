@@ -8,8 +8,8 @@ let main = pλ m  : ℕ,
               δ′  : ℝ⁺,
               η  : ℝ⁺
               .
-              xs : matrix[L2 U|m,n] data,
-              ys : matrix[L2 U|m,1] data,
+              xs : 𝕄 [L2 U|m,n] 𝔻 ,
+              ys : 𝕄 [L2 U|m,1] 𝔻 ,
               ε  : ℝ⁺[ε],
               k : ℕ[k],
               δ : ℝ⁺[δ],
@@ -17,13 +17,13 @@ let main = pλ m  : ℕ,
               η : ℝ⁺[η]
               ⇒
   let k  = ℕ[1000] in
-  let εᵢ = ε / (ℝ⁺[2.0] ⋅ √ (ℝ⁺[2.0] * k * (㏒ (1/δ′)))) in
+  let εᵢ = ε / (ℝ⁺[2.0] ⋅ √ (ℝ⁺[2.0] ⋅ k ⋅ (㏒ (1/δ′)))) in
   let δᵢ = δ / (ℝ⁺[2.0] ⋅ k) in
   let η  = ℝ⁺[0.1] in
   let m₀ = mcreate[ L2 | ℕ[1] , cols xs ] { i , j ⇒ 0.0 } in
-  loop[ δ′ ] k on m₀ { xs ys . a, θ ⇒ 
+  aloop[ δ′ ] k on m₀ <xs,ys> { a, θ ⇒ 
     let s = ℝ⁺[1.0] / real (rows xs) in
-    g ← mgauss[ s , εᵢ , δᵢ ] { xs ys . ∇[ LR L2 | θ ; clip[L2] xs, ys ] } ;
+    g ← mgauss[ s , εᵢ , δᵢ ] <xs,ys> { ∇[ LR | θ ; clip[L2] xs, ys ] } ;
     return θ - η ⋅ g
   }
 in main
