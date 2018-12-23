@@ -413,8 +413,7 @@ inferPriv eA = case extract eA of
   BindPE x e₁ e₂ → do
     τ₁ ← inferPriv e₁
     σ₂ :* τ₂ ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ₁) ⩌ γ) $ inferPriv e₂
-    let σ₂' = delete x σ₂
-    tell σ₂'
+    tell $ delete x σ₂
     return τ₂
   EDLoopPE e₁ e₂ e₃ xs x₁ x₂ e₄ → do
     let xs' = pow xs
@@ -472,9 +471,10 @@ inferPriv eA = case extract eA of
     τ₂ ← pmFromSM $ inferSens e₂
     𝕄T _ℓ _c ηₘ _ηₙ τ₃ ← pmFromSM $ inferSens e₃
     σ₄ :* τ₄ ← pmFromSM $ hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ₃) ⩌ γ) $ inferSens e₄
-    let σ₄Keep = restrict xs' σ₄
+    let σ₄' = delete x σ₄
+    let σ₄Keep = restrict xs' σ₄'
         σ₄KeepMax = joins $ values σ₄Keep
-        σ₄Toss = without xs' σ₄
+        σ₄Toss = without xs' σ₄'
     case (τ₁,τ₂,ιview @ RNF σ₄KeepMax) of
       (ℝˢT ηₛ,ℝˢT ηᵋ,Some ς) | (ς ⊑ ηₛ) ⩓ (τ₄ ≡ ℝT) ⩓ (ηₘ ≡ one) → do
         tell $ map (Priv ∘ truncate (Quantity $ EDPriv ηᵋ zero) ∘ unSens) σ₄Keep
