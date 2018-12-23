@@ -225,6 +225,7 @@ data SExp (p :: PRIV)
 [MUpdateSE] :: SExpSource p -> SExpSource p -> SExpSource p -> SExpSource p -> SExp p
 [MRowsSE] :: SExpSource p -> SExp p
 [MColsSE] :: SExpSource p -> SExp p
+[IdxSE] :: SExpSource p -> SExp p
 [MClipSE] :: Norm -> SExpSource p -> SExp p
 [MConvertSE] :: SExpSource p -> SExp p
 [MLipGradSE] :: Grad -> SExpSource p -> SExpSource p -> SExpSource p -> SExp p
@@ -259,6 +260,8 @@ data LaplaceParams (p :: PRIV)
 [EpsLaplaceParams] :: SExpSource  'EPS -> LaplaceParams  'EPS
 [EDLaplaceParams] :: SExpSource  'ED -> SExpSource  'ED -> LaplaceParams  'ED
 [RenyiLaplaceParams] :: SExpSource  'RENYI -> SExpSource  'RENYI -> LaplaceParams  'RENYI
+data ExponentialParams (p :: PRIV)
+[EDExponentialParams] :: SExpSource  'ED -> ExponentialParams  'ED
 type PExpSource (p :: PRIV) = Annotated FullContext (PExp p)
 data PExp (p :: PRIV)
 [ReturnPE] :: SExpSource p -> PExp p
@@ -268,23 +271,35 @@ data PExp (p :: PRIV)
 [LoopPE] :: SExpSource p -> SExpSource p -> 𝐿 𝕏 -> 𝕏 -> 𝕏 -> PExpSource p -> PExp p
 [GaussPE] :: SExpSource p -> GaussParams p -> 𝐿 𝕏 -> SExpSource p -> PExp p
 [MGaussPE] :: SExpSource p -> GaussParams p -> 𝐿 𝕏 -> SExpSource p -> PExp p
-[PLaplaceE] :: SExpSource p -> LaplaceParams p -> 𝐿 𝕏 -> SExpSource p -> PExp p
-[PSampleE] :: SExpSource p -> 𝕏 -> 𝕏 -> 𝕏 -> 𝕏 -> PExpSource p -> PExp p
-[PRandNatE] :: SExpSource p -> SExpSource p -> PExp p
+[LaplacePE] :: SExpSource p -> LaplaceParams p -> 𝐿 𝕏 -> SExpSource p -> PExp p
+[ExponentialPE] :: SExpSource p -> ExponentialParams p -> SExpSource p -> 𝐿 𝕏 -> 𝕏 -> SExpSource p -> PExp p
+[RRespPE] :: SExpSource p -> SExpSource p -> 𝐿 𝕏 -> SExpSource p -> PExp p
+[SamplePE] :: SExpSource p -> SExpSource p -> SExpSource p -> 𝕏 -> 𝕏 -> PExpSource p -> PExp p
+[RandNatPE] :: SExpSource p -> SExpSource p -> PExp p
+instance GHC.Show.Show (Duet.Syntax.SExp p)
 instance GHC.Classes.Ord (Duet.Syntax.SExp p)
 instance GHC.Classes.Eq (Duet.Syntax.SExp p)
 instance GHC.Classes.Eq (Duet.Syntax.GaussParams p)
 instance GHC.Classes.Ord (Duet.Syntax.GaussParams p)
+instance GHC.Show.Show (Duet.Syntax.GaussParams p)
 instance GHC.Classes.Eq (Duet.Syntax.LaplaceParams p)
 instance GHC.Classes.Ord (Duet.Syntax.LaplaceParams p)
+instance GHC.Show.Show (Duet.Syntax.LaplaceParams p)
+instance GHC.Classes.Eq (Duet.Syntax.ExponentialParams p)
+instance GHC.Classes.Ord (Duet.Syntax.ExponentialParams p)
+instance GHC.Show.Show (Duet.Syntax.ExponentialParams p)
 instance GHC.Classes.Eq (Duet.Syntax.PExp p)
 instance GHC.Classes.Ord (Duet.Syntax.PExp p)
+instance GHC.Show.Show (Duet.Syntax.PExp p)
 instance UVMHS.Lib.Pretty.Class.Pretty (Duet.Syntax.SExp p)
 instance UVMHS.Lib.Pretty.Class.Pretty (Duet.Syntax.PExp p)
 instance UVMHS.Lib.Pretty.Class.Pretty Duet.Syntax.Grad
+instance GHC.Show.Show UVMHS.Lib.Parser.ParserInput.FullContext
+instance GHC.Show.Show Duet.RExp.RExpPre
 instance GHC.Show.Show Duet.Syntax.Grad
 instance GHC.Classes.Ord Duet.Syntax.Grad
 instance GHC.Classes.Eq Duet.Syntax.Grad
+instance GHC.Show.Show r => GHC.Show.Show (Duet.Syntax.Type p r)
 instance GHC.Classes.Ord r => GHC.Classes.Ord (Duet.Syntax.Type p r)
 instance GHC.Classes.Eq r => GHC.Classes.Eq (Duet.Syntax.Type p r)
 instance (UVMHS.Core.Classes.Lattice.Join r, UVMHS.Core.Classes.Lattice.Meet r) => UVMHS.Core.Classes.Lattice.JoinLattice (Duet.Syntax.Priv p r)
@@ -369,7 +384,7 @@ tokComment :: Parser ℂ ()
 tokMLComment :: Parser ℂ ()
 tokDuet :: 𝐿 (Parser ℂ Token)
 parLit :: 𝕊 -> Parser Token ()
-parName :: Parser Token 𝕊
+parVar :: Parser Token 𝕏
 parInt :: Parser Token ℤ
 parNat :: Parser Token ℕ
 parDbl :: Parser Token 𝔻
@@ -404,8 +419,8 @@ data Context p
 Context :: (𝕏 ⇰ Kind) -> (𝕏 ⇰ Type p RNF) -> Context p
 [contextKind] :: Context p -> 𝕏 ⇰ Kind
 [contextType] :: Context p -> 𝕏 ⇰ Type p RNF
-contextTypeL :: forall (p_aXp6 :: PRIV). (⟢) (Context p_aXp6) ((⇰) 𝕏 (Type p_aXp6 RNF))
-contextKindL :: forall (p_aXp6 :: PRIV). (⟢) (Context p_aXp6) ((⇰) 𝕏 Kind)
+contextTypeL :: forall (p_a16V2 :: PRIV). (⟢) (Context p_a16V2) ((⇰) 𝕏 (Type p_a16V2 RNF))
+contextKindL :: forall (p_a16V2 :: PRIV). (⟢) (Context p_a16V2) ((⇰) 𝕏 Kind)
 newtype SM p a
 SM :: ReaderT (Context p) (WriterT (𝕏 ⇰ Sens RNF) (ErrorT (TypeError p) ID)) a -> SM p a
 [unSM] :: SM p a -> ReaderT (Context p) (WriterT (𝕏 ⇰ Sens RNF) (ErrorT (TypeError p) ID)) a

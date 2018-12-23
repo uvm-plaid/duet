@@ -2482,8 +2482,8 @@ data ParserToken t
 ParserToken :: t -> ParserContext -> ParserToken t
 [parserTokenValue] :: ParserToken t -> t
 [parserTokenContext] :: ParserToken t -> ParserContext
-parserTokenContextL :: forall (t_a2muM :: Type). (⟢) (ParserToken t_a2muM) ParserContext
-parserTokenValueL :: forall (t_a2muM :: Type). (⟢) (ParserToken t_a2muM) t_a2muM
+parserTokenContextL :: forall (t_a2mD7 :: Type). (⟢) (ParserToken t_a2mD7) ParserContext
+parserTokenValueL :: forall (t_a2mD7 :: Type). (⟢) (ParserToken t_a2mD7) t_a2mD7
 renderNL :: ParserContextDoc
 renderEOF :: ParserContextDoc
 renderEOFContext :: AddBot Loc -> ParserContext
@@ -2493,8 +2493,8 @@ data ParserInput t
 ParserInput :: 𝑆 (ParserToken t) -> AddBot Loc -> ParserInput t
 [parserInputStream] :: ParserInput t -> 𝑆 (ParserToken t)
 [parserInputEndPos] :: ParserInput t -> AddBot Loc
-parserInputEndPosL :: forall (t_a2mwx :: Type). (⟢) (ParserInput t_a2mwx) (AddBot Loc)
-parserInputStreamL :: forall (t_a2mwx :: Type). (⟢) (ParserInput t_a2mwx) (𝑆 (ParserToken t_a2mwx))
+parserInputEndPosL :: forall (t_a2mES :: Type). (⟢) (ParserInput t_a2mES) (AddBot Loc)
+parserInputStreamL :: forall (t_a2mES :: Type). (⟢) (ParserInput t_a2mES) (𝑆 (ParserToken t_a2mES))
 parserInput₀ :: 𝑆 (ParserToken t) -> ParserInput t
 advanceInput :: ParserInput t -> 𝑂 (ParserToken t, ParserInput t)
 data FullContext
@@ -2506,8 +2506,8 @@ data Annotated e a
 Annotated :: e -> a -> Annotated e a
 [annotatedTag] :: Annotated e a -> e
 [annotatedElem] :: Annotated e a -> a
-annotatedElemL :: forall (e_a2mCu :: Type) (a_a2mCv :: Type). (⟢) (Annotated e_a2mCu a_a2mCv) a_a2mCv
-annotatedTagL :: forall (e_a2mCu :: Type) (a_a2mCv :: Type). (⟢) (Annotated e_a2mCu a_a2mCv) e_a2mCu
+annotatedElemL :: forall (e_a2mKP :: Type) (a_a2mKQ :: Type). (⟢) (Annotated e_a2mKP a_a2mKQ) a_a2mKQ
+annotatedTagL :: forall (e_a2mKP :: Type) (a_a2mKQ :: Type). (⟢) (Annotated e_a2mKP a_a2mKQ) e_a2mKP
 instance (UVMHS.Lib.Pretty.Class.Pretty e, UVMHS.Lib.Pretty.Class.Pretty a) => UVMHS.Lib.Pretty.Class.Pretty (UVMHS.Lib.Parser.ParserInput.Annotated e a)
 instance GHC.Classes.Eq a => GHC.Classes.Eq (UVMHS.Lib.Parser.ParserInput.Annotated t a)
 instance GHC.Classes.Ord a => GHC.Classes.Ord (UVMHS.Lib.Parser.ParserInput.Annotated t a)
@@ -2548,23 +2548,23 @@ ParserEnv :: ℕ -> 𝐿 Format -> (𝐿 𝕊 ∧ 𝕊) -> (t -> 𝔹) -> Parser
 [parserEnvRenderFormat] :: ParserEnv t -> 𝐿 Format
 [parserEnvErrorStack] :: ParserEnv t -> 𝐿 𝕊 ∧ 𝕊
 [parserEnvSkip] :: ParserEnv t -> t -> 𝔹
-parserEnvSkipL :: forall (t_a2q8r :: Type). (⟢) (ParserEnv t_a2q8r) (t_a2q8r -> 𝔹)
-parserEnvErrorStackL :: forall (t_a2q8r :: Type). (⟢) (ParserEnv t_a2q8r) ((∧) (𝐿 𝕊) 𝕊)
-parserEnvRenderFormatL :: forall (t_a2q8r :: Type). (⟢) (ParserEnv t_a2q8r) (𝐿 Format)
-parserEnvContextPaddingL :: forall (t_a2q8r :: Type). (⟢) (ParserEnv t_a2q8r) ℕ
+parserEnvSkipL :: forall (t_a2qgM :: Type). (⟢) (ParserEnv t_a2qgM) (t_a2qgM -> 𝔹)
+parserEnvErrorStackL :: forall (t_a2qgM :: Type). (⟢) (ParserEnv t_a2qgM) ((∧) (𝐿 𝕊) 𝕊)
+parserEnvRenderFormatL :: forall (t_a2qgM :: Type). (⟢) (ParserEnv t_a2qgM) (𝐿 Format)
+parserEnvContextPaddingL :: forall (t_a2qgM :: Type). (⟢) (ParserEnv t_a2qgM) ℕ
 parserEnv₀ :: ParserEnv t
 data ParserOut t
 ParserOut :: AddNull ParserError -> ParserOut t
 [parserOutError] :: ParserOut t -> AddNull ParserError
-parserOutErrorL :: forall (t_a2qbf :: k_a2qbF). (⟢) (ParserOut t_a2qbf) (AddNull ParserError)
+parserOutErrorL :: forall (t_a2qjA :: k_a2qk0). (⟢) (ParserOut t_a2qjA) (AddNull ParserError)
 data ParserState t
 ParserState :: ExpressionContext -> InputContext -> ParserInput t -> ParserState t
 [parserStateExpressionContext] :: ParserState t -> ExpressionContext
 [parserStateInputContext] :: ParserState t -> InputContext
 [parserStateInput] :: ParserState t -> ParserInput t
-parserStateInputL :: forall (t_a2qe4 :: Type). (⟢) (ParserState t_a2qe4) (ParserInput t_a2qe4)
-parserStateInputContextL :: forall (t_a2qe4 :: Type). (⟢) (ParserState t_a2qe4) InputContext
-parserStateExpressionContextL :: forall (t_a2qe4 :: Type). (⟢) (ParserState t_a2qe4) ExpressionContext
+parserStateInputL :: forall (t_a2qmp :: Type). (⟢) (ParserState t_a2qmp) (ParserInput t_a2qmp)
+parserStateInputContextL :: forall (t_a2qmp :: Type). (⟢) (ParserState t_a2qmp) InputContext
+parserStateExpressionContextL :: forall (t_a2qmp :: Type). (⟢) (ParserState t_a2qmp) ExpressionContext
 parserState₀ :: ParserInput t -> ParserState t
 newtype Parser t a
 Parser :: ReaderT (ParserEnv t) (StateT (ParserState t) (FailT ((∧) (ParserOut t)))) a -> Parser t a

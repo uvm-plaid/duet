@@ -261,7 +261,7 @@ inferSens eA = case extract eA of
     τ₂ ← inferSens e₂
     τ₃ ← inferSens e₃
     case (τ₁,τ₂,τ₃) of
-      (𝕄T _ℓ _c ηₘ ηₙ τ,𝕀T ηₘ',𝕀T ηₙ') → return τ -- | (ηₘ' ≤ ηₘ) ⩓ (ηₙ' ≤ ηₙ) → return τ
+      (𝕄T _ℓ _c ηₘ ηₙ τ,𝕀T ηₘ',𝕀T ηₙ') → return τ -- -- | (ηₘ' ≤ ηₘ) ⩓ (ηₙ' ≤ ηₙ) → return τ
       -- had error: duet: ⟨⟨𝕄 [L∞ U|1,n] ℝ,ℕ⟩,ℕ⟩
       _ → error $ "Index error: " ⧺ (pprender $ (τ₁ :* τ₂ :* τ₃)) -- TypeError
   MUpdateSE e₁ e₂ e₃ e₄ → do
