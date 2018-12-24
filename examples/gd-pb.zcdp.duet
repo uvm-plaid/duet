@@ -1,0 +1,21 @@
+-- gradient descent
+-- per-iteration bound
+let main = pλ m  : ℕ,
+              n  : ℕ,
+              ρ  : ℝ⁺,
+              k  : ℕ
+              .
+              xs : 𝕄 [L2 U|m,n] 𝔻 ,
+              ys : 𝕄 [L2 U|m,1] 𝔻 ,
+              ρ  : ℝ⁺[ρ],
+              k  : ℕ[k],
+              η  : ℝ
+              ⇒
+  let m₀ = mcreate[ L∞ | ℕ[1] , cols xs ] { i , j ⇒ 0.0 } in
+  loop k on m₀ <xs,ys> { a, θ ⇒ 
+    let s = ℝ⁺[1.0] / real (rows xs) in
+    g ← mgauss[ s , ρ ] <xs,ys> { ∇[ LR | θ ; clip[L2] xs, ys ] } ;
+    return mmap θ , mmap g { x ⇒ η ⋅ x } { x , y ⇒ x - y }
+  }
+in main
+

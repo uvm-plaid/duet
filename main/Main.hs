@@ -15,14 +15,14 @@ main = do
       do pprint $ ppHeader "TOKENIZING" ; flushOut
       ts ← tokenizeIO tokDuet $ stream $ list $ tokens s
       do pprint $ ppHeader "PARSING" ; flushOut
-      parseIOMain (pSkip tokSkip $ pFinal $ parSExp ED_W) $ stream ts
+      parseIOMain (pSkip tokSkip $ pFinal $ parSExp ZC_W) $ stream ts
     ["check",fn] → do
       do pprint $ ppHeader "READING" ; flushOut
       s ← read fn
       do pprint $ ppHeader "TOKENIZING" ; flushOut
       ts ← tokenizeIO tokDuet $ stream $ list $ tokens s
       do pprint $ ppHeader "PARSING" ; flushOut
-      e ← parseIO (pSkip tokSkip $ pFinal $ parSExp ED_W) $ stream ts
+      e ← parseIO (pSkip tokSkip $ pFinal $ parSExp ZC_W) $ stream ts
       do pprint $ ppHeader "TYPE CHECKING" ; flushOut
       let r = runSM dø initEnv $ inferSens e
       do pprint $ ppHeader "DONE" ; flushOut

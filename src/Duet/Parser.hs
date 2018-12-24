@@ -412,6 +412,22 @@ parPExp p = pWithContext "pexp" $ tries
         e₄ ← parPExp p
         parLit "}"
         return $ EDLoopPE e₁ e₂ e₃ xs x₁ x₂ e₄
+      ZC_W → do 
+        parLit "loop"
+        e₂ ← parSExp p
+        parLit "on"
+        e₃ ← parSExp p
+        parLit "<"
+        xs ← pManySepBy (parLit ",") parVar
+        parLit ">"
+        parLit "{"
+        x₁ ← parVar
+        parLit ","
+        x₂ ← parVar
+        parLit "⇒"
+        e₄ ← parPExp p
+        parLit "}"
+        return $ LoopPE e₂ e₃ xs x₁ x₂ e₄
       _ → abort
   , case p of
       ED_W → do 
@@ -430,6 +446,20 @@ parPExp p = pWithContext "pexp" $ tries
         e₄ ← parSExp p
         parLit "}"
         return $ MGaussPE e₁ (EDGaussParams e₂ e₃) xs e₄
+      ZC_W → do 
+        parLit "mgauss"
+        parLit "["
+        e₁ ← parSExp p
+        parLit ","
+        e₂ ← parSExp p
+        parLit "]"
+        parLit "<"
+        xs ← pManySepBy (parLit ",") parVar
+        parLit ">"
+        parLit "{"
+        e₄ ← parSExp p
+        parLit "}"
+        return $ MGaussPE e₁ (ZCGaussParams e₂) xs e₄
       _ → abort
   , case p of
       ED_W → do 

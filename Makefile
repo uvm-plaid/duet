@@ -1,5 +1,5 @@
 NAME := duet
-ARGS := check examples/fw.ed.duet
+ARGS := check examples/gd-pb.zcdp.duet
 
 .PHONY: run
 run: $(NAME).cabal

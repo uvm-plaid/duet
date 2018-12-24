@@ -187,7 +187,7 @@ data SExp (p ∷ PRIV) where
 data GaussParams (p ∷ PRIV) where
   EDGaussParams ∷ SExpSource 'ED → SExpSource 'ED → GaussParams 'ED
   RenyiGaussParams ∷ SExpSource 'RENYI → SExpSource 'RENYI → GaussParams 'RENYI
-  ZCGaussParams ∷ SExpSource 'ZC → SExpSource 'ZC → GaussParams 'ZC
+  ZCGaussParams ∷ SExpSource 'ZC → GaussParams 'ZC
 deriving instance Eq (GaussParams p)
 deriving instance Ord (GaussParams p)
 deriving instance Show (GaussParams p)
