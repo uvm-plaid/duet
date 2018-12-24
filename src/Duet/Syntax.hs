@@ -212,7 +212,9 @@ data PExp (p ∷ PRIV) where
   BindPE ∷ 𝕏 → PExpSource p → PExpSource p → PExp p
   AppPE ∷ 𝐿 RExp → SExpSource p → 𝐿 𝕏 → PExp p
   EDLoopPE ∷ SExpSource 'ED → SExpSource 'ED → SExpSource 'ED → 𝐿 𝕏 → 𝕏 → 𝕏 → PExpSource 'ED → PExp 'ED
-  LoopPE ∷ SExpSource p → GaussParams p → 𝐿 𝕏 → 𝕏 → 𝕏 → PExpSource p → PExp p
+--  LoopPE ∷ SExpSource p → SExpSource p → 𝐿 𝕏 → 𝕏 → 𝕏 → PExpSource p → PExp p
+  ZCLoopPE ∷ SExpSource 'ZC → SExpSource 'ZC → 𝐿 𝕏 → 𝕏 → 𝕏 → PExpSource 'ZC → PExp 'ZC
+  RenyiLoopPE ∷ SExpSource 'RENYI → SExpSource 'RENYI → 𝐿 𝕏 → 𝕏 → 𝕏 → PExpSource 'RENYI → PExp 'RENYI
   GaussPE ∷ SExpSource p → GaussParams p → 𝐿 𝕏 → SExpSource p → PExp p
   MGaussPE ∷ SExpSource p → GaussParams p → 𝐿 𝕏 → SExpSource p → PExp p
   LaplacePE ∷ SExpSource p → LaplaceParams p → 𝐿 𝕏 → SExpSource p → PExp p

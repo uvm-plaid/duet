@@ -19,6 +19,8 @@ main = do
       case splitOn𝕊 "." fn of
         n :& "ed" :& "duet" :& Nil →
           parseIOMain (pSkip tokSkip $ pFinal $ parSExp ED_W) $ stream ts
+        n :& "renyi" :& "duet" :& Nil →
+          parseIOMain (pSkip tokSkip $ pFinal $ parSExp RENYI_W) $ stream ts
         n :& "zcdp" :& "duet" :& Nil →
           parseIOMain (pSkip tokSkip $ pFinal $ parSExp ZC_W) $ stream ts
     ["check",fn] → do
@@ -31,6 +33,12 @@ main = do
       case splitOn𝕊 "." fn of
         n :& "ed" :& "duet" :& Nil → do
           e ← parseIO (pSkip tokSkip $ pFinal $ parSExp ED_W) $ stream ts
+          do pprint $ ppHeader "TYPE CHECKING" ; flushOut
+          let r = runSM dø initEnv $ inferSens e
+          do pprint $ ppHeader "DONE" ; flushOut
+          do pprint r ; flushOut
+        n :& "renyi" :& "duet" :& Nil → do
+          e ← parseIO (pSkip tokSkip $ pFinal $ parSExp RENYI_W) $ stream ts
           do pprint $ ppHeader "TYPE CHECKING" ; flushOut
           let r = runSM dø initEnv $ inferSens e
           do pprint $ ppHeader "DONE" ; flushOut
