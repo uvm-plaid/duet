@@ -16,18 +16,31 @@ main = do
       do pprint $ ppHeader "TOKENIZING" ; flushOut
       ts ← tokenizeIO tokDuet $ stream $ list $ tokens s
       do pprint $ ppHeader "PARSING" ; flushOut
-      parseIOMain (pSkip tokSkip $ pFinal $ parSExp ZC_W) $ stream ts
+      case splitOn𝕊 "." fn of
+        n :& "ed" :& "duet" :& Nil →
+          parseIOMain (pSkip tokSkip $ pFinal $ parSExp ED_W) $ stream ts
+        n :& "zcdp" :& "duet" :& Nil →
+          parseIOMain (pSkip tokSkip $ pFinal $ parSExp ZC_W) $ stream ts
     ["check",fn] → do
       do pprint $ ppHeader "READING" ; flushOut
       s ← read fn
       do pprint $ ppHeader "TOKENIZING" ; flushOut
       ts ← tokenizeIO tokDuet $ stream $ list $ tokens s
       do pprint $ ppHeader "PARSING" ; flushOut
-      e ← parseIO (pSkip tokSkip $ pFinal $ parSExp ZC_W) $ stream ts
-      do pprint $ ppHeader "TYPE CHECKING" ; flushOut
-      let r = runSM dø initEnv $ inferSens e
-      do pprint $ ppHeader "DONE" ; flushOut
-      do pprint r ; flushOut
+      -- TODO: this is silly!
+      case splitOn𝕊 "." fn of
+        n :& "ed" :& "duet" :& Nil → do
+          e ← parseIO (pSkip tokSkip $ pFinal $ parSExp ED_W) $ stream ts
+          do pprint $ ppHeader "TYPE CHECKING" ; flushOut
+          let r = runSM dø initEnv $ inferSens e
+          do pprint $ ppHeader "DONE" ; flushOut
+          do pprint r ; flushOut
+        n :& "zcdp" :& "duet" :& Nil → do
+          e ← parseIO (pSkip tokSkip $ pFinal $ parSExp ZC_W) $ stream ts
+          do pprint $ ppHeader "TYPE CHECKING" ; flushOut
+          let r = runSM dø initEnv $ inferSens e
+          do pprint $ ppHeader "DONE" ; flushOut
+          do pprint r ; flushOut
     _ → do
       pprint $ ppHeader "USAGE"
       out $ "duet parse <file>"
