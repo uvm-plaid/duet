@@ -3,6 +3,7 @@ module Main where
 import UVMHS
 import Duet
 
+initEnv ∷ 𝕏 ⇰ Type p RNF
 initEnv = dict [ var "sign" ↦ (ℝT :⊸: (ι 1 :* ℝT))
                ] ⩌ dø
 

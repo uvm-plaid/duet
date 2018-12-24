@@ -433,7 +433,7 @@ inferPriv eA = case extract eA of
         tell $ map (Priv ∘ truncate Inf ∘ unPriv) σ₄Toss
         return τ₃
       _ → error $ "EDloop error: " ⧺ (pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄ :* σ₄KeepMax :* σ₄Keep))
-  LoopPE e₂ e₃ xs x₁ x₂ e₄ → do
+  LoopPE e₂ (ZCGaussParams e₃) xs x₁ x₂ e₄ → do
     let xs' = pow xs
     τ₂ ← pmFromSM $ inferSens e₂
     τ₃ ← pmFromSM $ inferSens e₃
@@ -479,6 +479,20 @@ inferPriv eA = case extract eA of
         tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
         return $ 𝕄T LInf UClip ηₘ ηₙ ℝT
       _ → error $ "MGauss error: " ⧺ (pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄ :* ιview @ RNF σ₄KeepMax))
+  MGaussPE e₁ (ZCGaussParams e₂) xs e₄ → do
+    let xs' = pow xs
+    τ₁ ← pmFromSM $ inferSens e₁
+    τ₂ ← pmFromSM $ inferSens e₂
+    σ₄ :* τ₄ ← pmFromSM $ hijack $ inferSens e₄
+    let σ₄Keep = restrict xs' σ₄
+        σ₄KeepMax = joins $ values σ₄Keep
+        σ₄Toss = without xs' σ₄
+    case (τ₁,τ₂,τ₄,ιview @ RNF σ₄KeepMax) of
+      (ℝˢT ηₛ,ℝˢT ηᵨ,𝕄T L2 _c ηₘ ηₙ ℝT,Some ς) | ς ⊑ ηₛ → do
+        tell $ map (Priv ∘ truncate (Quantity $ ZCPriv ηᵨ) ∘ unSens) σ₄Keep
+        tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
+        return $ 𝕄T LInf UClip ηₘ ηₙ ℝT
+      _ → error $ "MGauss error: " ⧺ (pprender $ (τ₁ :* τ₂ :* τ₄ :* ιview @ RNF σ₄KeepMax))
   GaussPE e₁ (RenyiGaussParams e₂ e₃) xs e₄ → undefined
   GaussPE e₁ (ZCGaussParams e₂) xs e₃ → undefined
   ExponentialPE e₁ (EDExponentialParams e₂) e₃ xs x e₄ → do

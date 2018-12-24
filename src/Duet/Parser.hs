@@ -427,7 +427,7 @@ parPExp p = pWithContext "pexp" $ tries
         parLit "⇒"
         e₄ ← parPExp p
         parLit "}"
-        return $ LoopPE e₂ e₃ xs x₁ x₂ e₄
+        return $ LoopPE e₂ (ZCGaussParams e₃) xs x₁ x₂ e₄
       _ → abort
   , case p of
       ED_W → do 
