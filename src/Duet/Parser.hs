@@ -29,6 +29,7 @@ tokKeywords = list
   ,"sample","rand-nat"
   ,"L1","L2","L∞","U"
   ,"dyn","real"
+  ,"ZCDP"
   ]
 
 tokPunctuation ∷ 𝐿 𝕊
@@ -412,39 +413,22 @@ parPExp p = pWithContext "pexp" $ tries
         e₄ ← parPExp p
         parLit "}"
         return $ EDLoopPE e₁ e₂ e₃ xs x₁ x₂ e₄
-      RENYI_W → do 
-        parLit "loop"
-        e₂ ← parSExp p
-        parLit "on"
-        e₃ ← parSExp p
-        parLit "<"
-        xs ← pManySepBy (parLit ",") parVar
-        parLit ">"
-        parLit "{"
-        x₁ ← parVar
-        parLit ","
-        x₂ ← parVar
-        parLit "⇒"
-        e₄ ← parPExp p
-        parLit "}"
-        return $ RenyiLoopPE e₂ e₃ xs x₁ x₂ e₄
-      ZC_W → do 
-        parLit "loop"
-        e₂ ← parSExp p
-        parLit "on"
-        e₃ ← parSExp p
-        parLit "<"
-        xs ← pManySepBy (parLit ",") parVar
-        parLit ">"
-        parLit "{"
-        x₁ ← parVar
-        parLit ","
-        x₂ ← parVar
-        parLit "⇒"
-        e₄ ← parPExp p
-        parLit "}"
-        return $ ZCLoopPE e₂ e₃ xs x₁ x₂ e₄
       _ → abort
+  , do parLit "loop"
+       e₂ ← parSExp p
+       parLit "on"
+       e₃ ← parSExp p
+       parLit "<"
+       xs ← pManySepBy (parLit ",") parVar
+       parLit ">"
+       parLit "{"
+       x₁ ← parVar
+       parLit ","
+       x₂ ← parVar
+       parLit "⇒"
+       e₄ ← parPExp p
+       parLit "}"
+       return $ LoopPE e₂ e₃ xs x₁ x₂ e₄
   , case p of
       ED_W → do 
         parLit "mgauss"
@@ -553,6 +537,17 @@ parPExp p = pWithContext "pexp" $ tries
        e₂ ← parSExp p
        parLit "]"
        return $ RandNatPE e₁ e₂
+  , case p of
+      ED_W → do 
+       parLit "ZCDP"
+       parLit "["
+       e₁ ← parSExp ED_W
+       parLit "]"
+       parLit "{"
+       e₂ ← parPExp ZC_W
+       parLit "}"
+       return $ ConvertZCEDPE e₁ e₂
+      _ → abort
   ]
 
 tokSkip ∷ Token → 𝔹

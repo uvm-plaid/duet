@@ -1,3 +1,4 @@
+{-# LANGUAGE PartialTypeSignatures #-}
 module Duet.Syntax where
 
 import UVMHS
@@ -35,13 +36,31 @@ instance (HasPrism (Quantity r) s) ⇒ HasPrism (Sens r) s where
     }
 
 data PRIV = EPS | ED | RENYI | ZC | TC
+  deriving (Eq,Ord,Show)
+
 data PRIV_W (p ∷ PRIV) where
   EPS_W ∷ PRIV_W 'EPS
   ED_W ∷ PRIV_W 'ED
   RENYI_W ∷ PRIV_W 'RENYI
   ZC_W ∷ PRIV_W 'ZC
   TC_W ∷ PRIV_W 'TC
-class PRIV_C (p ∷ PRIV) where priv ∷ PRIV_W p
+
+stripPRIV ∷ PRIV_W p → PRIV
+stripPRIV = \case
+  EPS_W → EPS
+  ED_W → ED
+  RENYI_W → RENYI
+  ZC_W → ZC
+  TC_W → TC
+
+data Ex (t ∷ k → ★) ∷ ★ where
+  Ex ∷ ∀ (t ∷ k → ★) (a ∷ k). t a → Ex t
+
+unpack ∷ ∀ (t ∷ k → ★) (b ∷ ★). Ex t → (∀ (a ∷ k). t a → b) → b
+unpack (Ex x) f = f x
+
+class PRIV_C (p ∷ PRIV) where 
+  priv ∷ PRIV_W p
 
 data Pr (p ∷ PRIV) r where
   EpsPriv ∷ r → Pr 'EPS r
@@ -66,6 +85,14 @@ instance (Join r,Meet r) ⇒ Join (Pr p r) where
   ZCPriv ρ₁ ⊔ ZCPriv ρ₂ = ZCPriv $ ρ₁ ⊔ ρ₂
   TCPriv ρ₁ ω₁ ⊔ TCPriv ρ₂ ω₂ = TCPriv (ρ₁ ⊔ ρ₂) (ω₁ ⊓ ω₂)
 
+scalePr ∷ (Times r) ⇒ r → Pr p r → Pr p r
+scalePr x = \case
+  EpsPriv ε → EpsPriv $ x × ε
+  EDPriv ε δ → EDPriv (x × ε) (x × δ)
+  RenyiPriv α ε → RenyiPriv α $ x × ε
+  ZCPriv ρ → ZCPriv $ x × ρ
+  TCPriv ρ ω → TCPriv (x × ρ) ω
+
 instance Functor (Pr p) where
   map f (EpsPriv ε) = EpsPriv $ f ε
   map f (EDPriv ε δ) = EDPriv (f ε) (f δ)
@@ -86,23 +113,46 @@ instance (HasPrism (Quantity (Pr p r)) s) ⇒ HasPrism (Priv p r) s where
     , view = view hasPrism ∘ unPriv
     }
 
-type TypeSource (p ∷ PRIV) r = Annotated FullContext (Type p r)
-data Type (p ∷ PRIV) r =
+data PArgs r where
+  PArgs ∷ ∀ (p ∷ PRIV) r. (PRIV_C p) ⇒ 𝐿 (Type r ∧ Priv p r) → PArgs r
+
+instance (Eq r) ⇒ Eq (PArgs r) where
+  (==) ∷ PArgs r → PArgs r → 𝔹
+  PArgs (xps₁ ∷ 𝐿 (_ ∧ Priv p₁ _)) == PArgs (xps₂ ∷ 𝐿 (_ ∧ Priv p₂ _)) = case (priv @ p₁,priv @ p₂) of
+    (EPS_W,EPS_W) → xps₁ ≡ xps₂
+    (ED_W,ED_W) → xps₁ ≡ xps₂
+    (RENYI_W,RENYI_W) → xps₁ ≡ xps₂
+    (ZC_W,ZC_W) → xps₁ ≡ xps₂
+    (TC_W,TC_W) → xps₁ ≡ xps₂
+    _ → False
+instance (Ord r) ⇒ Ord (PArgs r) where
+  compare ∷ PArgs r → PArgs r → Ordering
+  compare (PArgs (xps₁ ∷ 𝐿 (_ ∧ Priv p₁ _))) (PArgs (xps₂ ∷ 𝐿 (_ ∧ Priv p₂ _))) = case (priv @ p₁,priv @ p₂) of
+    (EPS_W,EPS_W) → compare xps₁ xps₂
+    (ED_W,ED_W) → compare xps₁ xps₂
+    (RENYI_W,RENYI_W) → compare xps₁ xps₂
+    (ZC_W,ZC_W) → compare xps₁ xps₂
+    (TC_W,TC_W) → compare xps₁ xps₂
+    _ → compare (stripPRIV (priv @ p₁)) (stripPRIV (priv @ p₂))
+deriving instance (Show r) ⇒ Show (PArgs r)
+
+type TypeSource r = Annotated FullContext (Type r)
+data Type r =
     ℕˢT r
   | ℝˢT r
   | ℕT
   | ℝT
   | 𝔻T
   | 𝕀T r
-  | 𝕄T Norm Clip r r (Type p r)
-  | Type p r :+: Type p r
-  | Type p r :×: Type p r
-  | Type p r :&: Type p r
-  | Type p r :⊸: (Sens r ∧ Type p r)
-  | (𝐿 (𝕏 ∧ Kind) ∧ 𝐿 (Type p r ∧ Priv p r)) :⊸⋆: Type p r
+  | 𝕄T Norm Clip r r (Type r)
+  | Type r :+: Type r
+  | Type r :×: Type r
+  | Type r :&: Type r
+  | Type r :⊸: (Sens r ∧ Type r)
+  | (𝐿 (𝕏 ∧ Kind) ∧ PArgs r) :⊸⋆: Type r
   deriving (Eq,Ord,Show)
 
-instance Functor (Type p) where
+instance Functor Type where
   map f = \case
     ℕˢT r → ℕˢT $ f r
     ℝˢT r → ℝˢT $ f r
@@ -115,7 +165,7 @@ instance Functor (Type p) where
     τ₁ :×: τ₂ → map f τ₁ :×: map f τ₂
     τ₁ :&: τ₂ → map f τ₁ :&: map f τ₂
     τ₁ :⊸: (s :* τ₂) → map f τ₁ :⊸: (map f s :*  map f τ₂)
-    (αks :* xτs) :⊸⋆: τ → (αks :* map (mapPair (map f) (map f)) xτs) :⊸⋆: map f τ
+    (αks :* PArgs xτs) :⊸⋆: τ → (αks :* PArgs (map (mapPair (map f) (map f)) xτs)) :⊸⋆: map f τ
 
 -----------------
 -- Expressions --
@@ -171,11 +221,11 @@ data SExp (p ∷ PRIV) where
   -- | LoopSE (SExpSource p) (SExpSource p) 𝕏 (SExpSource p)
   VarSE ∷ 𝕏 → SExp p
   LetSE ∷ 𝕏  → SExpSource p → SExpSource p → SExp p
-  SFunSE ∷ 𝕏  → TypeSource p RExp → SExpSource p → SExp p
+  SFunSE ∷ 𝕏  → TypeSource RExp → SExpSource p → SExp p
   AppSE ∷ SExpSource p → SExpSource p → SExp p
-  PFunSE ∷ 𝐿 (𝕏 ∧ Kind) → 𝐿 (𝕏 ∧ TypeSource p RExp) → PExpSource p → SExp p
-  InlSE ∷ TypeSource p RExp → SExpSource p → SExp p
-  InrSE ∷ TypeSource p RExp → SExpSource p → SExp p
+  PFunSE ∷ 𝐿 (𝕏 ∧ Kind) → 𝐿 (𝕏 ∧ TypeSource RExp) → PExpSource p → SExp p
+  InlSE ∷ TypeSource RExp → SExpSource p → SExp p
+  InrSE ∷ TypeSource RExp → SExpSource p → SExp p
   CaseSE ∷ SExpSource p → 𝕏 → SExpSource p → 𝕏 → SExpSource p → SExp p
   TupSE ∷ SExpSource p → SExpSource p → SExp p
   UntupSE ∷ 𝕏 → 𝕏 → SExpSource p → SExpSource p → SExp p
@@ -212,9 +262,7 @@ data PExp (p ∷ PRIV) where
   BindPE ∷ 𝕏 → PExpSource p → PExpSource p → PExp p
   AppPE ∷ 𝐿 RExp → SExpSource p → 𝐿 𝕏 → PExp p
   EDLoopPE ∷ SExpSource 'ED → SExpSource 'ED → SExpSource 'ED → 𝐿 𝕏 → 𝕏 → 𝕏 → PExpSource 'ED → PExp 'ED
---  LoopPE ∷ SExpSource p → SExpSource p → 𝐿 𝕏 → 𝕏 → 𝕏 → PExpSource p → PExp p
-  ZCLoopPE ∷ SExpSource 'ZC → SExpSource 'ZC → 𝐿 𝕏 → 𝕏 → 𝕏 → PExpSource 'ZC → PExp 'ZC
-  RenyiLoopPE ∷ SExpSource 'RENYI → SExpSource 'RENYI → 𝐿 𝕏 → 𝕏 → 𝕏 → PExpSource 'RENYI → PExp 'RENYI
+  LoopPE ∷ SExpSource p → SExpSource p → 𝐿 𝕏 → 𝕏 → 𝕏 → PExpSource p → PExp p
   GaussPE ∷ SExpSource p → GaussParams p → 𝐿 𝕏 → SExpSource p → PExp p
   MGaussPE ∷ SExpSource p → GaussParams p → 𝐿 𝕏 → SExpSource p → PExp p
   LaplacePE ∷ SExpSource p → LaplaceParams p → 𝐿 𝕏 → SExpSource p → PExp p
@@ -222,6 +270,8 @@ data PExp (p ∷ PRIV) where
   RRespPE ∷ SExpSource p → SExpSource p → 𝐿 𝕏 → SExpSource p → PExp p
   SamplePE ∷ SExpSource p → SExpSource p → SExpSource p → 𝕏 → 𝕏 → PExpSource p → PExp p
   RandNatPE ∷ SExpSource p → SExpSource p → PExp p
+  ConvertZCEDPE ∷ SExpSource 'ED → PExpSource 'ZC → PExp 'ED
+
 deriving instance Eq (PExp p)
 deriving instance Ord (PExp p)
 deriving instance Show (PExp p)

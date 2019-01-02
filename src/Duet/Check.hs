@@ -107,6 +107,9 @@ smFromPM xM = mkSM $ \ δ γ → mapInr (mapFst $ map $ Sens ∘ truncate Inf �
 pmFromSM ∷ SM p a → PM p a
 pmFromSM xM = mkPM $ \ δ γ → mapInr (mapFst $ map $ Priv ∘ truncate Inf ∘ unSens) $ runSM δ γ xM
 
+mapPPM ∷ (Priv p r → Priv p' r) → (Priv p' r → Priv p r) → PM p a → PM p' a 
+mapPPM to fr xM = mkPM $ \ δ γ → _ $ runPM δ (_ γ) xM
+
 inferSens ∷ SExpSource p → SM p (Type p RNF)
 inferSens eA = case extract eA of
   ℕˢSE n → return $ ℕˢT $ ι n
@@ -407,7 +410,7 @@ inferSens eA = case extract eA of
 
   e → error $ fromString $ show e
 
-inferPriv ∷ PExpSource p → PM p (Type p RNF)
+inferPriv ∷ ∀ p. PExpSource p → PM p (Type p RNF)
 inferPriv eA = case extract eA of
   ReturnPE e → pmFromSM $ inferSens e
   BindPE x e₁ e₂ → do
@@ -433,7 +436,8 @@ inferPriv eA = case extract eA of
         tell $ map (Priv ∘ truncate Inf ∘ unPriv) σ₄Toss
         return τ₃
       _ → error $ "EDloop error: " ⧺ (pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄ :* σ₄KeepMax :* σ₄Keep))
-  RenyiLoopPE e₂ e₃ xs x₁ x₂ e₄ → do
+  -- TODO: push
+  LoopPE e₂ e₃ xs x₁ x₂ e₄ → do
     let xs' = pow xs
     τ₂ ← pmFromSM $ inferSens e₂
     τ₃ ← pmFromSM $ inferSens e₃
@@ -442,30 +446,13 @@ inferPriv eA = case extract eA of
     let σ₄Keep = restrict xs' σ₄'
         σ₄KeepMax = joins $ values σ₄Keep
         σ₄Toss = without xs' σ₄'
-    case (τ₂,ιview @ (Pr 'RENYI RNF) σ₄KeepMax) of
-      (ℕˢT ηₙ,Some (RenyiPriv ηᵅ ηᵋ)) | τ₄ ≡ τ₃ → do 
-        let α = ηᵅ
-            ε = ηₙ × ηᵋ
-        tell $ map (Priv ∘ truncate (Quantity $ RenyiPriv α ε) ∘ unPriv) σ₄Keep
+    case (τ₂,ιview @ (Pr p RNF) σ₄KeepMax) of
+      (ℕˢT ηₙ,Some p) | τ₄ ≡ τ₃ → do 
+        let p' = scalePr ηₙ p
+        tell $ map (Priv ∘ truncate (Quantity p') ∘ unPriv) σ₄Keep
         tell $ map (Priv ∘ truncate Inf ∘ unPriv) σ₄Toss
         return τ₃
       _ → error $ "EDloop error: " ⧺ (pprender $ (τ₂ :* τ₃ :* τ₄ :* σ₄KeepMax :* σ₄Keep))
-  ZCLoopPE e₂ e₃ xs x₁ x₂ e₄ → do
-    let xs' = pow xs
-    τ₂ ← pmFromSM $ inferSens e₂
-    τ₃ ← pmFromSM $ inferSens e₃
-    σ₄ :* τ₄ ← hijack $ mapEnvL contextTypeL (\ γ → dict [x₁ ↦ ℕT,x₂ ↦ τ₃] ⩌ γ) $ inferPriv e₄
-    let σ₄' = without (pow [x₁,x₂]) σ₄
-    let σ₄Keep = restrict xs' σ₄'
-        σ₄KeepMax = joins $ values σ₄Keep
-        σ₄Toss = without xs' σ₄'
-    case (τ₂,ιview @ (Pr 'ZC RNF) σ₄KeepMax) of
-      (ℕˢT ηₙ,Some (ZCPriv vₚ)) | τ₄ ≡ τ₃ → do
-        let vₚ' = ηₙ × vₚ
-        tell $ map (Priv ∘ truncate (Quantity $ ZCPriv vₚ') ∘ unPriv) σ₄Keep
-        tell $ map (Priv ∘ truncate Inf ∘ unPriv) σ₄Toss
-        return τ₃
-      _ → error $ "Loop error: " ⧺ (pprender $ (τ₂ :* τ₃ :* τ₄ :* σ₄KeepMax :* σ₄Keep))
   GaussPE e₁ (EDGaussParams e₂ e₃) xs e₄ → do
     let xs' = pow xs
     τ₁ ← pmFromSM $ inferSens e₁
@@ -543,7 +530,10 @@ inferPriv eA = case extract eA of
         tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
         return $ τ₃
       _ → error $ "Exponential error: " ⧺ (pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄ :* ιview @ RNF σ₄KeepMax))
-    
+  ConvertZCEDPE e₁ e₂ → do
+    τ₁ ← pmFromSM $ inferSens e₁
+    σ :* τ₂ ← hijack $ inferPriv e₂
+    undefined 
   e → error $ fromString $ show e
    
     

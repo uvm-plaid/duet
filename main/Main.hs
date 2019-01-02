@@ -16,13 +16,12 @@ main = do
       do pprint $ ppHeader "TOKENIZING" ; flushOut
       ts ← tokenizeIO tokDuet $ stream $ list $ tokens s
       do pprint $ ppHeader "PARSING" ; flushOut
-      case splitOn𝕊 "." fn of
-        n :& "ed" :& "duet" :& Nil →
-          parseIOMain (pSkip tokSkip $ pFinal $ parSExp ED_W) $ stream ts
-        n :& "renyi" :& "duet" :& Nil →
-          parseIOMain (pSkip tokSkip $ pFinal $ parSExp RENYI_W) $ stream ts
-        n :& "zcdp" :& "duet" :& Nil →
-          parseIOMain (pSkip tokSkip $ pFinal $ parSExp ZC_W) $ stream ts
+      let modeEx = case splitOn𝕊 "." fn of
+            n :& "ed" :& "duet" :& Nil → Ex ED_W
+            n :& "renyi" :& "duet" :& Nil → Ex RENYI_W
+            n :& "zcdp" :& "duet" :& Nil → Ex ZC_W
+      unpack modeEx $ \ mode → 
+        parseIOMain (pSkip tokSkip $ pFinal $ parSExp mode) $ stream ts
     ["check",fn] → do
       do pprint $ ppHeader "READING" ; flushOut
       s ← read fn
