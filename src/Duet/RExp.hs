@@ -35,21 +35,9 @@ data RExpPre =
   | DivRE RExp RExp
   | RootRE RExp
   | LogRE RExp
+  | MinusRE RExp RExp
   deriving (Eq,Ord)
 makePrettySum ''RExpPre
-
-prettyRExp ∷ RExpPre → 𝕊
-prettyRExp = \case
-  VarRE x → 𝕩name x
-  NatRE n → concat ["𝕟",show𝕊 n]
-  NNRealRE r → concat ["𝕣",show𝕊 r]
-  MaxRE e₁ e₂ → parens $ concat [prettyRExp $ extract e₁,"⊔",prettyRExp $ extract e₂]
-  MinRE e₁ e₂ → parens $ concat [prettyRExp $ extract e₁,"⊓",prettyRExp $ extract e₂]
-  PlusRE e₁ e₂ → parens $ concat [prettyRExp $ extract e₁,"+",prettyRExp $ extract e₂]
-  TimesRE e₁ e₂ → parens $ concat [prettyRExp $ extract e₁,prettyRExp $ extract e₂]
-  DivRE e₁ e₂ → parens $ concat [prettyRExp $ extract e₁,"/",prettyRExp $ extract e₂]
-  RootRE e → concat ["√",prettyRExp $ extract e]
-  LogRE e → concat ["㏑",prettyRExp $ extract e]
 
 interpRExp ∷ (𝕏 ⇰ 𝔻) → RExpPre → 𝔻
 interpRExp γ = \case
@@ -63,6 +51,7 @@ interpRExp γ = \case
   DivRE e₁ e₂ → interpRExp γ (extract e₁) / interpRExp γ (extract e₂)
   RootRE e → root $ interpRExp γ $ extract e
   LogRE e → log $ interpRExp γ $ extract e
+  MinusRE e₁ e₂ → interpRExp γ (extract e₁) - interpRExp γ (extract e₂)
 
 data RNF = 
     NatRNF ℕ
@@ -77,6 +66,7 @@ data RAtom =
   | InvRA RSP
   | RootRA RSP
   | LogRA RSP
+  | MinusRA RNF RNF
   deriving (Eq,Ord,Show)
 
 makePrisms ''RNF
@@ -91,6 +81,7 @@ ppRAtom = \case
   InvRA e → ppAtLevel 6 $ concat [ppOp "1/",ppRSP e]
   RootRA e → ppAtLevel 8 $ concat [ppOp "√",ppRSP e]
   LogRA e → ppAtLevel 8 $ concat [ppOp "㏒",ppRSP e]
+  MinusRA e₁ e₂ → ppAtLevel 5 $ concat [ppRNF e₁,ppOp "-",ppBump $ ppRNF e₂]
 
 ppProd ∷ (RAtom ⇰ ℕ) → Doc
 ppProd xs = case list xs of
@@ -147,38 +138,6 @@ ppRNF = \case
 
 instance Pretty RNF where pretty = ppRNF
 
-prettyRAtom ∷ RAtom → 𝕊
-prettyRAtom (VarRA x) = 𝕩name x
-prettyRAtom (NNRealRA r) = show𝕊 r
-prettyRAtom (InvRA e) = parens $ concat ["1/",prettyRSP e]
-prettyRAtom (RootRA e) = concat ["√",prettyRSP e]
-prettyRAtom (LogRA e) = concat ["㏑",prettyRSP e]
-
-prettyRSP ∷ RSP → 𝕊
-prettyRSP xs² =
-  parenSwitch (dsize $ unRSP xs²) $ concat $ inbetween "+" $ do
-    (xs :* m) ← list $ unRSP xs²
-    let s = parenSwitch (dsize xs) $ concat $ do
-          (x :* n) ← list xs
-          return $ 
-            case n ≡ 1 of
-              True → prettyRAtom x
-              False → parens $ concat [prettyRAtom x,"^",show𝕊 n]
-    return $
-      case m ≡ 1 of
-        True → s
-        False → concat [show𝕊 m,s]
-
-prettyRNF ∷ RNF → 𝕊
-prettyRNF (NatRNF n) = concat ["𝕟",show𝕊 n]
-prettyRNF (NNRealRNF r) = concat ["𝕣",show𝕊 r]
-prettyRNF (SymRNF xs⁴) = 
-  parenSwitch (psize xs⁴) $ concat $ inbetween "⊔" $ do
-    xs³ ← list xs⁴
-    return $ parenSwitch (psize xs³) $ concat $ inbetween "⊓" $ do
-      xs² ← list xs³
-      return $ prettyRSP xs²
-
 interpRAtom ∷ (𝕏 ⇰ 𝔻) → RAtom → 𝔻
 interpRAtom γ = \case
   VarRA x → γ ⋕! x
@@ -186,6 +145,7 @@ interpRAtom γ = \case
   InvRA xs² → 1.0 / interpRSP γ xs²
   RootRA xs² → root $ interpRSP γ xs²
   LogRA xs² → log $ interpRSP γ xs²
+  MinusRA xs⁴ ys⁴ → interpRNF γ xs⁴ - interpRNF γ ys⁴
 
 interpRSP ∷ (𝕏 ⇰ 𝔻) → RSP → 𝔻
 interpRSP γ xs² = 
@@ -297,6 +257,9 @@ logRNF (SymRNF xs⁴) = SymRNF $ pow $ do
     xs² ← list xs³
     return $ RSP $ (LogRA xs² ↦ 1) ↦ 1
 
+minusRNF ∷ RNF → RNF → RNF
+minusRNF xs⁴ ys⁴ = SymRNF $ single $ single $ RSP $ (MinusRA xs⁴ ys⁴ ↦ one) ↦ one
+
 instance Bot RNF where bot = NatRNF 0
 instance Join RNF where (⊔) = maxRNF
 instance JoinLattice RNF
@@ -305,6 +268,7 @@ instance Meet RNF where (⊓) = maxRNF
 
 instance Zero RNF where zero = NatRNF 0
 instance Plus RNF where (+) = plusRNF
+instance Minus RNF where (-) = minusRNF
 instance One RNF where one = NatRNF 1
 instance Times RNF where (×) = timesRNF
 instance Divide RNF where e₁ / e₂ = e₁ `timesRNF` invRNF e₂
@@ -340,6 +304,7 @@ normalizeRExpPre (TimesRE e₁ e₂) = timesRNF (normalizeRExpPre $ extract e₁
 normalizeRExpPre (DivRE e₁ e₂) = timesRNF (normalizeRExpPre $ extract e₁) $ invRNF (normalizeRExpPre $ extract e₂)
 normalizeRExpPre (RootRE e) = rootRNF (normalizeRExpPre $ extract e)
 normalizeRExpPre (LogRE e) = logRNF (normalizeRExpPre $ extract e)
+normalizeRExpPre (MinusRE e₁ e₂) = minusRNF (normalizeRExpPre $ extract e₁) (normalizeRExpPre $ extract e₂)
 
 normalizeRExp ∷ RExp → RNF
 normalizeRExp = normalizeRExpPre ∘ extract

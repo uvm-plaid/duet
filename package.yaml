@@ -41,6 +41,7 @@ default-extensions:
 ghc-options:
   - -Wall
   - -Wno-orphans
+  - -Wno-partial-type-signatures
 
 library:
   source-dirs:

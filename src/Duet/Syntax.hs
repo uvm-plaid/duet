@@ -7,6 +7,25 @@ import Duet.Quantity
 import Duet.Var
 import Duet.RExp
 
+-- stuff that should be in a library
+
+data Ex (t ∷ k → ★) ∷ ★ where
+  Ex ∷ ∀ (t ∷ k → ★) (a ∷ k). t a → Ex t
+
+unpack ∷ ∀ (t ∷ k → ★) (b ∷ ★). Ex t → (∀ (a ∷ k). t a → b) → b
+unpack (Ex x) f = f x
+
+data Ex_C (c ∷ k → Constraint) (t ∷ k → ★) ∷ ★ where
+  Ex_C ∷ ∀ (c ∷ k → Constraint) (t ∷ k → ★) (a ∷ k). (c a) ⇒ t a → Ex_C c t
+
+unpack_C ∷ ∀ (k ∷ ★) (c ∷ k → Constraint) (t ∷ k → ★) (b ∷ ★). Ex_C c t → (∀ (a ∷ k). (c a) ⇒ t a → b) → b
+unpack_C (Ex_C x) f = f x
+
+data (≣) (a ∷ k) (b ∷ k) ∷ ★ where
+  Refl ∷ ∀ (a ∷ k). a ≣ a
+
+-- end stuff that should be in a library
+
 data Kind =
     ℕK
   | ℝK
@@ -45,6 +64,15 @@ data PRIV_W (p ∷ PRIV) where
   ZC_W ∷ PRIV_W 'ZC
   TC_W ∷ PRIV_W 'TC
 
+eqPRIV ∷ PRIV_W p₁ → PRIV_W p₂ → 𝑂 (p₁ ≣ p₂)
+eqPRIV p₁ p₂ = case (p₁,p₂) of
+  (EPS_W,EPS_W) → Some Refl
+  (ED_W,ED_W) → Some Refl
+  (RENYI_W,RENYI_W) → Some Refl
+  (ZC_W,ZC_W) → Some Refl
+  (TC_W,TC_W) → Some Refl
+  (_,_) → None
+
 stripPRIV ∷ PRIV_W p → PRIV
 stripPRIV = \case
   EPS_W → EPS
@@ -53,14 +81,14 @@ stripPRIV = \case
   ZC_W → ZC
   TC_W → TC
 
-data Ex (t ∷ k → ★) ∷ ★ where
-  Ex ∷ ∀ (t ∷ k → ★) (a ∷ k). t a → Ex t
-
-unpack ∷ ∀ (t ∷ k → ★) (b ∷ ★). Ex t → (∀ (a ∷ k). t a → b) → b
-unpack (Ex x) f = f x
-
 class PRIV_C (p ∷ PRIV) where 
   priv ∷ PRIV_W p
+
+instance PRIV_C 'EPS where priv = EPS_W
+instance PRIV_C 'ED where priv = ED_W
+instance PRIV_C 'RENYI where priv = RENYI_W
+instance PRIV_C 'ZC where priv = ZC_W
+instance PRIV_C 'TC where priv = TC_W
 
 data Pr (p ∷ PRIV) r where
   EpsPriv ∷ r → Pr 'EPS r
@@ -93,6 +121,20 @@ scalePr x = \case
   ZCPriv ρ → ZCPriv $ x × ρ
   TCPriv ρ ω → TCPriv (x × ρ) ω
 
+-- JOE TODO: put a link here to the paper
+convertRENYIEDPr ∷ (One r,Plus r,Minus r,Divide r,Log r) ⇒ r → Pr 'RENYI r → Pr 'ED r
+convertRENYIEDPr δ (RenyiPriv α ε) = EDPriv (ε + log (one / δ) / (α - one)) δ
+
+-- JOE TODO: put a link here to the paper
+convertZCEDPr ∷ (One r,Plus r,Minus r,Times r,Divide r,Root r,Log r) ⇒ r → Pr 'ZC r → Pr 'ED r
+convertZCEDPr δ (ZCPriv ρ) = EDPriv (ρ + (one + one) × root (ρ × log (one / δ))) δ
+
+-- JOE TODO: put a link here to the paper
+-- we would like to have a constraint solver for this, because the conversion
+-- only makes sense when ⟨δ,ρ,ω⟩ are in a particular relationship
+-- convertTCEDPr ∷ (One r,Plus r,Minus r,Divide r,Log r) ⇒ r → Pr 'TC r → Pr 'ED r
+-- convertTCEDPr δ (TCPriv ρ ω) = EDPRIV _ _
+
 instance Functor (Pr p) where
   map f (EpsPriv ε) = EpsPriv $ f ε
   map f (EDPriv ε δ) = EDPriv (f ε) (f δ)
@@ -107,6 +149,9 @@ newtype Priv p r = Priv { unPriv ∷ Quantity (Pr p r) }
   ,Bot,Join,JoinLattice)
 instance Functor (Priv p) where map f = Priv ∘ mapp f ∘ unPriv
 
+onPriv ∷ (Quantity (Pr p₁ r₁) → Quantity (Pr p₂ r₂)) → Priv p₁ r₁ → Priv p₂ r₂
+onPriv f = Priv ∘ f ∘ unPriv
+
 instance (HasPrism (Quantity (Pr p r)) s) ⇒ HasPrism (Priv p r) s where
   hasPrism = Prism
     { construct = Priv ∘ construct hasPrism
@@ -118,22 +163,14 @@ data PArgs r where
 
 instance (Eq r) ⇒ Eq (PArgs r) where
   (==) ∷ PArgs r → PArgs r → 𝔹
-  PArgs (xps₁ ∷ 𝐿 (_ ∧ Priv p₁ _)) == PArgs (xps₂ ∷ 𝐿 (_ ∧ Priv p₂ _)) = case (priv @ p₁,priv @ p₂) of
-    (EPS_W,EPS_W) → xps₁ ≡ xps₂
-    (ED_W,ED_W) → xps₁ ≡ xps₂
-    (RENYI_W,RENYI_W) → xps₁ ≡ xps₂
-    (ZC_W,ZC_W) → xps₁ ≡ xps₂
-    (TC_W,TC_W) → xps₁ ≡ xps₂
-    _ → False
+  PArgs (xps₁ ∷ 𝐿 (_ ∧ Priv p₁ _)) == PArgs (xps₂ ∷ 𝐿 (_ ∧ Priv p₂ _)) = case eqPRIV (priv @ p₁) (priv @ p₂) of
+    Some Refl → xps₁ ≡ xps₂
+    None → False
 instance (Ord r) ⇒ Ord (PArgs r) where
   compare ∷ PArgs r → PArgs r → Ordering
-  compare (PArgs (xps₁ ∷ 𝐿 (_ ∧ Priv p₁ _))) (PArgs (xps₂ ∷ 𝐿 (_ ∧ Priv p₂ _))) = case (priv @ p₁,priv @ p₂) of
-    (EPS_W,EPS_W) → compare xps₁ xps₂
-    (ED_W,ED_W) → compare xps₁ xps₂
-    (RENYI_W,RENYI_W) → compare xps₁ xps₂
-    (ZC_W,ZC_W) → compare xps₁ xps₂
-    (TC_W,TC_W) → compare xps₁ xps₂
-    _ → compare (stripPRIV (priv @ p₁)) (stripPRIV (priv @ p₂))
+  compare (PArgs (xps₁ ∷ 𝐿 (_ ∧ Priv p₁ _))) (PArgs (xps₂ ∷ 𝐿 (_ ∧ Priv p₂ _))) = case eqPRIV (priv @ p₁) (priv @ p₂) of
+    Some Refl → compare xps₁ xps₂
+    None → compare (stripPRIV (priv @ p₁)) (stripPRIV (priv @ p₂))
 deriving instance (Show r) ⇒ Show (PArgs r)
 
 type TypeSource r = Annotated FullContext (Type r)
@@ -271,6 +308,7 @@ data PExp (p ∷ PRIV) where
   SamplePE ∷ SExpSource p → SExpSource p → SExpSource p → 𝕏 → 𝕏 → PExpSource p → PExp p
   RandNatPE ∷ SExpSource p → SExpSource p → PExp p
   ConvertZCEDPE ∷ SExpSource 'ED → PExpSource 'ZC → PExp 'ED
+  ConvertRENYIEDPE ∷ SExpSource 'ED → PExpSource 'RENYI → PExp 'ED
 
 deriving instance Eq (PExp p)
 deriving instance Ord (PExp p)

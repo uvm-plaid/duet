@@ -29,7 +29,7 @@ tokKeywords = list
   ,"sample","rand-nat"
   ,"L1","L2","L∞","U"
   ,"dyn","real"
-  ,"ZCDP"
+  ,"ZCDP","RENYI"
   ]
 
 tokPunctuation ∷ 𝐿 𝕊
@@ -149,7 +149,7 @@ parClip = tries
 parSens ∷ Parser Token (Sens RExp)
 parSens = Sens ∘ Quantity ^$ parRExp
 
-parPriv ∷ Parser Token (Priv p RExp)
+parPriv ∷ PRIV_W p → Parser Token (Priv p RExp)
 parPriv = undefined
 
 parSpace ∷ Parser Token ()
@@ -158,11 +158,11 @@ parSpace = pSkip (const False) $ void $ pOneOrMore $ tries
   , pLit TokenSpace
   ]
 
-parTypeSource ∷ Parser Token (TypeSource p RExp)
-parTypeSource = pWithContext "type" parType
+parTypeSource ∷ (PRIV_C p) ⇒ PRIV_W p → Parser Token (TypeSource RExp)
+parTypeSource p = pWithContext "type" (parType p)
 
-parType ∷ Parser Token (Type p RExp)
-parType = mixfixParser $ concat
+parType ∷ (PRIV_C p) ⇒ PRIV_W p → Parser Token (Type RExp)
+parType mode = mixfixParser $ concat
   [ mix $ MixTerminal $ do
       parLit "ℕ"
       parLit "["
@@ -213,11 +213,11 @@ parType = mixfixParser $ concat
         return $ α :* κ
       parLit "."
       τps ← pOneOrMoreSepBy (parLit ",") $ do
-        τ ← parType
+        τ ← parType mode
         parLit "@"
-        p ← parPriv
+        p ← parPriv mode
         return $ τ :* p
-      return $ (:⊸⋆:) $ ακs :* τps
+      return $ (:⊸⋆:) $ ακs :* PArgs τps
   ]
 
 parGrad ∷ Parser Token Grad
@@ -225,7 +225,7 @@ parGrad = tries
   [ const LR ^$ parLit "LR"
   ]
 
-parSExp ∷ PRIV_W p → Parser Token (SExpSource p)
+parSExp ∷ (PRIV_C p) ⇒ PRIV_W p → Parser Token (SExpSource p)
 parSExp p = mixfixParserWithContext "sexp" $ concat
   [ mixF $ MixFTerminal $ do
       parLit "("
@@ -361,7 +361,7 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
       xτs ← pOneOrMoreSepBy (parLit ",") $ do
         x ← parVar
         parLit ":"
-        τ ← parTypeSource
+        τ ← parTypeSource p
         return $ x :* τ
       parLit "⇒"
       e ← parPExp p
@@ -375,7 +375,7 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
        return $ TupSE e₁ e₂
   ]
 
-parPExp ∷ PRIV_W p → Parser Token (PExpSource p)
+parPExp ∷ (PRIV_C p) ⇒ PRIV_W p → Parser Token (PExpSource p)
 parPExp p = pWithContext "pexp" $ tries
   [ do parLit "let"
        x ← parVar
@@ -538,15 +538,24 @@ parPExp p = pWithContext "pexp" $ tries
        parLit "]"
        return $ RandNatPE e₁ e₂
   , case p of
-      ED_W → do 
-       parLit "ZCDP"
-       parLit "["
-       e₁ ← parSExp ED_W
-       parLit "]"
-       parLit "{"
-       e₂ ← parPExp ZC_W
-       parLit "}"
-       return $ ConvertZCEDPE e₁ e₂
+      ED_W → tries
+        [ do parLit "ZCDP"
+             parLit "["
+             e₁ ← parSExp ED_W
+             parLit "]"
+             parLit "{"
+             e₂ ← parPExp ZC_W
+             parLit "}"
+             return $ ConvertZCEDPE e₁ e₂
+        , do parLit "RENYI"
+             parLit "["
+             e₁ ← parSExp ED_W
+             parLit "]"
+             parLit "{"
+             e₂ ← parPExp RENYI_W
+             parLit "}"
+             return $ ConvertRENYIEDPE e₁ e₂
+        ]
       _ → abort
   ]
 

@@ -4,7 +4,7 @@ cabal-version: 2.2
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 2e6a34f7ca992582b8292b37288104a0c2f114e4098deab6b3433f226ac1e64b
+-- hash: 025ab8993f53956d5464662b3e56688b21916c4995c4f02f02300e6883965269
 
 name:           duet
 version:        0.0.0.0
@@ -26,7 +26,7 @@ library
   hs-source-dirs:
       src
   default-extensions: ConstraintKinds DataKinds ExplicitNamespaces FlexibleContexts FlexibleInstances FunctionalDependencies GADTs GeneralizedNewtypeDeriving InstanceSigs KindSignatures LambdaCase MonadComprehensions MultiParamTypeClasses NoImplicitPrelude OverloadedStrings PatternSynonyms PolyKinds QuantifiedConstraints RankNTypes RebindableSyntax ScopedTypeVariables StandaloneDeriving Strict StrictData TemplateHaskell TypeApplications TypeFamilies TypeOperators UndecidableInstances UndecidableSuperClasses UnicodeSyntax ViewPatterns
-  ghc-options: -Wall -Wno-orphans
+  ghc-options: -Wall -Wno-orphans -Wno-partial-type-signatures
   build-depends:
       base
     , uvmhs
@@ -39,7 +39,7 @@ executable duet
   hs-source-dirs:
       main
   default-extensions: ConstraintKinds DataKinds ExplicitNamespaces FlexibleContexts FlexibleInstances FunctionalDependencies GADTs GeneralizedNewtypeDeriving InstanceSigs KindSignatures LambdaCase MonadComprehensions MultiParamTypeClasses NoImplicitPrelude OverloadedStrings PatternSynonyms PolyKinds QuantifiedConstraints RankNTypes RebindableSyntax ScopedTypeVariables StandaloneDeriving Strict StrictData TemplateHaskell TypeApplications TypeFamilies TypeOperators UndecidableInstances UndecidableSuperClasses UnicodeSyntax ViewPatterns
-  ghc-options: -Wall -Wno-orphans
+  ghc-options: -Wall -Wno-orphans -Wno-partial-type-signatures
   build-depends:
       base
     , duet

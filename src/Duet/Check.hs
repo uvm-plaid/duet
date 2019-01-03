@@ -58,47 +58,47 @@ inferKind δ = \case
       ℝK → return ℝK
       _ → abort
 
-data TypeError p = TypeError
+data TypeError = TypeError
   { typeErrorTerm ∷ Doc
-  , typeErrorContext ∷ (𝕏 ⇰ Type p RNF)
-  , typeErrorType ∷ Type p RNF
+  , typeErrorContext ∷ (𝕏 ⇰ Type RNF)
+  , typeErrorType ∷ Type RNF
   , typeErrorExpected ∷ 𝐿 𝕊
   }
 makePrettyRecord ''TypeError
 
-data Context p = Context
+data Context = Context
   { contextKind ∷ 𝕏 ⇰ Kind
-  , contextType ∷ 𝕏 ⇰ Type p RNF
+  , contextType ∷ 𝕏 ⇰ Type RNF
   }
 makeLenses ''Context
 makePrettyRecord ''Context
 
-newtype SM p a = SM { unSM ∷ ReaderT (Context p) (WriterT (𝕏 ⇰ Sens RNF) (ErrorT (TypeError p) ID)) a }
+newtype SM p a = SM { unSM ∷ ReaderT Context (WriterT (𝕏 ⇰ Sens RNF) (ErrorT TypeError ID)) a }
   deriving 
   (Functor
   ,Return,Bind,Monad
-  ,MonadError (TypeError p)
-  ,MonadReader (Context p)
+  ,MonadError TypeError
+  ,MonadReader Context
   ,MonadWriter (𝕏 ⇰ Sens RNF))
 
-mkSM ∷ (𝕏 ⇰ Kind → 𝕏 ⇰ Type p RNF → TypeError p ∨ ((𝕏 ⇰ Sens RNF) ∧ a)) → SM p a
+mkSM ∷ (𝕏 ⇰ Kind → 𝕏 ⇰ Type RNF → TypeError ∨ ((𝕏 ⇰ Sens RNF) ∧ a)) → SM p a
 mkSM f = SM $ ReaderT $ \ (Context δ γ) → WriterT $ ErrorT $ ID $ f δ γ
 
-runSM ∷ 𝕏 ⇰ Kind → 𝕏 ⇰ Type p RNF → SM p a → TypeError p ∨ ((𝕏 ⇰ Sens RNF) ∧ a)
+runSM ∷ 𝕏 ⇰ Kind → 𝕏 ⇰ Type RNF → SM p a → TypeError ∨ ((𝕏 ⇰ Sens RNF) ∧ a)
 runSM δ γ = unID ∘ unErrorT ∘ unWriterT ∘ runReaderT (Context δ γ) ∘ unSM
 
-newtype PM p a = PM { unPM ∷ ReaderT (Context p) (WriterT (𝕏 ⇰ Priv p RNF) (ErrorT (TypeError p) ID)) a }
+newtype PM p a = PM { unPM ∷ ReaderT Context (WriterT (𝕏 ⇰ Priv p RNF) (ErrorT TypeError ID)) a }
   deriving 
   (Functor
   ,Return,Bind,Monad
-  ,MonadError (TypeError p)
-  ,MonadReader (Context p)
+  ,MonadError TypeError
+  ,MonadReader Context
   ,MonadWriter (𝕏 ⇰ Priv p RNF))
 
-mkPM ∷ (𝕏 ⇰ Kind → 𝕏 ⇰ Type p RNF → TypeError p ∨ ((𝕏 ⇰ Priv p RNF) ∧ a)) → PM p a
+mkPM ∷ (𝕏 ⇰ Kind → 𝕏 ⇰ Type RNF → TypeError ∨ ((𝕏 ⇰ Priv p RNF) ∧ a)) → PM p a
 mkPM f = PM $ ReaderT $ \ (Context δ γ) → WriterT $ ErrorT $ ID $ f δ γ
 
-runPM ∷ 𝕏 ⇰ Kind → 𝕏 ⇰ Type p RNF → PM p a → TypeError p ∨ ((𝕏 ⇰ Priv p RNF) ∧ a)
+runPM ∷ 𝕏 ⇰ Kind → 𝕏 ⇰ Type RNF → PM p a → TypeError ∨ ((𝕏 ⇰ Priv p RNF) ∧ a)
 runPM δ γ = unID ∘ unErrorT ∘ unWriterT ∘ runReaderT (Context δ γ) ∘ unPM
 
 smFromPM ∷ PM p a → SM p a
@@ -107,10 +107,10 @@ smFromPM xM = mkSM $ \ δ γ → mapInr (mapFst $ map $ Sens ∘ truncate Inf �
 pmFromSM ∷ SM p a → PM p a
 pmFromSM xM = mkPM $ \ δ γ → mapInr (mapFst $ map $ Priv ∘ truncate Inf ∘ unSens) $ runSM δ γ xM
 
-mapPPM ∷ (Priv p r → Priv p' r) → (Priv p' r → Priv p r) → PM p a → PM p' a 
-mapPPM to fr xM = mkPM $ \ δ γ → _ $ runPM δ (_ γ) xM
+mapPPM ∷ (Priv p₁ RNF → Priv p₂ RNF) → PM p₁ a → PM p₂ a 
+mapPPM f xM = mkPM $ \ δ γ → mapInr (mapFst $ map f) $ runPM δ γ xM
 
-inferSens ∷ SExpSource p → SM p (Type p RNF)
+inferSens ∷ (PRIV_C p) ⇒ SExpSource p → SM p (Type RNF)
 inferSens eA = case extract eA of
   ℕˢSE n → return $ ℕˢT $ ι n
   ℝˢSE d → return $ ℝˢT $ ι d
@@ -386,7 +386,7 @@ inferSens eA = case extract eA of
       $ inferPriv e
     tell $ map (Sens ∘ truncate Inf ∘ unPriv) $ without (pow xs) σ
     let τps = mapOn xτs' $ \ (x :* τ') → τ' :* ifNone null (σ ⋕? x)
-    return $ (ακs :* τps) :⊸⋆: τ
+    return $ (ακs :* PArgs τps) :⊸⋆: τ
   TupSE e₁ e₂ → do
     τ₁ ← inferSens e₁
     τ₂ ← inferSens e₂
@@ -410,7 +410,7 @@ inferSens eA = case extract eA of
 
   e → error $ fromString $ show e
 
-inferPriv ∷ ∀ p. PExpSource p → PM p (Type p RNF)
+inferPriv ∷ ∀ p. (PRIV_C p) ⇒ PExpSource p → PM p (Type RNF)
 inferPriv eA = case extract eA of
   ReturnPE e → pmFromSM $ inferSens e
   BindPE x e₁ e₂ → do
@@ -532,8 +532,16 @@ inferPriv eA = case extract eA of
       _ → error $ "Exponential error: " ⧺ (pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄ :* ιview @ RNF σ₄KeepMax))
   ConvertZCEDPE e₁ e₂ → do
     τ₁ ← pmFromSM $ inferSens e₁
-    σ :* τ₂ ← hijack $ inferPriv e₂
-    undefined 
+    case τ₁ of
+      ℝˢT ηᵟ → do
+        mapPPM (onPriv $ map $ convertZCEDPr ηᵟ) $ inferPriv e₂
+      _ → error "type error: ConvertZCEDPE"
+  ConvertRENYIEDPE e₁ e₂ → do
+    τ₁ ← pmFromSM $ inferSens e₁
+    case τ₁ of
+      ℝˢT ηᵟ → do
+        mapPPM (onPriv $ map $ convertRENYIEDPr ηᵟ) $ inferPriv e₂
+      _ → error "type error: ConvertRENYIEDPE"
   e → error $ fromString $ show e
    
     
