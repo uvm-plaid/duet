@@ -61,8 +61,8 @@ data RNF =
 newtype RSP = RSP { unRSP ∷ (RAtom ⇰ {- prod -} ℕ) ⇰ {- sum -} ℕ }
   deriving (Eq,Ord,Show)
 data RAtom =
-    VarRA 𝕏
-  | NNRealRA 𝔻
+    NNRealRA 𝔻
+  | VarRA 𝕏
   | InvRA RSP
   | RootRA RSP
   | LogRA RSP
@@ -78,9 +78,9 @@ ppRAtom ∷ RAtom → Doc
 ppRAtom = \case
   VarRA x → pretty x
   NNRealRA r → pretty r
-  InvRA e → ppAtLevel 6 $ concat [ppOp "1/",ppRSP e]
-  RootRA e → ppAtLevel 8 $ concat [ppOp "√",ppRSP e]
-  LogRA e → ppAtLevel 8 $ concat [ppOp "㏒",ppRSP e]
+  InvRA e → ppAtLevel 7 $ concat [ppOp "1/",ppRSP e]
+  RootRA e → ppAtLevel 7 $ concat [ppOp "√",ppRSP e]
+  LogRA e → ppAtLevel 7 $ concat [ppOp "㏒",ppRSP e]
   MinusRA e₁ e₂ → ppAtLevel 5 $ concat [ppRNF e₁,ppOp "-",ppBump $ ppRNF e₂]
 
 ppProd ∷ (RAtom ⇰ ℕ) → Doc
