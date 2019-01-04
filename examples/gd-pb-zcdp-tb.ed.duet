@@ -1,0 +1,29 @@
+-- gradient descent
+-- per-iteration bound
+let main = pλ m  : ℕ,
+              n  : ℕ,
+              k  : ℕ,
+              ε  : ℝ⁺,
+              δ  : ℝ⁺
+              .
+              xs : 𝕄 [L2 U|m,n] 𝔻 ,
+              ys : 𝕄 [L2 U|m,1] 𝔻 ,
+              k  : ℕ[k],
+              ε  : ℝ⁺[ε],
+              δ  : ℝ⁺[δ],
+              η  : ℝ
+              ⇒
+  let m₀ = mcreate[ L∞ | ℕ[1] , cols xs ] { i , j ⇒ 0.0 } in
+  -- this is according to wolfram alpha
+  -- having tested some examples, it does seem to work
+  let ρᵢ = (-2√(k² ε ㏒(1/δ) + k² ㏒(1/δ)²) + 2 k ㏒(1/δ) + k ε) / k² in
+  ZCDP[ δ ] {
+    loop k on m₀ <xs,ys> { a, θ ⇒ 
+      let s = ℝ⁺[1.0] / real (rows xs) in
+      g ← mgauss[ s , ρᵢ ] <xs,ys> { ∇[ LR | θ ; clip[L2] xs, ys ] } ;
+      return mmap θ , mmap g { x ⇒ η ⋅ x } { x , y ⇒ x - y }
+    }
+  }
+in main
+
+
