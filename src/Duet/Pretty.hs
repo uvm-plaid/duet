@@ -46,9 +46,8 @@ instance (Pretty r) ⇒ Pretty (Type r) where
     ℝT → ppKeyPun "ℝ"
     𝔻T → ppKeyPun "𝔻 "
     𝕀T r → concat[ppKeyPun "𝕀",ppPun "[",pretty r,ppPun "]"]
-    -- ppKeyPun "𝔻𝔽T" -- TODO: print the schema
     𝔻𝔽T as → ppAtLevel 2 $ ppSeparated $ list
-             [ ppKeyPun "𝔻𝔽T"
+             [ ppKeyPun "𝔻𝔽"
              , ppPun "["
              , ppAlign $ ppSeparated $ list $ inbetween (ppPun ",") $ mapOn as $ \ (n :* t) → 
                  ppBotLevel $ concat [ppAlign $ ppPun n,ppPun ":",ppAlign $ pretty t]
