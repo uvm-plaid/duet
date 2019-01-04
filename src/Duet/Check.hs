@@ -407,7 +407,43 @@ inferSens eA = case extract eA of
     case τ of
       ℕˢT η → do tell σ ; return $ 𝕀T $ rootRNF η
       _ → undefined -- TypeError
-
+  DFCountSE e → do
+    τ ← inferSens e
+    case τ of
+      (𝔻𝔽T as) → return ℕT
+      _ → error $ "DFCountSE error: " ⧺ (pprender τ)
+  DFFilterSE e₁ x e₂ → do
+    σ₁ :* τ₁ ← hijack $ inferSens e₁
+    case τ₁ of
+      𝔻𝔽T as → do
+        σ₂ :* τ₂ ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ₁) ⩌ γ) $ inferSens e₂
+        let (ς :* σ₂') = ifNone (zero :* σ₂) $ dview x σ₂
+        tell $ ς ⨵ σ₁
+        tell $ σ₂' -- TODO: scale to ∞
+        case τ₂ of
+          𝔹T → return τ₁
+          _  → error $ "DFFilter error: " ⧺ (pprender (τ₁, τ₂))
+      _  → error $ "DFFilter error: " ⧺ (pprender τ₁)
+  DFColSE a₁ e → do
+    τ ← inferSens e
+    case τ of
+      𝔻𝔽T as → do
+        -- TODO: I (Joe) am not a wizard at this
+        let f ∷ (𝕊 ∧ Type RNF) → 𝑂 (Type RNF) → 𝑂 (Type RNF) = \ p acc →
+               case p of
+                 (a₂ :* v) | a₁ ≡ a₂ → Some v
+                 _ → acc
+            τₐ ∷ 𝑂 (Type RNF) = fold None f as
+        case τₐ of
+          Some τ' → return τ'
+          _ → error $ "DFColSE attribute not found: " ⧺ (pprender (τ, τₐ))
+      _ → error $ "DFColSE error: " ⧺ (pprender τ)
+  EqualsSE e₁ e₂ → do
+    τ₁ ← inferSens e₁
+    τ₂ ← inferSens e₂
+    case τ₁ ≡ τ₂ of
+      True → return 𝔹T
+      _ → error $ "Equals error: " ⧺ (pprender (τ₁, τ₂))
   e → error $ fromString $ show e
 
 inferPriv ∷ ∀ p. (PRIV_C p) ⇒ PExpSource p → PM p (Type RNF)
@@ -467,7 +503,7 @@ inferPriv eA = case extract eA of
         tell $ map (Priv ∘ truncate (Quantity $ EDPriv ηᵋ ηᵟ) ∘ unSens) σ₄Keep
         tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
         return ℝT
-      _ → undefined -- TypeError
+      _ → error $ "Gauss error: " ⧺ (pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄ :* ιview @ RNF σ₄KeepMax))
   MGaussPE e₁ (EDGaussParams e₂ e₃) xs e₄ → do
     let xs' = pow xs
     τ₁ ← pmFromSM $ inferSens e₁

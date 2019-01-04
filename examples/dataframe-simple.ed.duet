@@ -6,5 +6,5 @@ let main = pλ ε  : ℝ⁺,
               δ  : ℝ⁺[δ],
               df : 𝔻𝔽[id:ℕ, salary:ℝ]
               ⇒
-  gauss[ℝ⁺[2.0], ε, δ] <df> { ℝ⁺[2.0]⋅ real (countDF df) }
+  gauss[ℝ⁺[2.0], ε, δ] <df> { ℝ⁺[2.0]⋅ real (countDF (filterDF df {x ⇒ x⧼id⧽ ≡ 1})) }
 in main

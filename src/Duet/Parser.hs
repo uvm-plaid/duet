@@ -35,7 +35,7 @@ tokKeywords = list
 
 tokPunctuation ∷ 𝐿 𝕊
 tokPunctuation = list
-  ["=",":","@",".","⇒","→","←","#","↦"
+  ["=",":","@",".","⇒","→","←","#","↦","≡","⧼","⧽"
   ,"[","]","(",")","{","}","<",">",",",";","|","⟨","⟩"
   ,"⊔","⊓","+","⋅","/","√","㏒"
   ,"-","%","≟"
@@ -272,7 +272,22 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
   , mixF $ MixFInfixL 7 $ const ModSE ^$ parLit "%"
   , mixF $ MixFInfixL 5 $ const MinusSE ^$ parLit "-"
   , mixF $ MixFInfixL 2 $ const MinusSE ^$ parLit "≟"
+  , mixF $ MixFInfixL 2 $ const EqualsSE ^$ parLit "≡"
   , mixF $ MixFPrefix 10 $ const DFCountSE ^$ parLit "countDF"
+  , mixF $ MixFPostfix 10 $ do
+      parLit "⧼"
+      a ← parName
+      parLit "⧽"
+      return $ DFColSE a
+  , mixF $ MixFTerminal $ do
+      parLit "filterDF"
+      e₁ ← parSExp p
+      parLit "{"
+      x ← parVar
+      parLit "⇒"
+      e₂ ← parSExp p
+      parLit "}"
+      return $ DFFilterSE e₁ x e₂
   , mixF $ MixFTerminal $ do
       parLit "mcreate"
       parLit "["
