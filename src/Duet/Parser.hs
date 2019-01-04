@@ -1,11 +1,10 @@
 module Duet.Parser where
 
-import UVMHS
+import Duet.UVMHS
 
 import Duet.Syntax
-import Duet.RExp
+import Duet.RNF
 import Duet.Quantity
-import Duet.Var
 
 data Token =
     TokenName 𝕊

@@ -2,7 +2,7 @@ module Duet.Quantity where
 
 import UVMHS
 
-import Duet.RExp
+import Duet.RNF
 
 data Quantity a = Zero | Quantity a | Inf
   deriving (Eq,Ord,Show)

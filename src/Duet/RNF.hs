@@ -1,27 +1,6 @@
-module Duet.RExp where
+module Duet.RNF where
 
-import UVMHS
-
-import Duet.Var
-
-cart' ∷ 𝐿 a → 𝐿 (𝐿 a) → 𝐿 (𝐿 a)
-cart' Nil _xss = Nil
-cart' xs Nil = map (:&Nil) xs
-cart' (x:&xs) (ys:&yss) =
-  let yss' = cart' ys yss
-  in map (x:&) yss' ⧺ cart' xs (ys:&yss)
-
-cart ∷ 𝐿 (𝐿 a) → 𝐿 (𝐿 a)
-cart Nil = Nil :& Nil
-cart (xs:&xss) = cart' xs xss
-
-parens ∷ 𝕊 → 𝕊
-parens s = concat ["(",s,")"]
-
-parenSwitch ∷ ℕ → 𝕊 → 𝕊
-parenSwitch i s
-  | i ≤ 1 = s
-  | otherwise = parens s
+import Duet.UVMHS
 
 type RExp = Annotated FullContext RExpPre
 data RExpPre =
@@ -246,7 +225,14 @@ rootRNF (SymRNF xs⁴) = SymRNF $ pow $ do
   xs³ ← list xs⁴
   return $ pow $ do
     xs² ← list xs³
-    return $ RSP $ (RootRA xs² ↦ 1) ↦ 1
+    return $ RSP $ case dmin $ unRSP xs² of
+      -- Some (m :* xs :* xs²') | xs²' ≡ dø →
+      --   let blah = undefined
+      --       -- xs' = dict $ do
+      --       --   n :* x ← list xs
+      --       --   return $ RootRA ((n :* x) ↦ n 
+      --   in undefined -- blah ↦ m
+      _ → (RootRA xs² ↦ 1) ↦ 1
 
 logRNF ∷ RNF → RNF
 logRNF (NatRNF n) = NNRealRNF $ log $ dbl n
@@ -308,28 +294,3 @@ normalizeRExpPre (MinusRE e₁ e₂) = minusRNF (normalizeRExpPre $ extract e₁
 
 normalizeRExp ∷ RExp → RNF
 normalizeRExp = normalizeRExpPre ∘ extract
-
--- mainDuetRExp ∷ IO ()
--- mainDuetRExp = do
---   let es = 
---         [ (VarRE "x" `MaxRE` VarRE "y") `PlusRE` (VarRE "y" `MaxRE` VarRE "z")
---         , (VarRE "x" `TimesRE` VarRE "y")
---         , (VarRE "x" `TimesRE` VarRE "y") `PlusRE` (VarRE "y" `TimesRE` VarRE "z")
---         , (VarRE "x" `PlusRE` VarRE "y") `TimesRE` (VarRE "y" `PlusRE` VarRE "z")
---         , InvRE (VarRE "x" `PlusRE` VarRE "y")
---         , InvRE (VarRE "x" `MaxRE` VarRE "y")
---         , InvRE (VarRE "x" `MinRE` VarRE "y")
---         , InvRE $ (VarRE "x" `MaxRE` VarRE "y") `MinRE` (VarRE "y" `MaxRE` VarRE "z")
---         ]
---       γ = dict [("x"↦1.0),("y"↦2.0),("z"↦3.0),("a"↦4.0),("b"↦5.0),("c"↦6.0)]
---   eachWith es $ \ e → do
---     out "-------------------------------"
---     out $ prettyRExp e
---     shout $ interpRExp γ e
---     let nf = normalizeRExp e
---     out $ prettyRNF nf
---     shout $ interpRNF γ nf
---   out "==============================="
---   shout $ cart $ frhs [[1,2,3],[4,5,6],[7,8,9]]
---   shout $ cart $ frhs [[1,2,3],[4,5,6],[7,8,9],[1]]
---   shout $ cart $ frhs [[1,2,3],[4,5,6],[7,8,9],[]]

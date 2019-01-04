@@ -1,11 +1,10 @@
 module Duet.Check where
 
-import UVMHS
+import Duet.UVMHS
 
 import Duet.Pretty ()
 import Duet.Syntax
-import Duet.RExp
-import Duet.Var
+import Duet.RNF
 import Duet.Quantity
 
 inferKind ∷ 𝕏 ⇰ Kind → RExpPre → 𝑂 Kind

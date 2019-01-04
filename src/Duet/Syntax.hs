@@ -1,11 +1,10 @@
 {-# LANGUAGE PartialTypeSignatures #-}
 module Duet.Syntax where
 
-import UVMHS
+import Duet.UVMHS
 
 import Duet.Quantity
-import Duet.Var
-import Duet.RExp
+import Duet.RNF
 
 -- stuff that should be in a library
 

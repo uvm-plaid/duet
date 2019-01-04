@@ -1,6 +1,11 @@
-module Duet.Var where
+module Duet.UVMHS 
+  ( module UVMHS
+  , module Duet.UVMHS
+  ) where
 
 import UVMHS
+
+-- Var --
 
 data 𝕏 = 𝕏 
   { 𝕩name ∷ 𝕊 
@@ -15,3 +20,12 @@ instance Pretty 𝕏 where
 
 var ∷ 𝕊 → 𝕏
 var x = 𝕏 x None
+
+-- list cartesian product --
+
+cart ∷ 𝐿 (𝐿 a) → 𝐿 (𝐿 a)
+cart Nil = Nil :& Nil
+cart (xs:&xss) = do
+  x ← xs
+  xs' ← cart xss
+  return $ x :& xs'
