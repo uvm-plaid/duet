@@ -1,0 +1,10 @@
+-- simple dataframe example
+let main = pλ ε  : ℝ⁺,
+              δ  : ℝ⁺
+              .
+              ε  : ℝ⁺[ε],
+              δ  : ℝ⁺[δ],
+              df : 𝔻𝔽[id:ℕ, salary:ℝ]
+              ⇒
+  gauss[ℝ⁺[2.0], ε, δ] <df> { ℝ⁺[2.0]⋅ real (countDF df) }
+in main

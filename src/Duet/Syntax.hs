@@ -181,6 +181,7 @@ data Type r =
   | ℝT
   | 𝔻T
   | 𝕀T r
+  | 𝔻𝔽T (𝐿 (𝕊 ∧ Type r))
   | 𝕄T Norm Clip r r (Type r)
   | Type r :+: Type r
   | Type r :×: Type r
@@ -197,6 +198,7 @@ instance Functor Type where
     ℝT → ℝT
     𝔻T → 𝔻T
     𝕀T r → 𝕀T (f r)
+    𝔻𝔽T as → 𝔻𝔽T $ (map (mapPair id (map f)) as)
     𝕄T ℓ c r₁ r₂ τ → 𝕄T ℓ c (f r₁) (f r₂) $ map f τ
     τ₁ :+: τ₂ → map f τ₁ :+: map f τ₂
     τ₁ :×: τ₂ → map f τ₁ :×: map f τ₂
@@ -236,6 +238,10 @@ data SExp (p ∷ PRIV) where
   LogSE ∷ SExpSource p → SExp p
   ModSE ∷ SExpSource p → SExpSource p → SExp p
   MinusSE ∷ SExpSource p → SExpSource p → SExp p
+  -- dataframe operations
+  DFColSE ∷ 𝕊 → SExpSource p → SExp p
+  DFCountSE ∷ SExpSource p → SExp p
+  DFFilterSE ∷ SExpSource p → 𝕏 → SExpSource p → SExp p
   -- matrix operations
   MCreateSE ∷ Norm  → SExpSource p → SExpSource p → 𝕏 → 𝕏 → SExpSource p → SExp p
   MIndexSE ∷ SExpSource p → SExpSource p → SExpSource p → SExp p
