@@ -1,5 +1,5 @@
 NAME := duet
-ARGS := check examples/gd-pb.ed.duet
+ARGS := check examples/dataframe-simple.ed.duet
 
 .PHONY: run
 run: $(NAME).cabal
