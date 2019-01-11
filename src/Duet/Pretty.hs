@@ -40,8 +40,8 @@ deriving instance (Pretty r) ⇒ Pretty (Priv p r)
 
 instance (Pretty r) ⇒ Pretty (Type r) where
   pretty = \case
-    ℕˢT r → concat[ppKeyPun "ℕ",ppPun "[",pretty r,ppPun "]"]
     ℝˢT r → concat[ppKeyPun "ℝ⁺",ppPun "[",pretty r,ppPun "]"]
+    ℕˢT r → concat[ppKeyPun "ℕ",ppPun "[",pretty r,ppPun "]"]
     ℕT → ppKeyPun "ℕ"
     ℝT → ppKeyPun "ℝ"
     𝔻T → ppKeyPun "𝔻 "

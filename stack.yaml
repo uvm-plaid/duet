@@ -2,4 +2,4 @@ resolver: lts-13.2
 extra-deps:
   # - uvmhs/
   - git: git@github.com:uvm-plas/uvmhs.git
-    commit: v0.0.0.7
+    commit: v0.0.0.8
