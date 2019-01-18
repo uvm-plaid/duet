@@ -4,14 +4,15 @@ cabal-version: 2.2
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 62c529a00c304e9d463c7d50c9630fa6061ff6e3763489f9244f3a686020a1b4
+-- hash: f9208cf53e6f75efae25cf3f5aee0e56b2c0565811889065faf57d573b775175
 
 name:           duet
 version:        0.0.0.0
 build-type:     Simple
 
-library
-  exposed-modules:
+executable duet
+  main-is: Main.hs
+  other-modules:
       Duet
       Duet.Check
       Duet.Parser
@@ -20,27 +21,13 @@ library
       Duet.RNF
       Duet.Syntax
       Duet.UVMHS
-  other-modules:
       Paths_duet
   hs-source-dirs:
       src
-  default-extensions: ConstraintKinds DataKinds ExplicitNamespaces FlexibleContexts FlexibleInstances FunctionalDependencies GADTs GeneralizedNewtypeDeriving InstanceSigs KindSignatures LambdaCase MonadComprehensions MultiParamTypeClasses NoImplicitPrelude OverloadedStrings PatternSynonyms PolyKinds QuantifiedConstraints RankNTypes RebindableSyntax ScopedTypeVariables StandaloneDeriving Strict StrictData TemplateHaskell TypeApplications TypeFamilies TypeOperators UndecidableInstances UndecidableSuperClasses UnicodeSyntax ViewPatterns
-  ghc-options: -Wall -Wno-orphans -Wno-partial-type-signatures
-  build-depends:
-      base
-    , uvmhs
-  default-language: Haskell2010
-
-executable duet
-  main-is: Main.hs
-  other-modules:
-      Paths_duet
-  hs-source-dirs:
       main
   default-extensions: ConstraintKinds DataKinds ExplicitNamespaces FlexibleContexts FlexibleInstances FunctionalDependencies GADTs GeneralizedNewtypeDeriving InstanceSigs KindSignatures LambdaCase MonadComprehensions MultiParamTypeClasses NoImplicitPrelude OverloadedStrings PatternSynonyms PolyKinds QuantifiedConstraints RankNTypes RebindableSyntax ScopedTypeVariables StandaloneDeriving Strict StrictData TemplateHaskell TypeApplications TypeFamilies TypeOperators UndecidableInstances UndecidableSuperClasses UnicodeSyntax ViewPatterns
   ghc-options: -Wall -Wno-orphans -Wno-partial-type-signatures
   build-depends:
       base
-    , duet
     , uvmhs
   default-language: Haskell2010

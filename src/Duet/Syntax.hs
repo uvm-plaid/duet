@@ -6,25 +6,6 @@ import Duet.UVMHS
 import Duet.Quantity
 import Duet.RNF
 
--- stuff that should be in a library
-
-data Ex (t ∷ k → ★) ∷ ★ where
-  Ex ∷ ∀ (t ∷ k → ★) (a ∷ k). t a → Ex t
-
-unpack ∷ ∀ (t ∷ k → ★) (b ∷ ★). Ex t → (∀ (a ∷ k). t a → b) → b
-unpack (Ex x) f = f x
-
-data Ex_C (c ∷ k → Constraint) (t ∷ k → ★) ∷ ★ where
-  Ex_C ∷ ∀ (c ∷ k → Constraint) (t ∷ k → ★) (a ∷ k). (c a) ⇒ t a → Ex_C c t
-
-unpack_C ∷ ∀ (k ∷ ★) (c ∷ k → Constraint) (t ∷ k → ★) (b ∷ ★). Ex_C c t → (∀ (a ∷ k). (c a) ⇒ t a → b) → b
-unpack_C (Ex_C x) f = f x
-
-data (≣) (a ∷ k) (b ∷ k) ∷ ★ where
-  Refl ∷ ∀ (a ∷ k). a ≣ a
-
--- end stuff that should be in a library
-
 data Kind =
     ℕK
   | ℝK
@@ -63,7 +44,7 @@ data PRIV_W (p ∷ PRIV) where
   ZC_W ∷ PRIV_W 'ZC
   TC_W ∷ PRIV_W 'TC
 
-eqPRIV ∷ PRIV_W p₁ → PRIV_W p₂ → 𝑂 (p₁ ≣ p₂)
+eqPRIV ∷ PRIV_W p₁ → PRIV_W p₂ → 𝑂 (p₁ ≟ p₂)
 eqPRIV p₁ p₂ = case (p₁,p₂) of
   (EPS_W,EPS_W) → Some Refl
   (ED_W,ED_W) → Some Refl

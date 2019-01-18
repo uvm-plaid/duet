@@ -43,18 +43,18 @@ ghc-options:
   - -Wno-orphans
   - -Wno-partial-type-signatures
 
-library:
-  source-dirs:
-    - src
-  dependencies:
-    - base
-    - uvmhs
+    # library:
+    #   source-dirs:
+    #     - src
+    #   dependencies:
+    #     - base
+    #     - uvmhs
 
 executable:
   source-dirs:
+    - src
     - main
   main: Main.hs
   dependencies:
     - base
     - uvmhs
-    - duet
