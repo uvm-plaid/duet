@@ -232,6 +232,7 @@ data SExp (p ∷ PRIV) where
   DFPartitionSE ∷ SExpSource p → SExpSource p → SExp p
   DFMapSE ∷ SExpSource p → 𝕏  → SExpSource p → SExp p
   DFAddColSE ∷ 𝕊 → SExpSource p → SExp p
+  DFJoin1SE ∷ 𝕊 → SExpSource p → SExpSource p → SExp p
   -- matrix operations
   MCreateSE ∷ Norm  → SExpSource p → SExpSource p → 𝕏 → 𝕏 → SExpSource p → SExp p
   MIndexSE ∷ SExpSource p → SExpSource p → SExpSource p → SExp p

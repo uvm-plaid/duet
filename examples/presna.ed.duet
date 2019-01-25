@@ -6,7 +6,7 @@ let main = pλ ε : ℝ⁺,
               outgoing : 𝔻𝔽[interval:ℕ,phone_id:ℕ,x:ℕ,y:ℕ,hash:𝕊],
               blocks   : 𝔻𝔽[x:ℕ, y:ℕ], -- list of all the blocks of interest
               crisis   : 𝔻𝔽[x:ℕ, y:ℕ], -- represents blocks in crisis
-              bools    : 𝔻𝔽[crisis:𝔹],
+              bools    : 𝔻𝔽[crisis:𝔹], -- just a list of the booleans (true, false)
               true     : 𝔹,
               ε : ℝ⁺[ε],
               δ : ℝ⁺[δ]
@@ -20,9 +20,15 @@ let main = pλ ε : ℝ⁺,
   incomingM ← return partitionDF[bools, (mapDF incoming { x ⇒ addColDF ⧼crisis⧽ true })];
   outgoingM ← return partitionDF[bools, (mapDF outgoing { x ⇒ addColDF ⧼crisis⧽ true })];
 
-  -- q₁ ← mgauss[ℝ⁺[1.0], ε, δ] <outgoing> { mmap countDF (partitionDF blocks outgoingₙ⧼x,y⧽) } ;
-  -- q₂ ← mgauss[ℝ⁺[1.0], ε, δ] <incoming> { mmap countDF (partitionDF blocks incomingₙ⧼x,y⧽) } ;
-  -- q₃ ← mgauss[ℝ⁺[1.0], ε, δ] <outgoing> 
-  --        { mmap countDF ( joinDF₁⧼hash⧽ (partitionDF blocks incomingₙ⧼x,y⧽)) } ;
+  -- incomingM[0,0] has a dataframe containing incoming calls to blocks in crisis
+  -- incomingM[1,0] has a dataframe containing incoming calls to blocks NOT in crisis
+  -- outgoingM[0,0] has a dataframe containing outgoing calls from blocks in crisis
+  -- outgoingM[1,0] has a dataframe containing outgoing calls from blocks NOT in crisis
+  q₁ ← mgauss[ℝ⁺[1.0], ε, δ] <outgoingM> { mmap (partitionDF[blocks, outgoingM#[1,0]]) { x ⇒ countDF x } } ;
+  q₂ ← mgauss[ℝ⁺[1.0], ε, δ] <incomingM> { mmap (partitionDF[blocks, incoming#[1,0]])  { x ⇒ countDF x } } ;
+  q₃ ← mgauss[ℝ⁺[1.0], ε, δ] <incomingM, outgoingM> 
+         { mmap ( joinDF₁⧼hash⧽[partitionDF[blocks, outgoingM#[0,0]],
+                                partitionDF[blocks, incoming#[0,0]]] )
+                { x ⇒ countDF x } } ;
   return q₁
 in main

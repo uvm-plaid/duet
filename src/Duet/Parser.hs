@@ -23,7 +23,7 @@ tokKeywords = list
   ,"ℕ","ℝ","ℝ⁺","𝔻","𝕀","𝕄","𝔻𝔽","𝔹","𝕊"
   ,"LR","L2","U"
   ,"real"
-  ,"countDF","filterDF","partitionDF","addColDF","mapDF"
+  ,"countDF","filterDF","partitionDF","addColDF","mapDF","joinDF₁"
   ,"matrix","mcreate","clip","∇","mmap","idx"
   ,"aloop","loop","gauss","mgauss","rows","cols","exponential","rand-resp"
   ,"sample","rand-nat"
@@ -315,6 +315,17 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
       e₂ ← parSExp p
       parLit "]"
       return $ DFPartitionSE e₁ e₂
+  , mixF $ MixFTerminal $ do
+      parLit "joinDF₁"
+      parLit "⧼"
+      x ← parName
+      parLit "⧽"
+      parLit "["
+      e₁ ← parSExp p
+      parLit ","
+      e₂ ← parSExp p
+      parLit "]"
+      return $ DFJoin1SE x e₁ e₂
   , mixF $ MixFTerminal $ do
       parLit "mcreate"
       parLit "["
