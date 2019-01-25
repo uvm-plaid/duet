@@ -44,6 +44,8 @@ instance (Pretty r) ⇒ Pretty (Type r) where
     ℕˢT r → concat[ppKeyPun "ℕ",ppPun "[",pretty r,ppPun "]"]
     ℕT → ppKeyPun "ℕ"
     ℝT → ppKeyPun "ℝ"
+    𝔹T → ppKeyPun "𝔹"
+    𝕊T → ppKeyPun "𝕊"
     𝔻T → ppKeyPun "𝔻 "
     𝕀T r → concat[ppKeyPun "𝕀",ppPun "[",pretty r,ppPun "]"]
     𝔻𝔽T as → ppAtLevel 2 $ ppSeparated $ list

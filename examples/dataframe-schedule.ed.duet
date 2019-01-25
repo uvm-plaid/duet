@@ -1,7 +1,10 @@
 -- scheduling dataframe example
-let main = pλ .
+let main = pλ ε : ℝ⁺
+              .
               p₁ : 𝔻𝔽[time:ℕ, busy₁:𝔹],
               p₂ : 𝔻𝔽[time:ℕ, busy₂:𝔹]
               ⇒
-  firstDF ⧼time⧽ (filterDF (join[time] p₁ p₂) { x ⇒ !(x⧼busy₁⧽ ∨ x⧼busy₂⧽) })
+  return (firstDF ⧼time⧽ 
+    (filterDF (join[time] p₁ p₂) 
+       { x ⇒ (x⧼busy₁⧽ ≡ 𝔹[False] ∧ x⧼busy₂⧽ ≡ 𝔹[False]) }))
 in main

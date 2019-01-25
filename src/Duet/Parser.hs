@@ -20,10 +20,10 @@ makePrettyUnion ''Token
 tokKeywords ∷ 𝐿 𝕊
 tokKeywords = list
   ["let","in","pλ","return","on"
-  ,"ℕ","ℝ","ℝ⁺","𝔻","𝕀","𝕄","𝔻𝔽"
+  ,"ℕ","ℝ","ℝ⁺","𝔻","𝕀","𝕄","𝔻𝔽","𝔹","𝕊"
   ,"LR","L2","U"
   ,"real"
-  ,"countDF","filterDF"
+  ,"countDF","filterDF","partitionDF","addColDF","mapDF"
   ,"matrix","mcreate","clip","∇","mmap","idx"
   ,"aloop","loop","gauss","mgauss","rows","cols","exponential","rand-resp"
   ,"sample","rand-nat"
@@ -39,6 +39,7 @@ tokPunctuation = list
   ,"⊔","⊓","+","⋅","/","√","㏒"
   ,"-","%","≟"
   ,"×","&","⊸","⊸⋆"
+  ,"∧","∨"
   ]
 
 tokComment ∷ Parser ℂ ()
@@ -181,6 +182,8 @@ parType mode = mixfixParser $ concat
   , mix $ MixTerminal $ const ℕT ^$ parLit "ℕ"
   , mix $ MixTerminal $ const ℝT ^$ parLit "ℝ"
   , mix $ MixTerminal $ const 𝔻T ^$ parLit "𝔻"
+  , mix $ MixTerminal $ const 𝔹T ^$ parLit "𝔹"
+  , mix $ MixTerminal $ const 𝕊T ^$ parLit "𝕊"
   , mix $ MixTerminal $ do
       parLit "𝕀"
       parLit "["
@@ -272,6 +275,8 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
   , mixF $ MixFInfixL 5 $ const MinusSE ^$ parLit "-"
   , mixF $ MixFInfixL 2 $ const MinusSE ^$ parLit "≟"
   , mixF $ MixFInfixL 2 $ const EqualsSE ^$ parLit "≡"
+  , mixF $ MixFInfixL 1 $ const AndSE ^$ parLit "∧"
+  , mixF $ MixFInfixL 1 $ const OrSE ^$ parLit "∨"
   , mixF $ MixFPrefix 10 $ const DFCountSE ^$ parLit "countDF"
   , mixF $ MixFPostfix 10 $ do
       parLit "⧼"
@@ -287,6 +292,29 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
       e₂ ← parSExp p
       parLit "}"
       return $ DFFilterSE e₁ x e₂
+  , mixF $ MixFTerminal $ do
+      parLit "mapDF"
+      e₁ ← parSExp p
+      parLit "{"
+      x ← parVar
+      parLit "⇒"
+      e₂ ← parSExp p
+      parLit "}"
+      return $ DFMapSE e₁ x e₂
+  , mixF $ MixFPrefix 10 $ do
+      parLit "addColDF"
+      parLit "⧼"
+      x ← parName
+      parLit "⧽"
+      return $ DFAddColSE x
+  , mixF $ MixFTerminal $ do
+      parLit "partitionDF"
+      parLit "["
+      e₁ ← parSExp p
+      parLit ","
+      e₂ ← parSExp p
+      parLit "]"
+      return $ DFPartitionSE e₁ e₂
   , mixF $ MixFTerminal $ do
       parLit "mcreate"
       parLit "["

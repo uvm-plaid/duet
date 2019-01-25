@@ -443,6 +443,15 @@ inferSens eA = case extract eA of
     case τ₁ ≡ τ₂ of
       True → return 𝔹T
       _ → error $ "Equals error: " ⧺ (pprender (τ₁, τ₂))
+  DFPartitionSE e₁ e₂ → do
+    σ₁ :* τ₁ ← hijack $ inferSens e₁
+    τ₂ ← inferSens e₂
+    -- TODO: check that τ₁ and τ₂ overlap on some subset of their schemas
+    case (τ₁, τ₂) of
+      (𝔻𝔽T s₁, 𝔻𝔽T s₂) → do
+        tell $ map (Sens ∘ truncate Inf ∘ unSens) σ₁
+        return $ 𝕄T L1 UClip one one τ₂
+      _ → error $ "Partition error: " ⧺ (pprender (τ₁, τ₂))
   e → error $ fromString $ show e
 
 inferPriv ∷ ∀ p. (PRIV_C p) ⇒ PExpSource p → PM p (Type RNF)
@@ -514,6 +523,10 @@ inferPriv eA = case extract eA of
         σ₄Toss = without xs' σ₄
     case (τ₁,τ₂,τ₃,τ₄,ιview @ RNF σ₄KeepMax) of
       (ℝˢT ηₛ,ℝˢT ηᵋ,ℝˢT ηᵟ,𝕄T L2 _c ηₘ ηₙ ℝT,Some ς) | ς ⊑ ηₛ → do
+        tell $ map (Priv ∘ truncate (Quantity $ EDPriv ηᵋ ηᵟ) ∘ unSens) σ₄Keep
+        tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
+        return $ 𝕄T LInf UClip ηₘ ηₙ ℝT
+      (ℝˢT ηₛ,ℝˢT ηᵋ,ℝˢT ηᵟ,𝕄T L1 _c ηₘ ηₙ ℝT,Some ς) | ς ⊑ ηₛ → do
         tell $ map (Priv ∘ truncate (Quantity $ EDPriv ηᵋ ηᵟ) ∘ unSens) σ₄Keep
         tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
         return $ 𝕄T LInf UClip ηₘ ηₙ ℝT
