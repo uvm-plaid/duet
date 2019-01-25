@@ -1,0 +1,4 @@
+let main = pλ . x : ℕ ⇒
+  let y = box (x + x)
+  in return (unbox y)
+in main

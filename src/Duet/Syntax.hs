@@ -168,27 +168,38 @@ data Type r =
   | Type r :+: Type r
   | Type r :×: Type r
   | Type r :&: Type r
+  -- τ₁ ⊸ₛ τ₂
+  -- s is a sensitivity
+  -- sensitivities are real numbers (so, `r`)
+  -- τ₁ ⊸ (s,τ₂)
   | Type r :⊸: (Sens r ∧ Type r)
   | (𝐿 (𝕏 ∧ Kind) ∧ PArgs r) :⊸⋆: Type r
+  -- Chike TODO: one new type for `boxed Γ τ`
+  -- Γ is a thing of type `𝕏 ⇰ Type r`
+  -- τ is a thing of type `Type r`
+  | BoxedT () {- put Γ here -} () {- put τ here -}
   deriving (Eq,Ord,Show)
 
 instance Functor Type where
+  map ∷ (a -> b) → Type a → Type b
   map f = \case
     ℕˢT r → ℕˢT $ f r
     ℝˢT r → ℝˢT $ f r
     ℕT → ℕT
     ℝT → ℝT
     𝔻T → 𝔻T
-    𝕀T r → 𝕀T (f r)
+    𝕀T r → 𝕀T $ f r
     𝔹T → 𝔹T
     𝕊T → 𝕊T
-    𝔻𝔽T as → 𝔻𝔽T $ (map (mapPair id (map f)) as)
+    𝔻𝔽T as → 𝔻𝔽T $ map (mapPair id $ map f) as
     𝕄T ℓ c r₁ r₂ τ → 𝕄T ℓ c (f r₁) (f r₂) $ map f τ
     τ₁ :+: τ₂ → map f τ₁ :+: map f τ₂
     τ₁ :×: τ₂ → map f τ₁ :×: map f τ₂
     τ₁ :&: τ₂ → map f τ₁ :&: map f τ₂
     τ₁ :⊸: (s :* τ₂) → map f τ₁ :⊸: (map f s :*  map f τ₂)
     (αks :* PArgs xτs) :⊸⋆: τ → (αks :* PArgs (map (mapPair (map f) (map f)) xτs)) :⊸⋆: map f τ
+    -- Chike TODO: See if you can add a functor case
+    BoxedT γ τ → BoxedT () {- map f γ -} () {- map f τ -}
 
 -----------------
 -- Expressions --
@@ -205,6 +216,7 @@ instance Show RExpPre where
   show = chars ∘ ppshow
 
 type SExpSource (p ∷ PRIV) = Annotated FullContext (SExp p)
+-- this is using GADT syntax and extension
 data SExp (p ∷ PRIV) where
   -- numeric operations
   ℕˢSE ∷ ℕ → SExp p
@@ -266,6 +278,8 @@ data SExp (p ∷ PRIV) where
   PairSE ∷ SExpSource p → SExpSource p → SExp p
   FstSE ∷ SExpSource p → SExp p
   SndSE ∷ SExpSource p → SExp p
+  BoxSE ∷ SExpSource p → SExp p 
+  UnboxSE ∷ SExpSource p → SExp p
   deriving (Eq,Ord,Show)
 
 data GaussParams (p ∷ PRIV) where

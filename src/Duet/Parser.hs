@@ -30,6 +30,7 @@ tokKeywords = list
   ,"L1","L2","L∞","U"
   ,"dyn","real"
   ,"ZCDP","RENYI"
+  ,"box","unbox","boxed"
   ]
 
 tokPunctuation ∷ 𝐿 𝕊
@@ -420,7 +421,7 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
   , mixF $ MixFInfixL 10 $ const AppSE ^$ parSpace
   , mixF $ MixFTerminal $ do
       parLit "pλ"
-      ακs ← pOneOrMoreSepBy (parLit ",") $ do
+      ακs ← pManySepBy (parLit ",") $ do
         α ← parVar
         parLit ":"
         κ ← parKind
@@ -441,6 +442,8 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
        e₂ ← parSExp p
        parLit "⟩"
        return $ TupSE e₁ e₂
+  , mixF $ MixFPrefix 10 $ const BoxSE ^$ parLit "box"
+  , mixF $ MixFPrefix 10 $ const UnboxSE ^$ parLit "unbox"
   ]
 
 parPExp ∷ (PRIV_C p) ⇒ PRIV_W p → Parser Token (PExpSource p)
