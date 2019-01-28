@@ -168,20 +168,13 @@ data Type r =
   | Type r :+: Type r
   | Type r :×: Type r
   | Type r :&: Type r
-  -- τ₁ ⊸ₛ τ₂
-  -- s is a sensitivity
-  -- sensitivities are real numbers (so, `r`)
-  -- τ₁ ⊸ (s,τ₂)
   | Type r :⊸: (Sens r ∧ Type r)
   | (𝐿 (𝕏 ∧ Kind) ∧ PArgs r) :⊸⋆: Type r
-  -- Chike TODO: one new type for `boxed Γ τ`
-  -- Γ is a thing of type `𝕏 ⇰ Type r`
-  -- τ is a thing of type `Type r`
-  | BoxedT () {- put Γ here -} () {- put τ here -}
+  | BoxedT (𝕏 ⇰ Type r) (Type r)
   deriving (Eq,Ord,Show)
 
 instance Functor Type where
-  map ∷ (a -> b) → Type a → Type b
+  map ∷ (a → b) → Type a → Type b
   map f = \case
     ℕˢT r → ℕˢT $ f r
     ℝˢT r → ℝˢT $ f r
@@ -198,8 +191,7 @@ instance Functor Type where
     τ₁ :&: τ₂ → map f τ₁ :&: map f τ₂
     τ₁ :⊸: (s :* τ₂) → map f τ₁ :⊸: (map f s :*  map f τ₂)
     (αks :* PArgs xτs) :⊸⋆: τ → (αks :* PArgs (map (mapPair (map f) (map f)) xτs)) :⊸⋆: map f τ
-    -- Chike TODO: See if you can add a functor case
-    BoxedT γ τ → BoxedT () {- map f γ -} () {- map f τ -}
+    BoxedT γ τ → BoxedT (map (map f) γ) (map f τ)
 
 -----------------
 -- Expressions --

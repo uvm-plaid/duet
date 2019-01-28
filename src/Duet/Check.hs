@@ -97,6 +97,8 @@ newtype PM p a = PM { unPM ∷ ReaderT Context (WriterT (𝕏 ⇰ Priv p RNF) (E
 mkPM ∷ (𝕏 ⇰ Kind → 𝕏 ⇰ Type RNF → TypeError ∨ ((𝕏 ⇰ Priv p RNF) ∧ a)) → PM p a
 mkPM f = PM $ ReaderT $ \ (Context δ γ) → WriterT $ ErrorT $ ID $ f δ γ
 
+--      kind env   type env    expression   type error    sens costs     expressions' type
+--         ⌄⌄         ⌄⌄           ⌄⌄         ⌄⌄             ⌄⌄            ⌄⌄
 runPM ∷ 𝕏 ⇰ Kind → 𝕏 ⇰ Type RNF → PM p a → TypeError ∨ ((𝕏 ⇰ Priv p RNF) ∧ a)
 runPM δ γ = unID ∘ unErrorT ∘ unWriterT ∘ runReaderT (Context δ γ) ∘ unPM
 
@@ -351,7 +353,7 @@ inferSens eA = case extract eA of
     case γ ⋕? x of
       None → error $ fromString (show x) -- TypeSource Error
       Some τ → do
-        tell $ x ↦ ι 1
+        tell (x ↦ ι 1)
         return τ
   LetSE x e₁ e₂ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
