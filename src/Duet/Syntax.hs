@@ -170,6 +170,7 @@ data Type r =
   | Type r :&: Type r
   | Type r :⊸: (Sens r ∧ Type r)
   | (𝐿 (𝕏 ∧ Kind) ∧ PArgs r) :⊸⋆: Type r
+  -- TODO: this should be a sensitivty environment, not a type environment
   | BoxedT (𝕏 ⇰ Type r) (Type r)
   deriving (Eq,Ord,Show)
 
