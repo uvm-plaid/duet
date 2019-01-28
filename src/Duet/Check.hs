@@ -454,6 +454,12 @@ inferSens eA = case extract eA of
         tell $ map (Sens ∘ truncate Inf ∘ unSens) σ₁
         return $ 𝕄T L1 UClip one one τ₂
       _ → error $ "Partition error: " ⧺ (pprender (τ₁, τ₂))
+  BoxSE e → do
+    τ ← inferSens e
+    return τ
+  UnboxSE e → do
+    τ ← inferSens e
+    return τ
   e → error $ fromString $ show e
 
 inferPriv ∷ ∀ p. (PRIV_C p) ⇒ PExpSource p → PM p (Type RNF)
