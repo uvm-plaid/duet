@@ -455,11 +455,15 @@ inferSens eA = case extract eA of
         return $ 𝕄T L1 UClip one one τ₂
       _ → error $ "Partition error: " ⧺ (pprender (τ₁, τ₂))
   BoxSE e → do
-    τ ← inferSens e
-    return τ
+    σ :* τ ← hijack $ inferSens e
+    return (BoxedT σ τ)
   UnboxSE e → do
-    τ ← inferSens e
-    return τ
+    τ₁ ← inferSens e
+    case τ₁ of
+      BoxedT σ τ₂ → do 
+        tell σ
+        return τ₂
+      _ → error $ "Cannot unbox type: " ⧺ (pprender τ₁)
   e → error $ fromString $ show e
 
 inferPriv ∷ ∀ p. (PRIV_C p) ⇒ PExpSource p → PM p (Type RNF)

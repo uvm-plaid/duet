@@ -170,8 +170,7 @@ data Type r =
   | Type r :&: Type r
   | Type r :⊸: (Sens r ∧ Type r)
   | (𝐿 (𝕏 ∧ Kind) ∧ PArgs r) :⊸⋆: Type r
-  -- TODO: this should be a sensitivty environment, not a type environment
-  | BoxedT (𝕏 ⇰ Type r) (Type r)
+  | BoxedT (𝕏 ⇰ Sens r) (Type r)
   deriving (Eq,Ord,Show)
 
 instance Functor Type where
@@ -192,7 +191,7 @@ instance Functor Type where
     τ₁ :&: τ₂ → map f τ₁ :&: map f τ₂
     τ₁ :⊸: (s :* τ₂) → map f τ₁ :⊸: (map f s :*  map f τ₂)
     (αks :* PArgs xτs) :⊸⋆: τ → (αks :* PArgs (map (mapPair (map f) (map f)) xτs)) :⊸⋆: map f τ
-    BoxedT γ τ → BoxedT (map (map f) γ) (map f τ)
+    BoxedT σ τ → BoxedT (map (map f) σ) (map f τ)
 
 -----------------
 -- Expressions --
