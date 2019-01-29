@@ -105,3 +105,4 @@ instance (Pretty r) ⇒ Pretty (Type r) where
               ppBotLevel $ concat [ppAlign $ pretty τ',ppPun "@",ppAlign $ pretty p]
       , concat [ppPun "⇒",ppSpace 1,ppAlign $ pretty τ]
       ]
+    BoxedT _ _ → ppKeyPun "□"
