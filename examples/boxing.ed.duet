@@ -1,4 +1,12 @@
 let main = pλ . x : ℕ ⇒
-  let y = box (x + x)
-  in return (unbox y)
+  let y = box (x + x) in
+  r ← gauss[ℝ⁺[2.0],ℝ⁺[1.0],ℝ⁺[0.0001]] <y,x> { real (unbox y) };
+  -- r ← gauss[ℝ⁺[1.0],ℝ⁺[1.0],ℝ⁺[0.0001]] <y,x> { real (unbox y) }; -- fails to check, sensitivity claim too small
+  -- r ← return (unbox y);  -- works, gives infinite privacy cost
+  return r
 in main
+
+-- Questions
+-- why do we need x in the list of variables for gauss above? we would prefer to just have y
+-- confirm: we don't need shrug in the typechecker
+-- TODO: do we need to change the λ rule?
