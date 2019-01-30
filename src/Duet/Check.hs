@@ -7,9 +7,17 @@ import Duet.Syntax
 import Duet.RNF
 import Duet.Quantity
 
-freeVars :: Type r → 𝑃 𝕏
-freeVars (BoxedT σ τ) = keys σ
-freeVars _ = pø 
+freeBvs :: Type r → 𝑃 𝕏
+freeBvs (BoxedT σ τ) = keys σ ∪ freeBvs τ 
+-- freeBvs (𝔻𝔽T (𝐿 (𝕊 ∧ τ))) = freeBvs τ 
+-- freeBvs (𝕄T Norm Clip r r τ) = freeBvs τ
+freeBvs (τ₁ :+: τ₂) = freeBvs τ₁ ∪ freeBvs τ₂
+freeBvs (τ₁ :×: τ₂) = freeBvs τ₁ ∪ freeBvs τ₂
+freeBvs (τ₁ :&: τ₂) = freeBvs τ₁ ∪ freeBvs τ₂
+freeBvs (τ₁ :+: τ₂) = freeBvs τ₁ ∪ freeBvs τ₂
+-- freeBvs (τ₁ :⊸: (σ ∧ τ₂)) = freeBvs τ₁ ∪ freeBvs τ₂
+freeBvs (_ :⊸⋆: τ) = freeBvs τ 
+freeBvs _ = pø 
 
 inferKind ∷ 𝕏 ⇰ Kind → RExpPre → 𝑂 Kind
 inferKind δ = \case
@@ -367,18 +375,11 @@ inferSens eA = case extract eA of
     tell σ₂'
     return τ₂
   SFunSE x τ e → do
-    τe ← inferSens e
-    γ ← askL contextTypeL
-    let fvs = freeVars τe
-    let isClosed = (fvs ≢ pø) ⩓ ((fvs ⊆ keys γ) ⩔ (fvs ≡ keys γ))
-    case isClosed of
-      False → error $ "Lambda type/scoping error in return expression of type: " ⧺ (pprender τe)  
-      True → do
-        let τ' = map normalizeRExp $ extract τ
-        σ :* τ'' ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ') ⩌ γ) $ inferSens e
-        let (ς :* σ') = ifNone (zero :* σ) $ dview x σ
-        tell σ'
-        return $ τ' :⊸: (ς :* τ'')
+    let τ' = map normalizeRExp $ extract τ
+    σ :* τ'' ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ') ⩌ γ) $ inferSens e
+    let (ς :* σ') = ifNone (zero :* σ) $ dview x σ
+    tell σ'
+    return $ τ' :⊸: (ς :* τ'')
   AppSE e₁ e₂ → do
     τ₁ ← inferSens e₁
     σ₂ :* τ₂ ← hijack $ inferSens e₂
@@ -388,22 +389,18 @@ inferSens eA = case extract eA of
         return τ₂'
       _ → error $ "Application error: " ⧺ (pprender $ (τ₁ :* τ₂)) -- TypeSource Error
   PFunSE ακs xτs e → do
-    -- is this the right way to extract gamma
-    -- how can we inspect/print this out here?
-    γ ← askL contextTypeL
-    -- let d = writeOut (show𝕊 γ)
     let xτs' = map (mapSnd (map normalizeRExp ∘ extract)) xτs
         xs = map fst xτs
     σ :* τ ← 
       smFromPM 
       $ hijack 
       $ mapEnvL contextKindL (\ δ → assoc ακs ⩌ δ)
-      -- how to "extract" gamma?
       $ mapEnvL contextTypeL (\ γ → assoc xτs' ⩌ γ)
       $ inferPriv e
-    let fvs = freeVars τ
-    -- rhs doesnt work as expected
-    let isClosed = (fvs ≢ pø) -- ⩓ ((fvs ⊆ keys γ) ⩔ (fvs ≡ keys γ))
+    let fvs = freeBvs τ
+    traceM (show𝕊 fvs)
+    traceM (show𝕊 xs)
+    let isClosed = (fvs ∩ pow xs) ≡ pø
     case isClosed of
       False → error $ "Lambda type/scoping error in return expression of type: " ⧺ (pprender τ)  
       True → do

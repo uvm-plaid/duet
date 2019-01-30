@@ -1,4 +1,7 @@
 let main = pλ . x : ℕ ⇒
-  let y = x + x
+  let y = box (x + x)
+  -- this should fail
   in return y
+  -- this should work
+  -- in return unbox (y)
 in main
