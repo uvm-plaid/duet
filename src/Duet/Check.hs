@@ -369,8 +369,8 @@ inferSens eA = case extract eA of
   SFunSE x τ e → do
     τe ← inferSens e
     γ ← askL contextTypeL
-    let fv = freeVars τe
-    let isClosed = (fv ≢ pø) ⩓ (freeVars τe ⊆ keys γ)
+    let fvs = freeVars τe
+    let isClosed = (fvs ≢ pø) ⩓ ((fvs ⊆ keys γ) ⩔ (fvs ≡ keys γ))
     case isClosed of
       False → error $ "Lambda type/scoping error in return expression of type: " ⧺ (pprender τe)  
       True → do
@@ -388,6 +388,8 @@ inferSens eA = case extract eA of
         return τ₂'
       _ → error $ "Application error: " ⧺ (pprender $ (τ₁ :* τ₂)) -- TypeSource Error
   PFunSE ακs xτs e → do
+    -- is this the right way to extract gamma
+    -- how can we inspect/print this out here?
     γ ← askL contextTypeL
     -- let d = writeOut (show𝕊 γ)
     let xτs' = map (mapSnd (map normalizeRExp ∘ extract)) xτs
@@ -396,11 +398,12 @@ inferSens eA = case extract eA of
       smFromPM 
       $ hijack 
       $ mapEnvL contextKindL (\ δ → assoc ακs ⩌ δ)
-      -- how to "extract" gamma
+      -- how to "extract" gamma?
       $ mapEnvL contextTypeL (\ γ → assoc xτs' ⩌ γ)
       $ inferPriv e
-    let fv = freeVars τ
-    let isClosed = (fv ≢ pø) ⩓ (freeVars τ ⊆ keys γ)
+    let fvs = freeVars τ
+    -- rhs doesnt work as expected
+    let isClosed = (fvs ≢ pø) -- ⩓ ((fvs ⊆ keys γ) ⩔ (fvs ≡ keys γ))
     case isClosed of
       False → error $ "Lambda type/scoping error in return expression of type: " ⧺ (pprender τ)  
       True → do
