@@ -30,13 +30,15 @@ freeBdftvs :: 𝕊 ∧ Type r → 𝑃 𝕏
 freeBdftvs (_ :* x) = freeBvs x
 
 freeBlpargvs :: 𝐿 (𝕏 ∧ Kind) ∧ PArgs r → 𝑃 𝕏
-freeBlpargvs (_ :* pargs) = freeBpargs pargs
+freeBlpargvs (_ :* pargs) = unpackBpargs pargs
 
-freeBpargs :: PArgs r → 𝑃 𝕏
-freeBpargs e = case e of
-  PArgs tps -> case tps of
-    nil → pø
-    (x :& xs) → freeBpargs (PArgs xs) ∪ freeBparg x
+unpackBpargs :: PArgs r → 𝑃 𝕏
+unpackBpargs e = case e of
+  PArgs tps -> freeBpargs tps 
+    
+freeBpargs :: 𝐿 (Type r ∧ Priv p r) → 𝑃 𝕏
+freeBpargs Nil = pø
+freeBpargs (x :& xs) = freeBpargs xs ∪ freeBparg x
 
 freeBparg :: Type r ∧ Priv p r → 𝑃 𝕏
 freeBparg (x :* _) = freeBvs x
