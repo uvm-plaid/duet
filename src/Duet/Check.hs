@@ -8,19 +8,26 @@ import Duet.RNF
 import Duet.Quantity
 
 freeBvs :: Type r → 𝑃 𝕏
-freeBvs (BoxedT σ τ) = keys σ ∪ freeBvs τ
+freeBvs (ℕˢT _) = pø
+freeBvs (ℝˢT _) = pø
+freeBvs ℕT = pø
+freeBvs ℝT = pø
+freeBvs 𝔻T = pø
+freeBvs (𝕀T _) = pø
+freeBvs 𝔹T = pø
+freeBvs 𝕊T = pø
+freeBvs (𝔻𝔽T Nil) = pø
 freeBvs (𝔻𝔽T (x :& xs)) = freeBdftvs x ∪ freeBvs (𝔻𝔽T xs)
 freeBvs (𝕄T _ _ _ _ τ) = freeBvs τ
 freeBvs (τ₁ :+: τ₂) = freeBvs τ₁ ∪ freeBvs τ₂
 freeBvs (τ₁ :×: τ₂) = freeBvs τ₁ ∪ freeBvs τ₂
 freeBvs (τ₁ :&: τ₂) = freeBvs τ₁ ∪ freeBvs τ₂
-freeBvs (τ₁ :+: τ₂) = freeBvs τ₁ ∪ freeBvs τ₂
-freeBvs (τ₁ :⊸: (σ :* τ₂)) = freeBvs τ₁ ∪ freeBvs τ₂
+freeBvs (τ₁ :⊸: (_ :* τ₂)) = freeBvs τ₁ ∪ freeBvs τ₂
 freeBvs (_ :⊸⋆: τ) = freeBvs τ 
-freeBvs _ = pø
+freeBvs (BoxedT σ τ) = keys σ ∪ freeBvs τ
 
 freeBdftvs :: 𝕊 ∧ Type r → 𝑃 𝕏
-freeBdftvs (x :* y) = freeBvs y
+freeBdftvs (_ :* y) = freeBvs y
 
 inferKind ∷ 𝕏 ⇰ Kind → RExpPre → 𝑂 Kind
 inferKind δ = \case
