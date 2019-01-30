@@ -10,7 +10,7 @@ import Duet.Quantity
 freeBvs :: Type r → 𝑃 𝕏
 freeBvs (BoxedT σ τ) = keys σ ∪ freeBvs τ 
 -- freeBvs (𝔻𝔽T (𝐿 (𝕊 ∧ τ))) = freeBvs τ 
--- freeBvs (𝕄T Norm Clip r r τ) = freeBvs τ
+freeBvs (𝕄T _ _ _ _ τ) = freeBvs τ
 freeBvs (τ₁ :+: τ₂) = freeBvs τ₁ ∪ freeBvs τ₂
 freeBvs (τ₁ :×: τ₂) = freeBvs τ₁ ∪ freeBvs τ₂
 freeBvs (τ₁ :&: τ₂) = freeBvs τ₁ ∪ freeBvs τ₂
@@ -398,8 +398,6 @@ inferSens eA = case extract eA of
       $ mapEnvL contextTypeL (\ γ → assoc xτs' ⩌ γ)
       $ inferPriv e
     let fvs = freeBvs τ
-    traceM (show𝕊 fvs)
-    traceM (show𝕊 xs)
     let isClosed = (fvs ∩ pow xs) ≡ pø
     case isClosed of
       False → error $ "Lambda type/scoping error in return expression of type: " ⧺ (pprender τ)  
