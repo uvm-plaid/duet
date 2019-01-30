@@ -23,11 +23,23 @@ freeBvs (τ₁ :+: τ₂) = freeBvs τ₁ ∪ freeBvs τ₂
 freeBvs (τ₁ :×: τ₂) = freeBvs τ₁ ∪ freeBvs τ₂
 freeBvs (τ₁ :&: τ₂) = freeBvs τ₁ ∪ freeBvs τ₂
 freeBvs (τ₁ :⊸: (_ :* τ₂)) = freeBvs τ₁ ∪ freeBvs τ₂
-freeBvs (_ :⊸⋆: τ) = freeBvs τ 
+freeBvs (pargs :⊸⋆: τ) = freeBlpargvs pargs ∪ freeBvs τ 
 freeBvs (BoxedT σ τ) = keys σ ∪ freeBvs τ
 
 freeBdftvs :: 𝕊 ∧ Type r → 𝑃 𝕏
-freeBdftvs (_ :* y) = freeBvs y
+freeBdftvs (_ :* x) = freeBvs x
+
+freeBlpargvs :: 𝐿 (𝕏 ∧ Kind) ∧ PArgs r → 𝑃 𝕏
+freeBlpargvs (_ :* pargs) = freeBpargs pargs
+
+freeBpargs :: PArgs r → 𝑃 𝕏
+freeBpargs e = case e of
+  PArgs tps -> case tps of
+    nil → pø
+    (x :& xs) → freeBpargs (PArgs xs) ∪ freeBparg x
+
+freeBparg :: Type r ∧ Priv p r → 𝑃 𝕏
+freeBparg (x :* _) = freeBvs x
 
 inferKind ∷ 𝕏 ⇰ Kind → RExpPre → 𝑂 Kind
 inferKind δ = \case
@@ -381,15 +393,25 @@ inferSens eA = case extract eA of
     σ₁ :* τ₁ ← hijack $ inferSens e₁
     σ₂ :* τ₂ ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ₁) ⩌ γ) $ inferSens e₂
     let (ς :* σ₂') = ifNone (zero :* σ₂) $ dview x σ₂
-    tell $ ς ⨵ σ₁
-    tell σ₂'
-    return τ₂
+    let fvs = freeBvs τ₂
+    let isClosed = (fvs ∩ single𝑃 x) ≡ pø
+    case isClosed of
+      False → error $ "Let type/scoping error in return expression of type: " ⧺ (pprender τ₂)  
+      True → do
+        tell $ ς ⨵ σ₁
+        tell σ₂'
+        return τ₂
   SFunSE x τ e → do
     let τ' = map normalizeRExp $ extract τ
     σ :* τ'' ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ') ⩌ γ) $ inferSens e
     let (ς :* σ') = ifNone (zero :* σ) $ dview x σ
-    tell σ'
-    return $ τ' :⊸: (ς :* τ'')
+    let fvs = freeBvs τ''
+    let isClosed = (fvs ∩ single𝑃 x) ≡ pø
+    case isClosed of
+      False → error $ "Lambda type/scoping error in return expression of type: " ⧺ (pprender τ'')  
+      True → do
+        tell σ'
+        return $ τ' :⊸: (ς :* τ'')
   AppSE e₁ e₂ → do
     τ₁ ← inferSens e₁
     σ₂ :* τ₂ ← hijack $ inferSens e₂
