@@ -22,8 +22,8 @@ tokKeywords = list
   ["let","in","pλ","return","on"
   ,"ℕ","ℝ","ℝ⁺","𝔻","𝕀","𝕄","𝔻𝔽","𝔹","𝕊"
   ,"LR","L2","U"
-  ,"real"
-  ,"countDF","filterDF","partitionDF","addColDF","mapDF","joinDF₁"
+  ,"real","bag","set","record"
+  ,"countBag","filterBag","partitionDF","addColDF","mapDF","joinDF₁"
   ,"matrix","mcreate","clip","∇","mmap","idx"
   ,"aloop","loop","gauss","mgauss","rows","cols","exponential","rand-resp"
   ,"sample","rand-nat"
@@ -211,7 +211,19 @@ parType mode = mixfixParser $ concat
         τ ← parType mode
         return $ a :* τ
       parLit "]"
-      return $ 𝔻𝔽T as
+      return $ BagT (RecordT as)
+  , mix $ MixTerminal $ do
+      parLit "record"
+      parLit "["
+      as ← pOneOrMoreSepBy (parLit ",") $ do
+        a ← parName
+        parLit ":"
+        τ ← parType mode
+        return $ a :* τ
+      parLit "]"
+      return $ RecordT as
+  , mix $ MixPrefix 6 $ const (BagT) ^$ parLit "bag"
+  , mix $ MixPrefix 6 $ const (SetT) ^$ parLit "set"
   , mix $ MixInfixL 3 $ const (:+:) ^$ parLit "+"
   , mix $ MixInfixL 4 $ const (:×:) ^$ parLit "×"
   , mix $ MixInfixL 4 $ const (:&:) ^$ parLit "&"
@@ -278,21 +290,21 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
   , mixF $ MixFInfixL 2 $ const EqualsSE ^$ parLit "≡"
   , mixF $ MixFInfixL 1 $ const AndSE ^$ parLit "∧"
   , mixF $ MixFInfixL 1 $ const OrSE ^$ parLit "∨"
-  , mixF $ MixFPrefix 10 $ const DFCountSE ^$ parLit "countDF"
+  , mixF $ MixFPrefix 10 $ const BagCountSE ^$ parLit "countBag"
   , mixF $ MixFPostfix 10 $ do
       parLit "⧼"
       a ← parName
       parLit "⧽"
-      return $ DFColSE a
+      return $ RecordColSE a
   , mixF $ MixFTerminal $ do
-      parLit "filterDF"
+      parLit "filterBag"
       e₁ ← parSExp p
       parLit "{"
       x ← parVar
       parLit "⇒"
       e₂ ← parSExp p
       parLit "}"
-      return $ DFFilterSE e₁ x e₂
+      return $ BagFilterSE e₁ x e₂
   , mixF $ MixFTerminal $ do
       parLit "mapDF"
       e₁ ← parSExp p
@@ -313,9 +325,11 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
       parLit "["
       e₁ ← parSExp p
       parLit ","
+      a ← parName
+      parLit ","
       e₂ ← parSExp p
       parLit "]"
-      return $ DFPartitionSE e₁ e₂
+      return $ DFPartitionSE e₁ a e₂
   , mixF $ MixFTerminal $ do
       parLit "joinDF₁"
       parLit "⧼"

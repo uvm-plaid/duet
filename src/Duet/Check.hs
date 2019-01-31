@@ -404,6 +404,8 @@ inferSens eA = case extract eA of
         tell σ₂'
         return τ₂
   SFunSE x τ e → do
+    -- TODO: kind checking for τ
+    -- TODO: "freeVars" check: freeVars τ₂ ⊆ keys γ
     let τ' = map normalizeRExp $ extract τ
     σ :* τ'' ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ') ⩌ γ) $ inferSens e
     let (ς :* σ') = ifNone (zero :* σ) $ dview x σ
@@ -459,27 +461,27 @@ inferSens eA = case extract eA of
     case τ of
       ℕˢT η → do tell σ ; return $ 𝕀T $ rootRNF η
       _ → undefined -- TypeError
-  DFCountSE e → do
+  BagCountSE e → do
     τ ← inferSens e
     case τ of
-      (𝔻𝔽T as) → return ℕT
-      _ → error $ "DFCountSE error: " ⧺ (pprender τ)
-  DFFilterSE e₁ x e₂ → do
+      (BagT _) → return ℕT
+      _ → error $ "BagCountSE error: " ⧺ (pprender τ)
+  BagFilterSE e₁ x e₂ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
     case τ₁ of
-      𝔻𝔽T as → do
-        σ₂ :* τ₂ ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ₁) ⩌ γ) $ inferSens e₂
+      BagT τ₂ → do
+        σ₂ :* τ₂ ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ₂) ⩌ γ) $ inferSens e₂
         let (ς :* σ₂') = ifNone (zero :* σ₂) $ dview x σ₂
         tell $ ς ⨵ σ₁
         tell $ σ₂' -- TODO: scale to ∞
         case τ₂ of
           𝔹T → return τ₁
-          _  → error $ "DFFilter error: " ⧺ (pprender (τ₁, τ₂))
-      _  → error $ "DFFilter error: " ⧺ (pprender τ₁)
-  DFColSE a₁ e → do
+          _  → error $ "BagFilter error: " ⧺ (pprender (τ₁, τ₂))
+      _  → error $ "BagFilter error: " ⧺ (pprender τ₁)
+  RecordColSE a₁ e → do
     τ ← inferSens e
     case τ of
-      𝔻𝔽T as → do
+      RecordT as → do
         -- TODO: I (Joe) am not a wizard at this
         let f ∷ (𝕊 ∧ Type RNF) → 𝑂 (Type RNF) → 𝑂 (Type RNF) = \ p acc →
                case p of
@@ -488,20 +490,20 @@ inferSens eA = case extract eA of
             τₐ ∷ 𝑂 (Type RNF) = fold None f as
         case τₐ of
           Some τ' → return τ'
-          _ → error $ "DFColSE attribute not found: " ⧺ (pprender (τ, τₐ))
-      _ → error $ "DFColSE error: " ⧺ (pprender τ)
+          _ → error $ "RecordColSE attribute not found: " ⧺ (pprender (τ, τₐ))
+      _ → error $ "RecordColSE error: " ⧺ (pprender τ)
   EqualsSE e₁ e₂ → do
     τ₁ ← inferSens e₁
     τ₂ ← inferSens e₂
     case τ₁ ≡ τ₂ of
       True → return 𝔹T
       _ → error $ "Equals error: " ⧺ (pprender (τ₁, τ₂))
-  DFPartitionSE e₁ e₂ → do
+  DFPartitionSE e₁ a e₂ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
     τ₂ ← inferSens e₂
     -- TODO: check that τ₁ and τ₂ overlap on some subset of their schemas
     case (τ₁, τ₂) of
-      (𝔻𝔽T s₁, 𝔻𝔽T s₂) → do
+      (BagT (RecordT as), SetT τ₃) → do
         tell $ map (Sens ∘ truncate Inf ∘ unSens) σ₁
         return $ 𝕄T L1 UClip one one τ₂
       _ → error $ "Partition error: " ⧺ (pprender (τ₁, τ₂))
