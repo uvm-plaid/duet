@@ -163,7 +163,10 @@ data Type r =
   | 𝕀T r
   | 𝔹T
   | 𝕊T
-  | 𝔻𝔽T (𝐿 (𝕊 ∧ Type r))
+  | 𝔻𝔽T (𝐿 (𝕊 ∧ Type r)) -- TODO: this should become syntactic sugar?
+  | BagT (Type r)
+  | SetT (Type r)
+  | RecordT (𝐿 (𝕊 ∧ Type r))
   | 𝕄T Norm Clip r r (Type r)
   | Type r :+: Type r
   | Type r :×: Type r
@@ -184,7 +187,10 @@ instance Functor Type where
     𝕀T r → 𝕀T $ f r
     𝔹T → 𝔹T
     𝕊T → 𝕊T
-    𝔻𝔽T as → 𝔻𝔽T $ map (mapPair id $ map f) as
+    𝔻𝔽T as → 𝔻𝔽T $ map (mapPair id $ map f) as -- TODO: remove
+    BagT τ → BagT (map f τ)
+    SetT τ → SetT (map f τ)
+    RecordT as → RecordT $ map (mapPair id $ map f) as
     𝕄T ℓ c r₁ r₂ τ → 𝕄T ℓ c (f r₁) (f r₂) $ map f τ
     τ₁ :+: τ₂ → map f τ₁ :+: map f τ₂
     τ₁ :×: τ₂ → map f τ₁ :×: map f τ₂
@@ -230,10 +236,10 @@ data SExp (p ∷ PRIV) where
   AndSE ∷ SExpSource p → SExpSource p → SExp p
   OrSE ∷ SExpSource p → SExpSource p → SExp p
   -- dataframe operations
-  DFColSE ∷ 𝕊 → SExpSource p → SExp p
-  DFCountSE ∷ SExpSource p → SExp p
-  DFFilterSE ∷ SExpSource p → 𝕏 → SExpSource p → SExp p
-  DFPartitionSE ∷ SExpSource p → SExpSource p → SExp p
+  RecordColSE ∷ 𝕊 → SExpSource p → SExp p
+  BagCountSE ∷ SExpSource p → SExp p
+  BagFilterSE ∷ SExpSource p → 𝕏 → SExpSource p → SExp p
+  DFPartitionSE ∷ SExpSource p → 𝕊 → SExpSource p → SExp p
   DFMapSE ∷ SExpSource p → 𝕏  → SExpSource p → SExp p
   DFAddColSE ∷ 𝕊 → SExpSource p → SExp p
   DFJoin1SE ∷ 𝕊 → SExpSource p → SExpSource p → SExp p
