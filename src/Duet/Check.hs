@@ -363,6 +363,8 @@ inferSens eA = case extract eA of
     tell σ₂'
     return τ₂
   SFunSE x τ e → do
+    -- TODO: kind checking for τ
+    -- TODO: "freeVars" check: freeVars τ₂ ⊆ keys γ
     let τ' = map normalizeRExp $ extract τ
     σ :* τ'' ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ') ⩌ γ) $ inferSens e
     let (ς :* σ') = ifNone (zero :* σ) $ dview x σ

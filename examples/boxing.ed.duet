@@ -1,7 +1,7 @@
-let main = pλ . x : ℕ ⇒
-  let y = box (x + x) in
-  r ← gauss[ℝ⁺[2.0],ℝ⁺[1.0],ℝ⁺[0.0001]] <y,x> { real (unbox y) };
-  -- r ← gauss[ℝ⁺[1.0],ℝ⁺[1.0],ℝ⁺[0.0001]] <y,x> { real (unbox y) }; -- fails to check, sensitivity claim too small
+let main = pλ . x : ℕ, z : ℕ ⇒
+  let y = box (x + x + z + z + z) in
+  r ← gauss[ℝ⁺[2.0],ℝ⁺[1.0],ℝ⁺[0.0001]] <x> { real (unbox y) };
+  -- r ← gauss[ℝ⁺[1.0],ℝ⁺[1.0],ℝ⁺[0.0001]] <x> { real (unbox y) }; -- fails to check, sensitivity claim too small
   -- r ← return (unbox y);  -- works, gives infinite privacy cost
   return r
 in main
