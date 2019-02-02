@@ -16,8 +16,13 @@ freeBvs 𝔻T = pø
 freeBvs (𝕀T _) = pø
 freeBvs 𝔹T = pø
 freeBvs 𝕊T = pø
+-- TODO: there is a better way to do this
 freeBvs (𝔻𝔽T Nil) = pø
-freeBvs (𝔻𝔽T (x :& xs)) = freeBdftvs x ∪ freeBvs (𝔻𝔽T xs)
+freeBvs (𝔻𝔽T (x :& xs)) = freeBrcrdvs x ∪ freeBvs (𝔻𝔽T xs)
+freeBvs (BagT τ) = freeBvs τ
+freeBvs (SetT τ) = freeBvs τ
+freeBvs (RecordT Nil) = pø
+freeBvs (RecordT (x :& xs)) = freeBrcrdvs x ∪ freeBvs (RecordT xs)
 freeBvs (𝕄T _ _ _ _ τ) = freeBvs τ
 freeBvs (τ₁ :+: τ₂) = freeBvs τ₁ ∪ freeBvs τ₂
 freeBvs (τ₁ :×: τ₂) = freeBvs τ₁ ∪ freeBvs τ₂
@@ -26,8 +31,8 @@ freeBvs (τ₁ :⊸: (_ :* τ₂)) = freeBvs τ₁ ∪ freeBvs τ₂
 freeBvs (pargs :⊸⋆: τ) = freeBlpargvs pargs ∪ freeBvs τ 
 freeBvs (BoxedT σ τ) = keys σ ∪ freeBvs τ
 
-freeBdftvs :: 𝕊 ∧ Type r → 𝑃 𝕏
-freeBdftvs (_ :* x) = freeBvs x
+freeBrcrdvs :: 𝕊 ∧ Type r → 𝑃 𝕏
+freeBrcrdvs (_ :* x) = freeBvs x
 
 freeBlpargvs :: 𝐿 (𝕏 ∧ Kind) ∧ PArgs r → 𝑃 𝕏
 freeBlpargvs (_ :* pargs) = unpackBpargs pargs
