@@ -7,6 +7,47 @@ import Duet.Syntax
 import Duet.RNF
 import Duet.Quantity
 
+freeBvs :: Type r → 𝑃 𝕏
+freeBvs (ℕˢT _) = pø
+freeBvs (ℝˢT _) = pø
+freeBvs ℕT = pø
+freeBvs ℝT = pø
+freeBvs 𝔻T = pø
+freeBvs (𝕀T _) = pø
+freeBvs 𝔹T = pø
+freeBvs 𝕊T = pø
+-- TODO: there is a better way to do this
+freeBvs (𝔻𝔽T Nil) = pø
+freeBvs (𝔻𝔽T (x :& xs)) = freeBrcrdvs x ∪ freeBvs (𝔻𝔽T xs)
+freeBvs (BagT τ) = freeBvs τ
+freeBvs (SetT τ) = freeBvs τ
+freeBvs (RecordT Nil) = pø
+freeBvs (RecordT (x :& xs)) = freeBrcrdvs x ∪ freeBvs (RecordT xs)
+freeBvs (𝕄T _ _ _ _ τ) = freeBvs τ
+freeBvs (τ₁ :+: τ₂) = freeBvs τ₁ ∪ freeBvs τ₂
+freeBvs (τ₁ :×: τ₂) = freeBvs τ₁ ∪ freeBvs τ₂
+freeBvs (τ₁ :&: τ₂) = freeBvs τ₁ ∪ freeBvs τ₂
+freeBvs (τ₁ :⊸: (_ :* τ₂)) = freeBvs τ₁ ∪ freeBvs τ₂
+freeBvs (pargs :⊸⋆: τ) = freeBlpargvs pargs ∪ freeBvs τ 
+freeBvs (BoxedT σ τ) = keys σ ∪ freeBvs τ
+
+freeBrcrdvs :: 𝕊 ∧ Type r → 𝑃 𝕏
+freeBrcrdvs (_ :* x) = freeBvs x
+
+freeBlpargvs :: 𝐿 (𝕏 ∧ Kind) ∧ PArgs r → 𝑃 𝕏
+freeBlpargvs (_ :* pargs) = unpackBpargs pargs
+
+unpackBpargs :: PArgs r → 𝑃 𝕏
+unpackBpargs e = case e of
+  PArgs tps -> freeBpargs tps 
+    
+freeBpargs :: 𝐿 (Type r ∧ Priv p r) → 𝑃 𝕏
+freeBpargs Nil = pø
+freeBpargs (x :& xs) = freeBpargs xs ∪ freeBparg x
+
+freeBparg :: Type r ∧ Priv p r → 𝑃 𝕏
+freeBparg (x :* _) = freeBvs x
+
 inferKind ∷ 𝕏 ⇰ Kind → RExpPre → 𝑂 Kind
 inferKind δ = \case
   VarRE x → return $ δ ⋕! x
@@ -359,17 +400,27 @@ inferSens eA = case extract eA of
     σ₁ :* τ₁ ← hijack $ inferSens e₁
     σ₂ :* τ₂ ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ₁) ⩌ γ) $ inferSens e₂
     let (ς :* σ₂') = ifNone (zero :* σ₂) $ dview x σ₂
-    tell $ ς ⨵ σ₁
-    tell σ₂'
-    return τ₂
+    let fvs = freeBvs τ₂
+    let isClosed = (fvs ∩ single𝑃 x) ≡ pø
+    case isClosed of
+      False → error $ "Let type/scoping error in return expression of type: " ⧺ (pprender τ₂)  
+      True → do
+        tell $ ς ⨵ σ₁
+        tell σ₂'
+        return τ₂
   SFunSE x τ e → do
     -- TODO: kind checking for τ
     -- TODO: "freeVars" check: freeVars τ₂ ⊆ keys γ
     let τ' = map normalizeRExp $ extract τ
     σ :* τ'' ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ') ⩌ γ) $ inferSens e
     let (ς :* σ') = ifNone (zero :* σ) $ dview x σ
-    tell σ'
-    return $ τ' :⊸: (ς :* τ'')
+    let fvs = freeBvs τ''
+    let isClosed = (fvs ∩ single𝑃 x) ≡ pø
+    case isClosed of
+      False → error $ "Lambda type/scoping error in return expression of type: " ⧺ (pprender τ'')  
+      True → do
+        tell σ'
+        return $ τ' :⊸: (ς :* τ'')
   AppSE e₁ e₂ → do
     τ₁ ← inferSens e₁
     σ₂ :* τ₂ ← hijack $ inferSens e₂
@@ -387,9 +438,14 @@ inferSens eA = case extract eA of
       $ mapEnvL contextKindL (\ δ → assoc ακs ⩌ δ)
       $ mapEnvL contextTypeL (\ γ → assoc xτs' ⩌ γ)
       $ inferPriv e
-    tell $ map (Sens ∘ truncate Inf ∘ unPriv) $ without (pow xs) σ
-    let τps = mapOn xτs' $ \ (x :* τ') → τ' :* ifNone null (σ ⋕? x)
-    return $ (ακs :* PArgs τps) :⊸⋆: τ
+    let fvs = freeBvs τ
+    let isClosed = (fvs ∩ pow xs) ≡ pø
+    case isClosed of
+      False → error $ "Lambda type/scoping error in return expression of type: " ⧺ (pprender τ)  
+      True → do
+        tell $ map (Sens ∘ truncate Inf ∘ unPriv) $ without (pow xs) σ
+        let τps = mapOn xτs' $ \ (x :* τ') → τ' :* ifNone null (σ ⋕? x)
+        return $ (ακs :* PArgs τps) :⊸⋆: τ
   TupSE e₁ e₂ → do
     τ₁ ← inferSens e₁
     τ₂ ← inferSens e₂
