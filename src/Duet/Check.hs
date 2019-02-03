@@ -546,7 +546,7 @@ inferSens eA = case extract eA of
             case τ' ≡ τ₃ of
               False → error $ "Partition attribute type mismatch: " ⧺ (pprender (τ₁, τ₃))
               True → do
-                tell $ map (Sens ∘ truncate Inf ∘ unSens) σ₁
+                tell σ₁
                 return $ BagT τ₁
           _ → error $ "Partition attribute not found: " ⧺ (pprender (τ₁, τₐ))
       _ → error $ "Partition error: " ⧺ (pprender (τ₁, τ₂))

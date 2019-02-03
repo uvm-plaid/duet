@@ -13,7 +13,7 @@ let main = pλ ε   : ℝ⁺,
   bbbb ← gauss[ℝ⁺[2.0], ε, δ] <df₂> { ℝ⁺[2.0]⋅ real (countBag (filterBag df₂ {x ⇒ x⧼id⧽ ≡ 1})) };
   cccc ← gauss[ℝ⁺[1.0], ε, δ] <b> { real (countBag b) };
   dddd ← bgauss[ℝ⁺[1.0], ε, δ] <df₂> { bmap partitionDF[df₂, id, s] { r ⇒ real (countBag r) } };
-  return aaaa
+  return dddd
 in main
 
 -- TODOS:
