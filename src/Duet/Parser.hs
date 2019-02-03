@@ -24,8 +24,8 @@ tokKeywords = list
   ,"LR","L2","U"
   ,"real","bag","set","record"
   ,"countBag","filterBag","partitionDF","addColDF","mapDF","joinDF₁"
-  ,"matrix","mcreate","clip","∇","mmap","idx"
-  ,"aloop","loop","gauss","mgauss","rows","cols","exponential","rand-resp"
+  ,"matrix","mcreate","clip","∇","mmap","bmap","idx"
+  ,"aloop","loop","gauss","mgauss","bgauss","rows","cols","exponential","rand-resp"
   ,"sample","rand-nat"
   ,"L1","L2","L∞","U"
   ,"dyn","real"
@@ -413,6 +413,27 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
       return $ case e₂x₂O of
         None → MMapSE e₁ x₁ e₃
         Some (e₂ :* x₂) → MMap2SE e₁ e₂ x₁ x₂ e₃
+  , mixF $ MixFTerminal $ do
+      parLit "bmap"
+      e₁ ← parSExp p
+      e₂O ← pOptional $ do
+        parLit ","
+        e₂ ← parSExp p
+        return e₂
+      parLit "{"
+      x₁ ← parVar
+      e₂x₂O ← case e₂O of
+        None → return None
+        Some e₂ → do
+          parLit ","
+          x₂ ← parVar
+          return $ Some $ e₂ :* x₂
+      parLit "⇒"
+      e₃ ← parSExp p
+      parLit "}"
+      return $ case e₂x₂O of
+        None → BMapSE e₁ x₁ e₃
+        Some (e₂ :* x₂) → BMap2SE e₁ e₂ x₁ x₂ e₃
   , mixF $ MixFTerminal $ VarSE ^$ parVar
   , mixF $ MixFPrefix 1 $ do
       parLit "let"
@@ -561,6 +582,54 @@ parPExp p = pWithContext "pexp" $ tries
         e₄ ← parSExp p
         parLit "}"
         return $ MGaussPE e₁ (ZCGaussParams e₂) xs e₄
+      _ → abort
+  , case p of
+      ED_W → do 
+        parLit "bgauss"
+        parLit "["
+        e₁ ← parSExp p
+        parLit ","
+        e₂ ← parSExp p
+        parLit ","
+        e₃ ← parSExp p
+        parLit "]"
+        parLit "<"
+        xs ← pManySepBy (parLit ",") parVar
+        parLit ">"
+        parLit "{"
+        e₄ ← parSExp p
+        parLit "}"
+        return $ BGaussPE e₁ (EDGaussParams e₂ e₃) xs e₄
+      RENYI_W → do 
+        parLit "bgauss"
+        parLit "["
+        e₁ ← parSExp p
+        parLit ","
+        e₂ ← parSExp p
+        parLit ","
+        e₃ ← parSExp p
+        parLit "]"
+        parLit "<"
+        xs ← pManySepBy (parLit ",") parVar
+        parLit ">"
+        parLit "{"
+        e₄ ← parSExp p
+        parLit "}"
+        return $ BGaussPE e₁ (RenyiGaussParams e₂ e₃) xs e₄
+      ZC_W → do 
+        parLit "bgauss"
+        parLit "["
+        e₁ ← parSExp p
+        parLit ","
+        e₂ ← parSExp p
+        parLit "]"
+        parLit "<"
+        xs ← pManySepBy (parLit ",") parVar
+        parLit ">"
+        parLit "{"
+        e₄ ← parSExp p
+        parLit "}"
+        return $ BGaussPE e₁ (ZCGaussParams e₂) xs e₄
       _ → abort
   , case p of
       ED_W → do 
