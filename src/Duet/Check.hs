@@ -500,8 +500,8 @@ inferSens eA = case extract eA of
   BagFilterSE e₁ x e₂ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
     case τ₁ of
-      BagT τ₂ → do
-        σ₂ :* τ₂ ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ₂) ⩌ γ) $ inferSens e₂
+      BagT τ₁' → do
+        σ₂ :* τ₂ ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ₁') ⩌ γ) $ inferSens e₂
         let (ς :* σ₂') = ifNone (zero :* σ₂) $ dview x σ₂
         tell $ ς ⨵ σ₁
         tell $ σ₂' -- TODO: scale to ∞
@@ -678,10 +678,6 @@ inferPriv eA = case extract eA of
         σ₄KeepMax = joins $ values σ₄Keep
         σ₄Toss = without xs' σ₄
     case (τ₁,τ₂,τ₃,τ₄,ιview @ RNF σ₄KeepMax) of
-      (ℝˢT ηₛ,ℝˢT ηᵋ,ℝˢT ηᵟ,BagT ℝT,Some ς) | ς ⊑ ηₛ → do
-        tell $ map (Priv ∘ truncate (Quantity $ EDPriv ηᵋ ηᵟ) ∘ unSens) σ₄Keep
-        tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
-        return $ BagT ℝT
       (ℝˢT ηₛ,ℝˢT ηᵋ,ℝˢT ηᵟ,BagT ℝT,Some ς) | ς ⊑ ηₛ → do
         tell $ map (Priv ∘ truncate (Quantity $ EDPriv ηᵋ ηᵟ) ∘ unSens) σ₄Keep
         tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
