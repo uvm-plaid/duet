@@ -4,9 +4,9 @@ let main = pλ ε   : ℝ⁺,
               .
               ε   : ℝ⁺[ε],
               δ   : ℝ⁺[δ],
-              df₁ : 𝔻𝔽[id:ℕ, salary:ℝ], 
-              df₂ : bag record[id:ℕ, salary:ℝ],
-              b   : bag ℕ,
+              df₁ : 𝔻𝔽[id:ℕ, salary:ℝ],            -- 𝕄[L∞, U | ☆, [ℕ, ℝ]]
+              df₂ : bag record[id:ℕ, salary:ℝ],    -- 𝕄[L∞, U | ☆, [ℕ, ℝ]]
+              b   : bag ℕ,                         -- 𝕄[L∞, U | ☆, ℕ[1] . ℕ]
               s   : set ℕ
               ⇒
   aaaa ← gauss[ℝ⁺[2.0], ε, δ] <df₁> { ℝ⁺[2.0]⋅ real (countBag (filterBag df₁ {x ⇒ x⧼id⧽ ≡ 1})) };
