@@ -55,15 +55,25 @@ instance (Pretty r) ⇒ Pretty (Type r) where
                  ppBotLevel $ concat [ppAlign $ ppPun n,ppPun ":",ppAlign $ pretty t]
              , ppPun "]"
              ]
-    BagT (RecordT as) → ppAtLevel 2 $ ppSeparated $ list
+    BagT ℓ c (RecordT as) → ppAtLevel 2 $ ppSeparated $ list
              [ ppKeyPun "𝔻𝔽"
+             , ppPun "["
+             , ppAlign $ pretty ℓ
+             , ppSpace 1
+             , ppAlign $ pretty c
+             , ppPun "]"
              , ppPun "["
              , ppAlign $ ppSeparated $ list $ inbetween (ppPun ",") $ mapOn as $ \ (n :* t) → 
                  ppBotLevel $ concat [ppAlign $ ppPun n,ppPun ":",ppAlign $ pretty t]
              , ppPun "]"
              ]
-    BagT τ → ppAtLevel 5 $ ppSeparated $ list
+    BagT ℓ c τ → ppAtLevel 5 $ ppSeparated $ list
       [ ppKeyPun "Bag"
+      , ppPun "["
+      , ppAlign $ pretty ℓ
+      , ppSpace 1
+      , ppAlign $ pretty c
+      , ppPun "]"
       , ppBump $ pretty τ
       ]
     SetT τ → ppAtLevel 5 $ ppSeparated $ list

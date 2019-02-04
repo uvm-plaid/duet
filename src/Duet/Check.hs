@@ -19,7 +19,7 @@ freeBvs 𝕊T = pø
 -- TODO: there is a better way to do this
 freeBvs (𝔻𝔽T Nil) = pø
 freeBvs (𝔻𝔽T (x :& xs)) = freeBrcrdvs x ∪ freeBvs (𝔻𝔽T xs)
-freeBvs (BagT τ) = freeBvs τ
+freeBvs (BagT ℓ c τ) = freeBvs τ
 freeBvs (SetT τ) = freeBvs τ
 freeBvs (RecordT Nil) = pø
 freeBvs (RecordT (x :& xs)) = freeBrcrdvs x ∪ freeBvs (RecordT xs)
@@ -371,12 +371,12 @@ inferSens eA = case extract eA of
   BMapSE e₁ x e₂ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
     case τ₁ of
-      BagT τ₁' → do
+      BagT ℓ _c τ₁' → do
         σ₂ :* τ₂ ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ₁') ⩌ γ) $ inferSens e₂
         let (ς :* σ₂') = ifNone (zero :* σ₂) $ dview x σ₂
         tell $ ς ⨵ σ₁
         tell $ σ₂'
-        return $ BagT τ₂ 
+        return $ BagT ℓ UClip τ₂ 
       _  → undefined -- TypeSource Error
   MMap2SE e₁ e₂ x₁ x₂ e₃ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
@@ -403,7 +403,8 @@ inferSens eA = case extract eA of
     σ₁ :* τ₁ ← hijack $ inferSens e₁
     σ₂ :* τ₂ ← hijack $ inferSens e₂
     case (τ₁,τ₂) of
-      (BagT τ₁',BagT τ₂')
+      (BagT ℓ₁ c₁ τ₁',BagT ℓ₂ c₂ τ₂')
+        | ℓ₁ ≡ ℓ₂
         → do σ₃ :* τ₃ ← 
                hijack $ 
                mapEnvL contextTypeL (\ γ → dict [x₁ ↦ τ₁',x₂ ↦ τ₂'] ⩌ γ) $ 
@@ -413,7 +414,7 @@ inferSens eA = case extract eA of
              tell $ ς₁ ⨵ σ₁
              tell $ ς₂ ⨵ σ₂
              tell $ σ₃''
-             return $ BagT τ₃
+             return $ BagT ℓ₁ UClip τ₃
       _ → error $ "Map2 error: " ⧺ (pprender $ (τ₁ :* τ₂))
   VarSE x → do
     γ ← askL contextTypeL
@@ -495,12 +496,13 @@ inferSens eA = case extract eA of
   BagCountSE e → do
     τ ← inferSens e
     case τ of
-      (BagT _) → return ℕT
+      (BagT _ℓ _c _τ) → return ℕT
       _ → error $ "BagCountSE error: " ⧺ (pprender τ)
+  -- TODO: not sure about this case..
   BagFilterSE e₁ x e₂ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
     case τ₁ of
-      BagT τ₁' → do
+      BagT ℓ c τ₁' → do
         σ₂ :* τ₂ ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ₁') ⩌ γ) $ inferSens e₂
         let (ς :* σ₂') = ifNone (zero :* σ₂) $ dview x σ₂
         tell $ ς ⨵ σ₁
@@ -534,7 +536,7 @@ inferSens eA = case extract eA of
     τ₂ ← inferSens e₂
     -- TODO: check that τ₁ and τ₂ overlap on some subset of their schemas
     case (τ₁, τ₂) of
-      (BagT (RecordT as), SetT τ₃) → do
+      (BagT ℓ c (RecordT as), SetT τ₃) → do
         -- TODO: helper?
         let f ∷ (𝕊 ∧ Type RNF) → 𝑂 (Type RNF) → 𝑂 (Type RNF) = \ p acc →
                case p of
@@ -547,7 +549,8 @@ inferSens eA = case extract eA of
               False → error $ "Partition attribute type mismatch: " ⧺ (pprender (τ₁, τ₃))
               True → do
                 tell σ₁
-                return $ BagT τ₁
+                -- TODO: make sure ℓ and c are right
+                return $ BagT ℓ c τ₁
           _ → error $ "Partition attribute not found: " ⧺ (pprender (τ₁, τₐ))
       _ → error $ "Partition error: " ⧺ (pprender (τ₁, τ₂))
   BoxSE e → do
@@ -678,10 +681,12 @@ inferPriv eA = case extract eA of
         σ₄KeepMax = joins $ values σ₄Keep
         σ₄Toss = without xs' σ₄
     case (τ₁,τ₂,τ₃,τ₄,ιview @ RNF σ₄KeepMax) of
-      (ℝˢT ηₛ,ℝˢT ηᵋ,ℝˢT ηᵟ,BagT ℝT,Some ς) | ς ⊑ ηₛ → do
+      -- TODO: do something with ℓ and c
+      (ℝˢT ηₛ,ℝˢT ηᵋ,ℝˢT ηᵟ,BagT ℓ c ℝT,Some ς) | ς ⊑ ηₛ → do
         tell $ map (Priv ∘ truncate (Quantity $ EDPriv ηᵋ ηᵟ) ∘ unSens) σ₄Keep
         tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
-        return $ BagT ℝT
+        -- TODO: make sure ℓ and c are correct
+        return $ BagT ℓ c ℝT
       _ → error $ "BGauss ED error: " ⧺ (pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄ :* ιview @ RNF σ₄KeepMax))
   BGaussPE e₁ (ZCGaussParams e₂) xs e₄ → do
     let xs' = pow xs
@@ -692,10 +697,12 @@ inferPriv eA = case extract eA of
         σ₄KeepMax = joins $ values σ₄Keep
         σ₄Toss = without xs' σ₄
     case (τ₁,τ₂,τ₄,ιview @ RNF σ₄KeepMax) of
-      (ℝˢT ηₛ,ℝˢT ηᵨ,BagT ℝT,Some ς) | ς ⊑ ηₛ → do
+      -- TODO: do something with ℓ and c
+      (ℝˢT ηₛ,ℝˢT ηᵨ,BagT ℓ c ℝT,Some ς) | ς ⊑ ηₛ → do
         tell $ map (Priv ∘ truncate (Quantity $ ZCPriv ηᵨ) ∘ unSens) σ₄Keep
         tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
-        return $ BagT ℝT
+        -- TODO: make sure ℓ and c are correct
+        return $ BagT ℓ c ℝT
       _ → error $ "BGauss error: " ⧺ (pprender $ (τ₁ :* τ₂ :* τ₄ :* ιview @ RNF σ₄KeepMax))
   BGaussPE e₁ (RenyiGaussParams e₂ e₃) xs e₄ → do
     let xs' = pow xs
@@ -707,10 +714,12 @@ inferPriv eA = case extract eA of
         σ₄KeepMax = joins $ values σ₄Keep
         σ₄Toss = without xs' σ₄
     case (τ₁,τ₂,τ₃,τ₄,ιview @ RNF σ₄KeepMax) of
-      (ℝˢT ηₛ,ℝˢT ηᵅ,ℝˢT ηᵋ,BagT ℝT,Some ς) | ς ⊑ ηₛ → do
+      -- TODO: do something with ℓ and c
+      (ℝˢT ηₛ,ℝˢT ηᵅ,ℝˢT ηᵋ,BagT ℓ c ℝT,Some ς) | ς ⊑ ηₛ → do
         tell $ map (Priv ∘ truncate (Quantity $ RenyiPriv ηᵅ ηᵋ) ∘ unSens) σ₄Keep
         tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
-        return $ BagT ℝT
+        -- TODO: make sure ℓ and c are correct
+        return $ BagT ℓ c ℝT
       _ → error $ "BGauss error: " ⧺ (pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄ :* ιview @ RNF σ₄KeepMax))
   GaussPE e₁ (RenyiGaussParams e₂ e₃) xs e₄ → undefined
   GaussPE e₁ (ZCGaussParams e₂) xs e₃ → undefined

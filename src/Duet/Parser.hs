@@ -211,7 +211,8 @@ parType mode = mixfixParser $ concat
         τ ← parType mode
         return $ a :* τ
       parLit "]"
-      return $ BagT (RecordT as)
+      -- TODO: support parsing sensitivity and clip
+      return $ BagT L1 UClip (RecordT as)
   , mix $ MixTerminal $ do
       parLit "record"
       parLit "["
@@ -222,7 +223,8 @@ parType mode = mixfixParser $ concat
         return $ a :* τ
       parLit "]"
       return $ RecordT as
-  , mix $ MixPrefix 6 $ const (BagT) ^$ parLit "bag"
+  -- TODO: support parsing sensitivity and clip
+  , mix $ MixPrefix 6 $ const (BagT L1 UClip) ^$ parLit "bag"
   , mix $ MixPrefix 6 $ const (SetT) ^$ parLit "set"
   , mix $ MixInfixL 3 $ const (:+:) ^$ parLit "+"
   , mix $ MixInfixL 4 $ const (:×:) ^$ parLit "×"

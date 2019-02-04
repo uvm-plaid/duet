@@ -164,7 +164,7 @@ data Type r =
   | 𝔹T
   | 𝕊T
   | 𝔻𝔽T (𝐿 (𝕊 ∧ Type r)) -- TODO: this should become syntactic sugar?
-  | BagT (Type r)
+  | BagT Norm Clip (Type r)
   | SetT (Type r)
   | RecordT (𝐿 (𝕊 ∧ Type r))
   | 𝕄T Norm Clip r r (Type r)
@@ -188,7 +188,7 @@ instance Functor Type where
     𝔹T → 𝔹T
     𝕊T → 𝕊T
     𝔻𝔽T as → 𝔻𝔽T $ map (mapPair id $ map f) as -- TODO: remove
-    BagT τ → BagT (map f τ)
+    BagT ℓ c τ → BagT ℓ c (map f τ)
     SetT τ → SetT (map f τ)
     RecordT as → RecordT $ map (mapPair id $ map f) as
     𝕄T ℓ c r₁ r₂ τ → 𝕄T ℓ c (f r₁) (f r₂) $ map f τ
