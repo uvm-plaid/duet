@@ -156,13 +156,20 @@ deriving instance (Show r) ⇒ Show (PArgs r)
 
 -- data RowsT r = RexpRT (RExp r) | StarRT
 
-data RowsT = RexpRT RExp | StarRT deriving (Eq,Ord,Show)
+data RowsT r = RexpRT r | StarRT deriving (Eq,Ord,Show)
 
+instance Functor RowsT where
+  map ∷ (a → b) → RowsT a → RowsT b
+  map f = \case
+    RexpRT r → RexpRT $ f r
+    StarRT → StarRT
+
+type MExpSource r = Annotated FullContext (MExp r)
 data MExp r = 
     EmptyME
   | VarME 𝕏
-  | ConsME (Type r) (MExp r)
-  | AppendME (MExp r) (MExp r)
+  | ConsME (Type r) (MExpSource r)
+  | AppendME (MExpSource r) (MExpSource r)
   | RexpME RExp (Type r)
   deriving (Eq,Ord,Show)
 
@@ -171,8 +178,8 @@ instance Functor MExp where
   map f = \case
     EmptyME → EmptyME
     VarME x → VarME x
-    ConsME τ m → ConsME (map f τ) (map f m)
-    AppendME n m → AppendME (map f n) (map f m)
+    ConsME τ m → ConsME (map f τ) (mapp f m)
+    AppendME n m → AppendME (mapp f n) (mapp f m)
     RexpME r τ → RexpME r (map f τ)
 
 type TypeSource r = Annotated FullContext (Type r)
@@ -189,7 +196,7 @@ data Type r =
   | BagT Norm Clip (Type r)
   | SetT (Type r)
   | RecordT (𝐿 (𝕊 ∧ Type r))
-  | 𝕄T Norm Clip RowsT (MExp r)
+  | 𝕄T Norm Clip (RowsT r) (MExpSource r)
   | Type r :+: Type r
   | Type r :×: Type r
   | Type r :&: Type r
@@ -213,7 +220,7 @@ instance Functor Type where
     BagT ℓ c τ → BagT ℓ c (map f τ)
     SetT τ → SetT (map f τ)
     RecordT as → RecordT $ map (mapPair id $ map f) as
-    𝕄T ℓ c r₁ r₂ → 𝕄T ℓ c r₁ (map f r₂)
+    𝕄T ℓ c r₁ r₂ → 𝕄T ℓ c (map f r₁) (mapp f r₂)
     τ₁ :+: τ₂ → map f τ₁ :+: map f τ₂
     τ₁ :×: τ₂ → map f τ₁ :×: map f τ₂
     τ₁ :&: τ₂ → map f τ₁ :&: map f τ₂
