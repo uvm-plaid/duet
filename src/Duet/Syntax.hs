@@ -153,6 +153,28 @@ instance (Ord r) ⇒ Ord (PArgs r) where
     None → compare (stripPRIV (priv @ p₁)) (stripPRIV (priv @ p₂))
 deriving instance (Show r) ⇒ Show (PArgs r)
 
+
+-- data RowsT r = RexpRT (RExp r) | StarRT
+
+data RowsT = RexpRT RExp | StarRT deriving (Eq,Ord,Show)
+
+data MExp r = 
+    EmptyME
+  | VarME 𝕏
+  | ConsME (Type r) (MExp r)
+  | AppendME (MExp r) (MExp r)
+  | RexpME RExp (Type r)
+  deriving (Eq,Ord,Show)
+
+instance Functor MExp where
+  map ∷ (a → b) → MExp a → MExp b
+  map f = \case
+    EmptyME → EmptyME
+    VarME x → VarME x
+    ConsME τ m → ConsME (map f τ) (map f m)
+    AppendME n m → AppendME (map f n) (map f m)
+    RexpME r τ → RexpME r (map f τ)
+
 type TypeSource r = Annotated FullContext (Type r)
 data Type r =
     ℕˢT r
@@ -167,7 +189,7 @@ data Type r =
   | BagT Norm Clip (Type r)
   | SetT (Type r)
   | RecordT (𝐿 (𝕊 ∧ Type r))
-  | 𝕄T Norm Clip r r (Type r)
+  | 𝕄T Norm Clip RowsT (MExp r)
   | Type r :+: Type r
   | Type r :×: Type r
   | Type r :&: Type r
@@ -191,7 +213,7 @@ instance Functor Type where
     BagT ℓ c τ → BagT ℓ c (map f τ)
     SetT τ → SetT (map f τ)
     RecordT as → RecordT $ map (mapPair id $ map f) as
-    𝕄T ℓ c r₁ r₂ τ → 𝕄T ℓ c (f r₁) (f r₂) $ map f τ
+    𝕄T ℓ c r₁ r₂ → 𝕄T ℓ c r₁ (map f r₂)
     τ₁ :+: τ₂ → map f τ₁ :+: map f τ₂
     τ₁ :×: τ₂ → map f τ₁ :×: map f τ₂
     τ₁ :&: τ₂ → map f τ₁ :&: map f τ₂
@@ -207,11 +229,6 @@ data Grad = LR
   deriving (Eq,Ord,Show)
 makePrettySum ''Grad
 
-instance Show FullContext where
-  show = chars ∘ ppshow
-
-instance Show RExpPre where
-  show = chars ∘ ppshow
 
 type SExpSource (p ∷ PRIV) = Annotated FullContext (SExp p)
 -- this is using GADT syntax and extension

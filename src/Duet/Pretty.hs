@@ -10,6 +10,37 @@ instance (Pretty e) ⇒ Pretty (Quantity e) where
   pretty (Quantity e) = pretty e
   pretty Inf = ppKeyPun "⊤"
 
+instance Pretty RowsT where
+  pretty = \case
+    RexpRT r → pretty r
+    StarRT → ppKeyPun "★"
+
+instance (Pretty r) ⇒ Pretty (MExp r) where
+  pretty = \case
+    EmptyME → ppKeyPun "[]"
+    VarME x → pretty x
+    ConsME τ m → ppAtLevel 5 $ ppSeparated $ list
+      [ ppAlign $ pretty τ
+      , ppSpace 1
+      , ppKeyPun "::"
+      , ppSpace 1
+      , ppAlign $ pretty m
+      ]
+    AppendME n m → ppAtLevel 5 $ ppSeparated $ list
+      [ ppAlign $ pretty n
+      , ppSpace 1
+      , ppKeyPun "++"
+      , ppSpace 1
+      , ppAlign $ pretty m
+      ]
+    RexpME r τ → ppAtLevel 5 $ ppSeparated $ list
+      [ ppAlign $ pretty r
+      , ppSpace 1
+      , ppKeyPun "."
+      , ppSpace 1
+      , ppAlign $ pretty τ
+      ]
+
 instance Pretty Kind where
   pretty = \case
     ℕK → ppKeyPun "ℕ"
@@ -87,7 +118,7 @@ instance (Pretty r) ⇒ Pretty (Type r) where
                  ppBotLevel $ concat [ppAlign $ ppPun n,ppPun ":",ppAlign $ pretty t]
              , ppPun "]"
              ]
-    𝕄T ℓ c ηₘ ηₙ τ → ppAtLevel 10 $ ppSeparated $ list
+    𝕄T ℓ c ηₘ ηₙ → ppAtLevel 10 $ ppSeparated $ list
       [ concat
         [ ppKeyPun "𝕄 "
         , ppPun "["
@@ -100,7 +131,6 @@ instance (Pretty r) ⇒ Pretty (Type r) where
         , ppAlign $ pretty ηₙ
         , ppPun "]"
         ]
-      , pretty τ
       ]
     τ₁ :+: τ₂ → ppAtLevel 5 $ ppSeparated $ list
       [ pretty τ₁

@@ -124,6 +124,21 @@ parKind = pNew "kind" $ tries
   , do parLit "ℝ⁺" ; return ℝK
   ]
 
+parRowsT :: Parser Token RowsT
+parRowsT = tries
+  [ do const StarRT ^$ parLit "★"
+  , do η ← parRExp; return $ RexpRT η
+  ]
+
+parMExp ∷ Parser Token (MExp r)
+parMExp = mixfixParserWithContext "mexp" $ concat
+  [ mixF $ MixFTerminal $ EmptyME ^$ parLit "[]"
+  , mixF $ MixFTerminal $ VarME ^$ parVar
+  , mixF $ MixFInfixL 2 $ const ConsME ^$ parLit "::"
+  , mixF $ MixFInfixL 3 $ const AppendME ^$ parLit "++"
+  , mixF $ MixFInfixL 4 $ const RexpME ^$ parLit "."
+  ]
+
 parRExp ∷ Parser Token RExp
 parRExp = mixfixParserWithContext "rexp" $ concat
   [ mixF $ MixFTerminal $ VarRE ^$ parVar
@@ -195,11 +210,12 @@ parType mode = mixfixParser $ concat
       parLit "𝕄"
       parLit "["
       ℓ ← parNorm
+      parLit ","
       c ← parClip
       parLit "|"
-      ηₘ ← parRExp
+      ηₘ ← parRowsT
       parLit ","
-      ηₙ ← parRExp
+      ηₙ ← parMExp
       parLit "]"
       return $ 𝕄T ℓ c ηₘ ηₙ
   , mix $ MixTerminal $ do
