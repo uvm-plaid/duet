@@ -154,8 +154,6 @@ instance (Ord r) ⇒ Ord (PArgs r) where
 deriving instance (Show r) ⇒ Show (PArgs r)
 
 
--- data RowsT r = RexpRT (RExp r) | StarRT
-
 data RowsT r = RexpRT r | StarRT deriving (Eq,Ord,Show)
 
 instance Functor RowsT where

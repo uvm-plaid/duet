@@ -23,13 +23,21 @@ freeBvs (BagT ℓ c τ) = freeBvs τ
 freeBvs (SetT τ) = freeBvs τ
 freeBvs (RecordT Nil) = pø
 freeBvs (RecordT (x :& xs)) = freeBrcrdvs x ∪ freeBvs (RecordT xs)
-freeBvs (𝕄T _ _ _ _) = error "TODO" -- freeBvs τ
+freeBvs (𝕄T _ _ _ me) = freeBmexp me
 freeBvs (τ₁ :+: τ₂) = freeBvs τ₁ ∪ freeBvs τ₂
 freeBvs (τ₁ :×: τ₂) = freeBvs τ₁ ∪ freeBvs τ₂
 freeBvs (τ₁ :&: τ₂) = freeBvs τ₁ ∪ freeBvs τ₂
 freeBvs (τ₁ :⊸: (_ :* τ₂)) = freeBvs τ₁ ∪ freeBvs τ₂
 freeBvs (pargs :⊸⋆: τ) = freeBlpargvs pargs ∪ freeBvs τ 
 freeBvs (BoxedT σ τ) = keys σ ∪ freeBvs τ
+
+freeBmexp :: (MExpSource r) → 𝑃 𝕏
+freeBmexp me = case extract me of
+  EmptyME → pø
+  VarME x → pø
+  ConsME τ me₁ → freeBvs τ ∪ freeBmexp me₁
+  AppendME me₁ me₂  → freeBmexp me₁ ∪ freeBmexp me₂
+  RexpME r τ → freeBvs τ
 
 freeBrcrdvs :: 𝕊 ∧ Type r → 𝑃 𝕏
 freeBrcrdvs (_ :* x) = freeBvs x
@@ -473,7 +481,6 @@ inferSens eA = case extract eA of
         return τ₂
   SFunSE x τ e → do
     -- TODO: kind checking for τ
-    -- TODO: "freeVars" check: freeVars τ₂ ⊆ keys γ
     let τ' = map normalizeRExp $ extract τ
     σ :* τ'' ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ') ⩌ γ) $ inferSens e
     let (ς :* σ') = ifNone (zero :* σ) $ dview x σ
@@ -602,9 +609,24 @@ inferSens eA = case extract eA of
   e → error $ fromString $ show e
 
 isRealMExp ∷ MExp RNF → PM p 𝔹
-isRealMExp me = do
-  error "TODO"
-  return (undefined ∷ 𝔹)
+isRealMExp me = case me of
+  EmptyME → do 
+    return False
+  VarME x → do 
+    -- TODO: does this make sense?
+    γ ← askL contextTypeL
+    case γ ⋕? x of
+      None → error $ fromString (show x) -- TypeSource Error
+      Some me → do
+        isRealMExp me
+  ConsME τ me₁ → isRealType τ ⩓ isRealMExp me₁
+  AppendME me₁ me₂ → isRealMExp me₁ ⩓ isRealMExp me₂
+  RexpME r τ → isRealType τ
+
+isRealType :: (Type r) → 𝔹
+isRealType (ℝˢT r) = True
+isRealType (ℝT) = True
+isRealType _ = False
 
 inferPriv ∷ ∀ p. (PRIV_C p) ⇒ PExpSource p → PM p (Type RNF)
 inferPriv eA = case extract eA of
@@ -693,11 +715,12 @@ inferPriv eA = case extract eA of
         σ₄KeepMax = joins $ values σ₄Keep
         σ₄Toss = without xs' σ₄
     case (τ₁,τ₂,τ₄,ιview @ RNF σ₄KeepMax) of
-      _ → error "TODO"
-      -- (ℝˢT ηₛ,ℝˢT ηᵨ,𝕄T L2 _c ηₘ ηₙ ℝT,Some ς) | ς ⊑ ηₛ → do
-      --   tell $ map (Priv ∘ truncate (Quantity $ ZCPriv ηᵨ) ∘ unSens) σ₄Keep
-      --   tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
-      --   return $ 𝕄T LInf UClip ηₘ ηₙ ℝT
+      (ℝˢT ηₛ,ℝˢT ηᵨ,𝕄T L2 _c ηₘ ηₙ,Some ς) | ς ⊑ ηₛ → do
+        b ← isRealMExp $ extract ηₙ
+        when (not b) $ throw (error "MGauss error isRealMExp check failed" ∷ TypeError)
+        tell $ map (Priv ∘ truncate (Quantity $ ZCPriv ηᵨ) ∘ unSens) σ₄Keep
+        tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
+        return $ 𝕄T LInf UClip ηₘ ηₙ
       _ → error $ "MGauss error: " ⧺ (pprender $ (τ₁ :* τ₂ :* τ₄ :* ιview @ RNF σ₄KeepMax))
   MGaussPE e₁ (RenyiGaussParams e₂ e₃) xs e₄ → do
     let xs' = pow xs
@@ -709,11 +732,12 @@ inferPriv eA = case extract eA of
         σ₄KeepMax = joins $ values σ₄Keep
         σ₄Toss = without xs' σ₄
     case (τ₁,τ₂,τ₃,τ₄,ιview @ RNF σ₄KeepMax) of
-      _ → error "TODO"
-      -- (ℝˢT ηₛ,ℝˢT ηᵅ,ℝˢT ηᵋ,𝕄T L2 _c ηₘ ηₙ ℝT,Some ς) | ς ⊑ ηₛ → do
-      --   tell $ map (Priv ∘ truncate (Quantity $ RenyiPriv ηᵅ ηᵋ) ∘ unSens) σ₄Keep
-      --   tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
-      --   return $ 𝕄T LInf UClip ηₘ ηₙ ℝT
+      (ℝˢT ηₛ,ℝˢT ηᵅ,ℝˢT ηᵋ,𝕄T L2 _c ηₘ ηₙ,Some ς) | ς ⊑ ηₛ → do
+        b ← isRealMExp $ extract ηₙ
+        when (not b) $ throw (error "MGauss error isRealMExp check failed" ∷ TypeError)
+        tell $ map (Priv ∘ truncate (Quantity $ RenyiPriv ηᵅ ηᵋ) ∘ unSens) σ₄Keep
+        tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
+        return $ 𝕄T LInf UClip ηₘ ηₙ ℝT
       _ → error $ "MGauss error: " ⧺ (pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄ :* ιview @ RNF σ₄KeepMax))
   BGaussPE e₁ (EDGaussParams e₂ e₃) xs e₄ → do
     let xs' = pow xs
