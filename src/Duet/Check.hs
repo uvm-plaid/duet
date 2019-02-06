@@ -16,7 +16,7 @@ freeBvs 𝔻T = pø
 freeBvs (𝕀T _) = pø
 freeBvs 𝔹T = pø
 freeBvs 𝕊T = pø
--- TODO: there is a better way to do this
+-- TODO: there is a better way to do this, map/fold?
 freeBvs (𝔻𝔽T Nil) = pø
 freeBvs (𝔻𝔽T (x :& xs)) = freeBrcrdvs x ∪ freeBvs (𝔻𝔽T xs)
 freeBvs (BagT ℓ c τ) = freeBvs τ
@@ -119,6 +119,7 @@ makePrettyRecord ''TypeError
 data Context = Context
   { contextKind ∷ 𝕏 ⇰ Kind
   , contextType ∷ 𝕏 ⇰ Type RNF
+  , contextMExp ∷ 𝕏 ⇰ MExp RNF 
   }
 makeLenses ''Context
 makePrettyRecord ''Context
@@ -131,11 +132,11 @@ newtype SM p a = SM { unSM ∷ ReaderT Context (WriterT (𝕏 ⇰ Sens RNF) (Err
   ,MonadReader Context
   ,MonadWriter (𝕏 ⇰ Sens RNF))
 
-mkSM ∷ (𝕏 ⇰ Kind → 𝕏 ⇰ Type RNF → TypeError ∨ ((𝕏 ⇰ Sens RNF) ∧ a)) → SM p a
-mkSM f = SM $ ReaderT $ \ (Context δ γ) → WriterT $ ErrorT $ ID $ f δ γ
+mkSM ∷ (𝕏 ⇰ Kind → 𝕏 ⇰ Type RNF → 𝕏 ⇰ MExp RNF → TypeError ∨ ((𝕏 ⇰ Sens RNF) ∧ a)) → SM p a
+mkSM f = SM $ ReaderT $ \ (Context δ γ ᴍ) → WriterT $ ErrorT $ ID $ f δ γ ᴍ
 
-runSM ∷ 𝕏 ⇰ Kind → 𝕏 ⇰ Type RNF → SM p a → TypeError ∨ ((𝕏 ⇰ Sens RNF) ∧ a)
-runSM δ γ = unID ∘ unErrorT ∘ unWriterT ∘ runReaderT (Context δ γ) ∘ unSM
+runSM ∷ 𝕏 ⇰ Kind → 𝕏 ⇰ Type RNF → 𝕏 ⇰ MExp RNF → SM p a → TypeError ∨ ((𝕏 ⇰ Sens RNF) ∧ a)
+runSM δ γ ᴍ = unID ∘ unErrorT ∘ unWriterT ∘ runReaderT (Context δ γ ᴍ) ∘ unSM
 
 newtype PM p a = PM { unPM ∷ ReaderT Context (WriterT (𝕏 ⇰ Priv p RNF) (ErrorT TypeError ID)) a }
   deriving 
@@ -145,22 +146,22 @@ newtype PM p a = PM { unPM ∷ ReaderT Context (WriterT (𝕏 ⇰ Priv p RNF) (E
   ,MonadReader Context
   ,MonadWriter (𝕏 ⇰ Priv p RNF))
 
-mkPM ∷ (𝕏 ⇰ Kind → 𝕏 ⇰ Type RNF → TypeError ∨ ((𝕏 ⇰ Priv p RNF) ∧ a)) → PM p a
-mkPM f = PM $ ReaderT $ \ (Context δ γ) → WriterT $ ErrorT $ ID $ f δ γ
+mkPM ∷ (𝕏 ⇰ Kind → 𝕏 ⇰ Type RNF → 𝕏 ⇰ MExp RNF → TypeError ∨ ((𝕏 ⇰ Priv p RNF) ∧ a)) → PM p a
+mkPM f = PM $ ReaderT $ \ (Context δ γ ᴍ) → WriterT $ ErrorT $ ID $ f δ γ ᴍ
 
 --      kind env   type env    expression   type error    sens costs     expressions' type
 --         ⌄⌄         ⌄⌄           ⌄⌄         ⌄⌄             ⌄⌄            ⌄⌄
-runPM ∷ 𝕏 ⇰ Kind → 𝕏 ⇰ Type RNF → PM p a → TypeError ∨ ((𝕏 ⇰ Priv p RNF) ∧ a)
-runPM δ γ = unID ∘ unErrorT ∘ unWriterT ∘ runReaderT (Context δ γ) ∘ unPM
+runPM ∷ 𝕏 ⇰ Kind → 𝕏 ⇰ Type RNF → 𝕏 ⇰ MExp RNF → PM p a → TypeError ∨ ((𝕏 ⇰ Priv p RNF) ∧ a)
+runPM δ γ ᴍ = unID ∘ unErrorT ∘ unWriterT ∘ runReaderT (Context δ γ ᴍ) ∘ unPM
 
 smFromPM ∷ PM p a → SM p a
-smFromPM xM = mkSM $ \ δ γ → mapInr (mapFst $ map $ Sens ∘ truncate Inf ∘ unPriv) $ runPM δ γ xM
+smFromPM xM = mkSM $ \ δ γ ᴍ → mapInr (mapFst $ map $ Sens ∘ truncate Inf ∘ unPriv) $ runPM δ γ ᴍ xM
 
 pmFromSM ∷ SM p a → PM p a
-pmFromSM xM = mkPM $ \ δ γ → mapInr (mapFst $ map $ Priv ∘ truncate Inf ∘ unSens) $ runSM δ γ xM
+pmFromSM xM = mkPM $ \ δ γ ᴍ → mapInr (mapFst $ map $ Priv ∘ truncate Inf ∘ unSens) $ runSM δ γ ᴍ xM
 
 mapPPM ∷ (Priv p₁ RNF → Priv p₂ RNF) → PM p₁ a → PM p₂ a 
-mapPPM f xM = mkPM $ \ δ γ → mapInr (mapFst $ map f) $ runPM δ γ xM
+mapPPM f xM = mkPM $ \ δ γ ᴍ → mapInr (mapFst $ map f) $ runPM δ γ ᴍ xM
 
 -- this will be written monadically
 checkType ∷ (PRIV_C p) ⇒ TypeSource RNF → SM p 𝔹
@@ -614,14 +615,20 @@ isRealMExp me = case me of
     return False
   VarME x → do 
     -- TODO: does this make sense?
-    γ ← askL contextTypeL
-    case γ ⋕? x of
+    ᴍ ← askL contextMExpL
+    case ᴍ ⋕? x of
       None → error $ fromString (show x) -- TypeSource Error
       Some me → do
-        isRealMExp me
-  ConsME τ me₁ → isRealType τ ⩓ isRealMExp me₁
-  AppendME me₁ me₂ → isRealMExp me₁ ⩓ isRealMExp me₂
-  RexpME r τ → isRealType τ
+        isRealMExp $ me
+  ConsME τ me₁ → do
+    let b = isRealType τ
+    a ← isRealMExp $ extract $ me₁
+    return $ a ⩓ b
+  AppendME me₁ me₂ → do
+    a ← isRealMExp $ extract $ me₁
+    b ← isRealMExp $ extract $ me₂
+    return $ a ⩓ b
+  RexpME r τ → return $ isRealType τ
 
 isRealType :: (Type r) → 𝔹
 isRealType (ℝˢT r) = True
@@ -737,7 +744,7 @@ inferPriv eA = case extract eA of
         when (not b) $ throw (error "MGauss error isRealMExp check failed" ∷ TypeError)
         tell $ map (Priv ∘ truncate (Quantity $ RenyiPriv ηᵅ ηᵋ) ∘ unSens) σ₄Keep
         tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
-        return $ 𝕄T LInf UClip ηₘ ηₙ ℝT
+        return $ 𝕄T LInf UClip ηₘ ηₙ
       _ → error $ "MGauss error: " ⧺ (pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄ :* ιview @ RNF σ₄KeepMax))
   BGaussPE e₁ (EDGaussParams e₂ e₃) xs e₄ → do
     let xs' = pow xs

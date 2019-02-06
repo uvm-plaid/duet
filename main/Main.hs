@@ -34,7 +34,7 @@ main = do
       unpack_C (parseMode fn) $ \ mode → do
         e ← parseIO (pSkip tokSkip $ pFinal $ parSExp mode) $ stream ts
         do pprint $ ppHeader "TYPE CHECKING" ; flushOut
-        let r = runSM dø initEnv $ inferSens e
+        let r = runSM dø initEnv dø $ inferSens e
         do pprint $ ppHeader "DONE" ; flushOut
         do pprint r ; flushOut
     _ → do

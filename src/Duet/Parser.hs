@@ -20,7 +20,7 @@ makePrettyUnion ''Token
 tokKeywords ∷ 𝐿 𝕊
 tokKeywords = list
   ["let","in","pλ","return","on"
-  ,"ℕ","ℝ","ℝ⁺","𝔻","𝕀","𝕄","𝔻𝔽","𝔹","𝕊"
+  ,"ℕ","ℝ","ℝ⁺","𝔻","𝕀","𝕄","𝔻𝔽","𝔹","𝕊","★","∷","⋅","[]"
   ,"LR","L2","U"
   ,"real","bag","set","record"
   ,"countBag","filterBag","partitionDF","addColDF","mapDF","joinDF₁"
