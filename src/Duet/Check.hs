@@ -28,7 +28,7 @@ freeBvs (τ₁ :+: τ₂) = freeBvs τ₁ ∪ freeBvs τ₂
 freeBvs (τ₁ :×: τ₂) = freeBvs τ₁ ∪ freeBvs τ₂
 freeBvs (τ₁ :&: τ₂) = freeBvs τ₁ ∪ freeBvs τ₂
 freeBvs (τ₁ :⊸: (_ :* τ₂)) = freeBvs τ₁ ∪ freeBvs τ₂
-freeBvs (pargs :⊸⋆: τ) = freeBlpargvs pargs ∪ freeBvs τ 
+freeBvs (pargs :⊸⋆: τ) = freeBlpargvs pargs ∪ freeBvs τ
 freeBvs (BoxedT σ τ) = keys σ ∪ freeBvs τ
 
 freeBmexp :: (MExpSource r) → 𝑃 𝕏
@@ -47,8 +47,8 @@ freeBlpargvs (_ :* pargs) = unpackBpargs pargs
 
 unpackBpargs :: PArgs r → 𝑃 𝕏
 unpackBpargs e = case e of
-  PArgs tps -> freeBpargs tps 
-    
+  PArgs tps -> freeBpargs tps
+
 freeBpargs :: 𝐿 (Type r ∧ Priv p r) → 𝑃 𝕏
 freeBpargs Nil = pø
 freeBpargs (x :& xs) = freeBpargs xs ∪ freeBparg x
@@ -119,13 +119,13 @@ makePrettyRecord ''TypeError
 data Context = Context
   { contextKind ∷ 𝕏 ⇰ Kind
   , contextType ∷ 𝕏 ⇰ Type RNF
-  , contextMExp ∷ 𝕏 ⇰ MExp RNF 
+  , contextMExp ∷ 𝕏 ⇰ MExp RNF
   }
 makeLenses ''Context
 makePrettyRecord ''Context
 
 newtype SM p a = SM { unSM ∷ ReaderT Context (WriterT (𝕏 ⇰ Sens RNF) (ErrorT TypeError ID)) a }
-  deriving 
+  deriving
   (Functor
   ,Return,Bind,Monad
   ,MonadError TypeError
@@ -139,7 +139,7 @@ runSM ∷ 𝕏 ⇰ Kind → 𝕏 ⇰ Type RNF → 𝕏 ⇰ MExp RNF → SM p a �
 runSM δ γ ᴍ = unID ∘ unErrorT ∘ unWriterT ∘ runReaderT (Context δ γ ᴍ) ∘ unSM
 
 newtype PM p a = PM { unPM ∷ ReaderT Context (WriterT (𝕏 ⇰ Priv p RNF) (ErrorT TypeError ID)) a }
-  deriving 
+  deriving
   (Functor
   ,Return,Bind,Monad
   ,MonadError TypeError
@@ -160,31 +160,57 @@ smFromPM xM = mkSM $ \ δ γ ᴍ → mapInr (mapFst $ map $ Sens ∘ truncate In
 pmFromSM ∷ SM p a → PM p a
 pmFromSM xM = mkPM $ \ δ γ ᴍ → mapInr (mapFst $ map $ Priv ∘ truncate Inf ∘ unSens) $ runSM δ γ ᴍ xM
 
-mapPPM ∷ (Priv p₁ RNF → Priv p₂ RNF) → PM p₁ a → PM p₂ a 
+mapPPM ∷ (Priv p₁ RNF → Priv p₂ RNF) → PM p₁ a → PM p₂ a
 mapPPM f xM = mkPM $ \ δ γ ᴍ → mapInr (mapFst $ map f) $ runPM δ γ ᴍ xM
 
 -- this will be written monadically
 checkType ∷ (PRIV_C p) ⇒ TypeSource RNF → SM p 𝔹
 checkType τA = case extract τA of
-  ℕˢT η → undefined
-  ℝˢT η → undefined
-  ℕT → undefined
-  ℝT → undefined
-  𝔻T → undefined
-  𝕀T η → undefined
-  𝔹T → undefined
-  𝕊T → undefined
+  ℕˢT η → do
+    case η of
+      (NatRNF _) → return True
+      _ → return False
+  ℝˢT η → do
+    case η of
+      (NNRealRNF _) → return True
+      _ → return False
+  ℕT → return True
+  ℝT → return True
+  𝔻T → return True
+  𝕀T η → do
+    case η of
+      (NatRNF _) → return True
+      _ → return False
+  𝔹T → return True
+  𝕊T → return True
   -- 𝔻𝔽T (𝐿 (𝕊 ∧ Type r)) → undefined
-  BagT ℓ c τ → undefined
+  BagT ℓ c τ → return $ checkType τ -- how to wrap τ in TypeSource
   SetT τ → undefined
   -- RecordT (𝐿 (𝕊 ∧ Type r)) → undefined
   𝕄T ℓ c rows me → undefined
-  τ₁ :+: τ₂ → undefined
-  τ₁ :×: τ₂ → undefined
-  τ₁ :&: τ₂ → undefined
-  τ₁ :⊸: (s :* τ₂) → undefined
-  (ακs :* PArgs τps) :⊸⋆: τ → undefined
-  BoxedT σ' τ → undefined
+  τ₁ :+: τ₂ → return $ checkType τ₁ ⩓ checkType τ₂
+  τ₁ :×: τ₂ → return $ checkType τ₁ ⩓ checkType τ₂
+  τ₁ :&: τ₂ → return $ checkType τ₁ ⩓ checkType τ₂
+  τ₁ :⊸: (s :* τ₂) → do
+    a ← checkType τ₁ ⩓ checkType τ₂
+    case s of
+      Inf → return True
+      (Quantity r) → case r of
+        (NNRealRNF _) → return True
+        _ → return False
+      _ → return False
+  (ακs :* PArgs τps) :⊸⋆: τ → do
+    $ mapEnvL contextKindL (\ δ → assoc ακs ⩌ δ)
+    -- syntax?
+    let f ∷ 𝔹 → 𝔹 → 𝔹 = \ x acc → x ⩓ acc
+    let a = fold True f map $ checkTypeP tps
+    let b = checkType τ
+    return a ⩓ b
+  BoxedT σ' τ → return $ checkType τ
+
+checkTypeP :: (Type r ∧ Priv p r) → 𝔹
+-- TODO
+checkTypeP (τ :* p) = True
 
 inferSens ∷ (PRIV_C p) ⇒ SExpSource p → SM p (Type RNF)
 inferSens eA = case extract eA of
@@ -272,11 +298,11 @@ inferSens eA = case extract eA of
     σ₂ :* τ₂ ← hijack $ inferSens e₂
     case (τ₁,τ₂) of
       (ℝˢT η₁,ℝˢT η₂) → do tell $ σ₁ ⧺ σ₂ ; return $ ℝˢT $ η₁ / η₂
-      (ℝˢT _η₁,ℝT) → do 
+      (ℝˢT _η₁,ℝT) → do
         tell $ σ₁ ⧺ top ⨵ σ₂
         return $ ℝT
-      (ℝT,ℝˢT η₂) → do 
-        tell $ ι (one / η₂) ⨵ σ₁ ⧺ σ₂ 
+      (ℝT,ℝˢT η₂) → do
+        tell $ ι (one / η₂) ⨵ σ₁ ⧺ σ₂
         return $ ℝT
       (ℝT,ℝT) → return ℝT
       (𝔻T,𝔻T) → return 𝔻T
@@ -304,7 +330,7 @@ inferSens eA = case extract eA of
       (ℕˢT η₁,ℕT) → do
         tell $ σ₁ ⧺ ι η₁ ⨵ σ₂
         return ℕT
-      (ℕT,ℕˢT η₂) → do 
+      (ℕT,ℕˢT η₂) → do
         tell $ ι η₂ ⨵ σ₁ ⧺ σ₂
         return ℕT
       -- TODO: check that this is ok
@@ -326,7 +352,7 @@ inferSens eA = case extract eA of
       (𝔻T,𝔻T) → return 𝔻T
       _ → error $ "Minus error: " ⧺ (pprender $ (τ₁ :* τ₂)) -- TypeError
   MCreateSE ℓ e₁ e₂ x₁ x₂ e₃ → do
-    τ₁ ← inferSens e₁ 
+    τ₁ ← inferSens e₁
     τ₂ ← inferSens e₂
     case (τ₁,τ₂) of
       (ℕˢT ηₘ,ℕˢT ηₙ) → do
@@ -388,7 +414,7 @@ inferSens eA = case extract eA of
     σ₃ :* τ₃ ← hijack $ inferSens e₃
     case (τ₁,τ₂,τ₃) of
       _ → error "TODO"
-      -- (𝕄T _ℓ₁ _c₁ ηₘ₁ ηₙ₁ τ₁',𝕄T _ℓ₂ (NormClip ℓ) ηₘ₂ ηₙ₂ τ₂',𝕄T _ℓ₃ _c₃ ηₘ₃ ηₙ₃ τ₃') 
+      -- (𝕄T _ℓ₁ _c₁ ηₘ₁ ηₙ₁ τ₁',𝕄T _ℓ₂ (NormClip ℓ) ηₘ₂ ηₙ₂ τ₂',𝕄T _ℓ₃ _c₃ ηₘ₃ ηₙ₃ τ₃')
       --   | meets
       --     [ τ₁' ≡ ℝT
       --     , τ₂' ≡ 𝔻T
@@ -405,16 +431,18 @@ inferSens eA = case extract eA of
     σ₁ :* τ₁ ← hijack $ inferSens e₁
     case τ₁ of
       𝕄T ℓ _c ηₘ me → do
-        case extract me of 
-          (RexpME r τ₁') → do
-            σ₂ :* τ₂ ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ₁') ⩌ γ) $ inferSens e₂
-            let (ς :* σ₂') = ifNone (zero :* σ₂) $ dview x σ₂
-            tell $ ς ⨵ σ₁
-            -- what is (x)
-            tell $ ι (ηₘ × r) ⨵ σ₂'
-            -- how to make this a MExpSource?
-            return $ 𝕄T ℓ UClip ηₘ (RexpME r τ₂)
-          _  → undefined -- TypeSource Error
+        case extract me of
+          _ → error "TODO"
+          --
+          -- (RexpME r τ₁') → do
+          --   σ₂ :* τ₂ ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ₁') ⩌ γ) $ inferSens e₂
+          --   let (ς :* σ₂') = ifNone (zero :* σ₂) $ dview x σ₂
+          --   tell $ ς ⨵ σ₁
+          --   -- what is this (x)
+          --   tell $ ι (ηₘ × r) ⨵ σ₂'
+          --   -- how to make this a MExpSource?
+          --   return $ 𝕄T ℓ UClip ηₘ (RexpME r τ₂)
+          -- _  → undefined -- TypeSource Error
       _  → undefined -- TypeSource Error
   BMapSE e₁ x e₂ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
@@ -424,7 +452,7 @@ inferSens eA = case extract eA of
         let (ς :* σ₂') = ifNone (zero :* σ₂) $ dview x σ₂
         tell $ ς ⨵ σ₁
         tell $ σ₂'
-        return $ BagT ℓ UClip τ₂ 
+        return $ BagT ℓ UClip τ₂
       _  → undefined -- TypeSource Error
   MMap2SE e₁ e₂ x₁ x₂ e₃ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
@@ -437,9 +465,9 @@ inferSens eA = case extract eA of
       --     , ηₘ₁ ≡ ηₘ₂
       --     , ηₙ₁ ≡ ηₙ₂
       --     ]
-      --   → do σ₃ :* τ₃ ← 
-      --          hijack $ 
-      --          mapEnvL contextTypeL (\ γ → dict [x₁ ↦ τ₁',x₂ ↦ τ₂'] ⩌ γ) $ 
+      --   → do σ₃ :* τ₃ ←
+      --          hijack $
+      --          mapEnvL contextTypeL (\ γ → dict [x₁ ↦ τ₁',x₂ ↦ τ₂'] ⩌ γ) $
       --          inferSens e₃
       --        let (ς₁ :* σ₃') = ifNone (zero :* σ₃) $ dview x₁ σ₃
       --            (ς₂ :* σ₃'') = ifNone (zero :* σ₃') $ dview x₂ σ₃'
@@ -454,9 +482,9 @@ inferSens eA = case extract eA of
     case (τ₁,τ₂) of
       (BagT ℓ₁ c₁ τ₁',BagT ℓ₂ c₂ τ₂')
         | ℓ₁ ≡ ℓ₂
-        → do σ₃ :* τ₃ ← 
-               hijack $ 
-               mapEnvL contextTypeL (\ γ → dict [x₁ ↦ τ₁',x₂ ↦ τ₂'] ⩌ γ) $ 
+        → do σ₃ :* τ₃ ←
+               hijack $
+               mapEnvL contextTypeL (\ γ → dict [x₁ ↦ τ₁',x₂ ↦ τ₂'] ⩌ γ) $
                inferSens e₃
              let (ς₁ :* σ₃') = ifNone (zero :* σ₃) $ dview x₁ σ₃
                  (ς₂ :* σ₃'') = ifNone (zero :* σ₃') $ dview x₂ σ₃'
@@ -479,7 +507,7 @@ inferSens eA = case extract eA of
     let fvs = freeBvs τ₂
     let isClosed = (fvs ∩ single𝑃 x) ≡ pø
     case isClosed of
-      False → error $ "Let type/scoping error in return expression of type: " ⧺ (pprender τ₂)  
+      False → error $ "Let type/scoping error in return expression of type: " ⧺ (pprender τ₂)
       True → do
         tell $ ς ⨵ σ₁
         tell σ₂'
@@ -492,7 +520,7 @@ inferSens eA = case extract eA of
     let fvs = freeBvs τ''
     let isClosed = (fvs ∩ single𝑃 x) ≡ pø
     case isClosed of
-      False → error $ "Lambda type/scoping error in return expression of type: " ⧺ (pprender τ'')  
+      False → error $ "Lambda type/scoping error in return expression of type: " ⧺ (pprender τ'')
       True → do
         tell σ'
         return $ τ' :⊸: (ς :* τ'')
@@ -507,16 +535,16 @@ inferSens eA = case extract eA of
   PFunSE ακs xτs e → do
     let xτs' = map (mapSnd (map normalizeRExp ∘ extract)) xτs
         xs = map fst xτs
-    σ :* τ ← 
-      smFromPM 
-      $ hijack 
+    σ :* τ ←
+      smFromPM
+      $ hijack
       $ mapEnvL contextKindL (\ δ → assoc ακs ⩌ δ) -- this is doing "   Δ′ = Δ ⊎ {β₁:κ₁,…,βₙ:κₙ}   "
       $ mapEnvL contextTypeL (\ γ → assoc xτs' ⩌ γ)
       $ inferPriv e
     let fvs = freeBvs τ
     let isClosed = (fvs ∩ pow xs) ≡ pø
     case isClosed of
-      False → error $ "Lambda type/scoping error in return expression of type: " ⧺ (pprender τ)  
+      False → error $ "Lambda type/scoping error in return expression of type: " ⧺ (pprender τ)
       True → do
         tell $ map (Sens ∘ truncate Inf ∘ unPriv) $ without (pow xs) σ
         let τps = mapOn xτs' $ \ (x :* τ') → τ' :* ifNone null (σ ⋕? x)
@@ -607,7 +635,7 @@ inferSens eA = case extract eA of
   UnboxSE e → do
     τ₁ ← inferSens e
     case τ₁ of
-      BoxedT σ τ₂ → do 
+      BoxedT σ τ₂ → do
         tell σ
         return τ₂
       _ → error $ "Cannot unbox type: " ⧺ (pprender τ₁)
@@ -615,9 +643,9 @@ inferSens eA = case extract eA of
 
 isRealMExp ∷ MExp RNF → PM p 𝔹
 isRealMExp me = case me of
-  EmptyME → do 
+  EmptyME → do
     return False
-  VarME x → do 
+  VarME x → do
     -- TODO: does this make sense?
     ᴍ ← askL contextMExpL
     case ᴍ ⋕? x of
@@ -658,7 +686,7 @@ inferPriv eA = case extract eA of
         σ₄KeepMax = joins $ values σ₄Keep
         σ₄Toss = without xs' σ₄'
     case (τ₁,τ₂,ιview @ (Pr 'ED RNF) σ₄KeepMax) of
-      (ℝˢT ηᵟ',ℕˢT ηₙ,Some (EDPriv ηᵋ ηᵟ)) | τ₄ ≡ τ₃ → do 
+      (ℝˢT ηᵟ',ℕˢT ηₙ,Some (EDPriv ηᵋ ηᵟ)) | τ₄ ≡ τ₃ → do
         let ε = ι 2 × ηᵋ × root (ι 2 × ηₙ × log (ι 1 / ηᵟ'))
             δ = ηᵟ' + ηₙ × ηᵟ
         tell $ map (Priv ∘ truncate (Quantity $ EDPriv ε δ) ∘ unPriv) σ₄Keep
@@ -676,7 +704,7 @@ inferPriv eA = case extract eA of
         σ₄KeepMax = joins $ values σ₄Keep
         σ₄Toss = without xs' σ₄'
     case (τ₂,ιview @ (Pr p RNF) σ₄KeepMax) of
-      (ℕˢT ηₙ,Some p) | τ₄ ≡ τ₃ → do 
+      (ℕˢT ηₙ,Some p) | τ₄ ≡ τ₃ → do
         let p' = scalePr ηₙ p
         tell $ map (Priv ∘ truncate (Quantity p') ∘ unPriv) σ₄Keep
         tell $ map (Priv ∘ truncate Inf ∘ unPriv) σ₄Toss
@@ -707,10 +735,10 @@ inferPriv eA = case extract eA of
         σ₄KeepMax = joins $ values σ₄Keep
         σ₄Toss = without xs' σ₄
     case (τ₁,τ₂,τ₃,τ₄,ιview @ RNF σ₄KeepMax) of
-      (ℝˢT ηₛ,ℝˢT ηᵋ,ℝˢT ηᵟ,𝕄T ℓ _c ηₘ ηₙ,Some ς) 
+      (ℝˢT ηₛ,ℝˢT ηᵋ,ℝˢT ηᵟ,𝕄T ℓ _c ηₘ ηₙ,Some ς)
         | (ς ⊑ ηₛ)
         ⩓ (ℓ ≢ LInf)
-        → do 
+        → do
           b ← isRealMExp $ extract ηₙ
           when (not b) $ throw (error "MGauss error isRealMExp check failed" ∷ TypeError)
           tell $ map (Priv ∘ truncate (Quantity $ EDPriv ηᵋ ηᵟ) ∘ unSens) σ₄Keep
@@ -833,60 +861,60 @@ inferPriv eA = case extract eA of
         mapPPM (onPriv $ map $ convertRENYIEDPr ηᵟ) $ inferPriv e₂
       _ → error "type error: ConvertRENYIEDPE"
   e → error $ fromString $ show e
-   
-    
-    
-    
+
+
+
+
 -- infraRed :: PExp -> KEnv → TEnv -> (TypeSource RNF, PEnv)
--- 
--- infraRed (PBindE x e₁ e₂) δ γ = 
+--
+-- infraRed (PBindE x e₁ e₂) δ γ =
 --     let (τ₁, pγ₁) = infraRed e₁ δ γ
 --         (τ₂, pγ₂) = infraRed e₂ δ $ (x ↦ τ₁) ⩌ γ
 --     in
 --     (τ₂, pγ₁ `privAddEnv` pγ₂)
--- 
--- 
+--
+--
 -- infraRed (PAppE αs e el) δ tenv =
 --     let (t, senv) = infer e δ tenv
 --     in
 --        case t of
---             PFunT aks tps t' -> 
+--             PFunT aks tps t' ->
 --                 let ks  = map (kinferRNF δ) (map normalizeRExp αs)
---                 in  
+--                 in
 --                 case (elem Nothing ks, iterType el (map fst tps) tenv) of
 --                      (False, True) -> (t', privAddEnv (Map.fromList (zip el (map snd tps))) (privMultEnv InfP (privSensCrossEnv senv)) )
 --                      (_,_ ) -> error "type error"
---             _ -> error "type error" 
+--             _ -> error "type error"
 -- -- case (e, t) of --      (SPFunE vtl e', PFunT tpl t') -> --        let tl = map fst tpl --            pl = map snd tpl --            vl = map fst vtl
 --     --        in undefined
 --     --       -- old stuff...
 --     --            -- if (iterType el tl tenv)
 --     --            --     then (t', (iterPrivU vl pl))
 --     --            --     else error "type error"
--- 
+--
 -- -- TODO: actually typecheck that x₁ is a nat
--- infraRed (PLoopE x1 x2 x3 xs x₁ x₂ e) δ tenv = 
+-- infraRed (PLoopE x1 x2 x3 xs x₁ x₂ e) δ tenv =
 --     let (t1, senv1) = infer x1 δ tenv
 --         (t2, senv2) = infer x2 δ tenv
 --         (t3, senv3) = infer x3 δ tenv
 --         (t', penv) = infraRed e δ (Map.insert x₁ NatT (Map.insert x₂ t3 tenv))
 --         in case (t1, t2, t3 == t', maxPriv (Map.restrictKeys penv (pow xs))) of
---                 (SingNNRealT d1, SingNatT n, True, EDPriv ep d) -> 
---                     let ep' = 
---                           NatRNF 2 
---                           `timesRNF` 
---                           ep 
---                           `timesRNF` 
---                           rootRNF (NatRNF 2 
---                                    `timesRNF` 
---                                    n 
---                                    `timesRNF` 
+--                 (SingNNRealT d1, SingNatT n, True, EDPriv ep d) ->
+--                     let ep' =
+--                           NatRNF 2
+--                           `timesRNF`
+--                           ep
+--                           `timesRNF`
+--                           rootRNF (NatRNF 2
+--                                    `timesRNF`
+--                                    n
+--                                    `timesRNF`
 --                                    logRNF (invRNF d1))
 --                         d' = (d1 `plusRNF` (n `timesRNF` d))
 --                     in (t',(privAddEnv (privMultEnv InfP (privSensCrossEnv senv3))  (privMultEnv (EDPriv ep' d') (privCrossEnv penv))))
 --                 (_,_,_,a) -> error $ "type error" ++ (show (t1, t2, t3 == t', (Map.restrictKeys penv (pow xs))))
--- 
--- infraRed (PSampleE se x1 x2 v1 v2 e) δ tenv = 
+--
+-- infraRed (PSampleE se x1 x2 v1 v2 e) δ tenv =
 --     let (t, senv) = infer se δ tenv
 --         t1 = tenv Map.! x1
 --         t2 = tenv Map.! x2
@@ -906,16 +934,16 @@ inferPriv eA = case extract eA of
 --                     then (t5, penv')
 --                     else error $ "type error" ++ Prelude.unlines (map (\x -> (chars $ sho x) ++ "\n") (Map.toList penv'))
 --             (_,_,_) -> error $ "type error" ++(show (t, t1, t2))
---                     
--- 
--- infraRed (PRandNatE e1 e2) δ tenv = 
---     let (t1, senv1) = infer e1 δ tenv 
+--
+--
+-- infraRed (PRandNatE e1 e2) δ tenv =
+--     let (t1, senv1) = infer e1 δ tenv
 --         (t2, senv2) = infer e2 δ tenv
 --     in case (t1, t2) of
 --             (NatT, NatT) -> (NatT, privMultEnv InfP (privSensCrossEnv senv1))
 --             (_,_) -> error $ "type error" ++ (show (t1, t2))
--- 
--- infraRed (PGaussE e1 e2 e3 xs e4) δ tenv = 
+--
+-- infraRed (PGaussE e1 e2 e3 xs e4) δ tenv =
 --     let (t1, senv1) = infer e1 δ tenv
 --         (t2, senv2) = infer e2 δ tenv
 --         (t3, senv3) = infer e3 δ tenv
@@ -923,15 +951,15 @@ inferPriv eA = case extract eA of
 --         r = maxSens (Map.restrictKeys senv4 (Set.fromList xs))
 --     in
 --     case (t1, t2, t3, t4, r) of
---          (SingNNRealT r1, SingNNRealT ep, SingNNRealT delt, RealT, RealSens r') -> 
+--          (SingNNRealT r1, SingNNRealT ep, SingNNRealT delt, RealT, RealSens r') ->
 --             if r' ⊑ r1
 --                 then (RealT, privAddEnv (privMultEnv InfP (privSensCrossEnv senv1)) (privMultEnv (EDPriv ep delt) (privSensCrossEnv senv4)))
 --                 else error "type error"
---          (SingNNRealT r1, SingNNRealT ep, SingNNRealT delt, RealT, InfS) -> 
+--          (SingNNRealT r1, SingNNRealT ep, SingNNRealT delt, RealT, InfS) ->
 --             (RealT, privAddEnv (privMultEnv InfP (privSensCrossEnv senv1)) (privMultEnv (EDPriv ep delt) (privSensCrossEnv senv4)))
 --          (_,_,_,_,_) -> error $ "type error" ++ (show (t1, t2, t3, t4, r))
--- 
--- infraRed (PMGaussE e1 e2 e3 xs e4) δ tenv = 
+--
+-- infraRed (PMGaussE e1 e2 e3 xs e4) δ tenv =
 --     let (t1, senv1) = infer e1 δ tenv
 --         (t2, senv2) = infer e2 δ tenv
 --         (t3, senv3) = infer e3 δ tenv
@@ -939,15 +967,15 @@ inferPriv eA = case extract eA of
 --         r = maxSens (Map.restrictKeys senv4 (Set.fromList xs))
 --     in
 --     case (t4, t1, t2, t3, r) of
---          (MatrixT L2  c m n RealT, SingNNRealT r1, SingNNRealT e, SingNNRealT d, RealSens r') -> 
+--          (MatrixT L2  c m n RealT, SingNNRealT r1, SingNNRealT e, SingNNRealT d, RealSens r') ->
 --            if r' ⊑ r1
 --              then (MatrixT L2 c m n RealT, privAddEnv (privMultEnv InfP (privSensCrossEnv senv1)) (privMultEnv (EDPriv e d) (privSensCrossEnv senv4)))
 --              else error $ "type error" ++ show (prettyRNF r',prettyRNF r1)
 --          (_,_,_,_,_) -> error $ "type error" ++ (show (t4, t1, t2, t3, r))
--- 
---             
--- 
--- infraRed (PLaplaceE e1 e2 xs e3) δ tenv = 
+--
+--
+--
+-- infraRed (PLaplaceE e1 e2 xs e3) δ tenv =
 --     let (t1, senv1) = infer e1 δ tenv
 --         (t2, senv2) = infer e2 δ tenv
 --         (t3, senv3) = infer e3 δ tenv
@@ -961,27 +989,27 @@ inferPriv eA = case extract eA of
 --          (SingNNRealT r1, SingNNRealT ep, RealT, InfS) ->
 --             (RealT, privAddEnv (privMultEnv (EDPriv ep (NatRNF 0)) (privSensCrossEnv senv3)) (privMultEnv InfP (privSensCrossEnv senv1)))
 --          (_,_,_,_) -> error "type error"
--- 
--- infraRed (PExpE e1 e2 e3 v4 e) δ tenv = 
+--
+-- infraRed (PExpE e1 e2 e3 v4 e) δ tenv =
 --     let (t1, senv1) = infer e1 δ tenv
 --         (t2, senv2) = infer e2 δ tenv
 --         (t3, senv3) = infer e3 δ tenv
 --     in
 --     case (t1, t2, t3) of
---          (SingNNRealT r1, SingNNRealT ep, MatrixT ℓ c r''' n' tm) 
+--          (SingNNRealT r1, SingNNRealT ep, MatrixT ℓ c r''' n' tm)
 --            -- TODO: fix this check
 --            | r''' == NatRNF 1 ->
 --             let (t, senv) = infer e δ (Map.insert v4 tm tenv)
 --                 s = maxSens senv
 --             in  case s of
---                      RealSens r' -> 
+--                      RealSens r' ->
 --                         if r1 > r'
---                             then (tm, privAddEnv (privMultEnv (EDPriv ep (NatRNF 0)) (privSensCrossEnv senv)) (privMultEnv InfP (privSensCrossEnv senv1 ))) 
+--                             then (tm, privAddEnv (privMultEnv (EDPriv ep (NatRNF 0)) (privSensCrossEnv senv)) (privMultEnv InfP (privSensCrossEnv senv1 )))
 --                             else error "type error"
 --                      InfS -> (tm, privAddEnv (privMultEnv (EDPriv ep (NatRNF 0)) (privSensCrossEnv senv)) (privMultEnv InfP (privSensCrossEnv senv1 )))
 --          (_,_,_) -> error "type error"
--- 
--- infraRed (PRRespE e1 e2 xs e3) δ tenv = 
+--
+-- infraRed (PRRespE e1 e2 xs e3) δ tenv =
 --     let (t1, senv1) = infer e1 δ tenv
 --         (t2, senv2) = infer e2 δ tenv
 --         (t3, senv3) = infer e3 δ tenv
@@ -993,39 +1021,39 @@ inferPriv eA = case extract eA of
 --                 then (NatT, privAddEnv (privMultEnv (EDPriv ep (NatRNF 0)) (privSensCrossEnv senv3)) (privMultEnv InfP (privSensCrossEnv senv1)))
 --                 else error "type error"
 --          (_,_,_) -> error "type error"
--- 
--- infraRed (PReturnE e) δ γ = 
+--
+-- infraRed (PReturnE e) δ γ =
 --     let (t, sγ) = infer e δ γ in
 --     (t, InfP `privMultEnv` privSensCrossEnv sγ)
--- 
--- 
+--
+--
 -- iterType :: [Var] -> [TypeSource RNF] -> TEnv  -> Bool
 -- iterType vl tl tenv = case (vl,tl) of
 --      ([],[]) -> True
---      (v:vl',t:tl') ->  (tenv Map.! v  == t) && (iterType vl' tl' tenv) 
+--      (v:vl',t:tl') ->  (tenv Map.! v  == t) && (iterType vl' tl' tenv)
 --      (_,_) -> False
--- 
+--
 -- -- iterPrivU :: [Var] -> [Priv] -> PEnv
 -- -- iterPrivU vl pl = case (vl,pl) of
 -- --     ([],[]) -> Map.empty
 -- --     (v:vl',p:pl') -> Map.insert v p (iterPrivU vl' pl')
 -- --     (_,_) -> error "list error"
--- 
--- 
--- 
+--
+--
+--
 -- -- iterSens :: PEnv -> [Var] -> [Priv]
 -- -- iterSens penv varl = case varl of
 -- --     [] -> []
 -- --     v:varl' -> (penv Map.! v):(iterSens penv varl')
--- 
--- -- iterU :: [Var] -> [TypeSource] -> TEnv 
+--
+-- -- iterU :: [Var] -> [TypeSource] -> TEnv
 -- -- iterU varl typl = case (varl, typl) of
 -- --     ([],[]) -> Map.empty
 -- --     (v:varl', t:typl') -> Map.insert v t (iterU varl' typl')
 -- --     (_,_) -> error "list error"
--- 
+--
 -- γø = Map.insert "sign" (SFunT NatT (RealSens $ RealRNF 1.0) NatT) dø
--- 
+--
 -- main :: IO ()
 -- main = do
 --   fns ← getArgs
@@ -1045,7 +1073,7 @@ inferPriv eA = case extract eA of
 --           out $ "\n Var:  " ⧺ v
 --           out $ "TypeSource: " ⧺ sho τ
 --           out $ "(ε,δ) privacy bound: " ⧺ prettyRNF ε ⧺ ", " ⧺ prettyRNF δ
--- 
+--
 --   -- undefined
 --     -- putStrLn $ show (sgdTest "xs" "ys")
 --     -- putStrLn $ show $ infraRed (sgdTest "xs" "ys") env
