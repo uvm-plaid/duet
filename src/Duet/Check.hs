@@ -404,14 +404,18 @@ inferSens eA = case extract eA of
   MMapSE e₁ x e₂ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
     case τ₁ of
-      _ → error "TODO"
-      -- 𝕄T ℓ _c ηₘ ηₙ τ₁' → do
-      --   σ₂ :* τ₂ ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ₁') ⩌ γ) $ inferSens e₂
-      --   let (ς :* σ₂') = ifNone (zero :* σ₂) $ dview x σ₂
-      --   tell $ ς ⨵ σ₁
-      --   tell $ ι (ηₘ × ηₙ) ⨵ σ₂'
-      --   return $ 𝕄T ℓ UClip ηₘ ηₙ τ₂ 
-      -- _  → undefined -- TypeSource Error
+      𝕄T ℓ _c ηₘ me → do
+        case extract me of 
+          (RexpME r τ₁') → do
+            σ₂ :* τ₂ ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ₁') ⩌ γ) $ inferSens e₂
+            let (ς :* σ₂') = ifNone (zero :* σ₂) $ dview x σ₂
+            tell $ ς ⨵ σ₁
+            -- what is (x)
+            tell $ ι (ηₘ × r) ⨵ σ₂'
+            -- how to make this a MExpSource?
+            return $ 𝕄T ℓ UClip ηₘ (RexpME r τ₂)
+          _  → undefined -- TypeSource Error
+      _  → undefined -- TypeSource Error
   BMapSE e₁ x e₂ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
     case τ₁ of

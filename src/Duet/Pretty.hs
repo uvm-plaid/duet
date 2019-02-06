@@ -123,7 +123,7 @@ instance (Pretty r) ⇒ Pretty (Type r) where
         [ ppKeyPun "𝕄 "
         , ppPun "["
         , ppAlign $ pretty ℓ
-        , ppSpace 1
+        , ppPun ","
         , ppAlign $ pretty c
         , ppPun "|"
         , ppAlign $ pretty ηₘ

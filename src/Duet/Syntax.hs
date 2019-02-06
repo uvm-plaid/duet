@@ -194,7 +194,7 @@ data Type r =
   | BagT Norm Clip (Type r)
   | SetT (Type r)
   | RecordT (𝐿 (𝕊 ∧ Type r))
-  | 𝕄T Norm Clip (RowsT r) (MExpSource r)
+  | 𝕄T Norm Clip (RowsT r) (MExpSource r) -- strange pretty print
   | Type r :+: Type r
   | Type r :×: Type r
   | Type r :&: Type r
