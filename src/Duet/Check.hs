@@ -211,27 +211,28 @@ checkType τA = case τA of
         False → return False
       _ → return False
   (ακs :* PArgs τps) :⊸⋆: τ → do
-    error "TODO"
-    -- mapEnvL contextKindL (\ δ → assoc ακs ⩌ δ)
-    -- let a = foldr True (\ x acc → x ⩓ acc) (map checkTypeP τps)
-    -- b ← checkType τ
-    -- return $ a ⩓ b
+    _ :* a ← hijack $  mapEnvL contextKindL (\ δ → assoc ακs ⩌ δ) $ checkType τ
+    -- TODO: can we fold over this list?
+    -- e.g. -- let a = foldr True (\ x acc → x ⩓ acc) (map checkTypeP τps)
+    let _ = map checkTypeP τps
+    return $ a
   BoxedT σ' τ → checkType τ
 
-checkTypeP ∷ (PRIV_C p) ⇒ (Type RNF ∧ Priv p r) → SM p 𝔹
+checkTypeP ∷ (PRIV_C p) ⇒ (Type RNF ∧ Priv p RNF) → SM p 𝔹
 checkTypeP (τ :* p) = do
   a ← checkType τ
   let b = checkKindP p
-  return $ a ⩓ b
+  case (a ⩓ b) of
+    False → throw (error "kinding error" ∷ TypeError)
+    True → return $ True
 
-checkKindP :: Priv p r → 𝔹
+checkKindP :: Priv p RNF → 𝔹
 checkKindP p = case p of
-  _ → error "TODO"
-  -- EDPriv ε δ → case (checkReal ε, checkReal δ) of
-  --   (True, True) → True
-  --   _ → False
-  -- -- TODO: account for other privacy variants
-  -- _ → True
+  Priv (Quantity (EDPriv ε δ)) → case (checkReal ε, checkReal δ) of
+    (True, True) → True
+    _ → False
+  -- TODO: account for other privacy variants
+  _ → True
 
 checkReal :: RNF → 𝔹
 checkReal (NNRealRNF _) = True
@@ -541,7 +542,9 @@ inferSens eA = case extract eA of
         tell σ₂'
         return τ₂
   SFunSE x τ e → do
-    -- TODO: kind checking for τ
+    -- TODO: RNF vs RExp problems
+    -- a ← checkType $ extract $ τ
+    -- when (not a) $ throw (error "kinding error in sfun" ∷ TypeError)
     let τ' = map normalizeRExp $ extract τ
     σ :* τ'' ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ') ⩌ γ) $ inferSens e
     let (ς :* σ') = ifNone (zero :* σ) $ dview x σ
