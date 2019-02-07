@@ -18,7 +18,7 @@ data Clip = NormClip Norm | UClip
   deriving (Eq,Ord,Show)
 
 newtype Sens r = Sens { unSens ∷ Quantity r }
-  deriving 
+  deriving
   (Eq,Ord,Show,Functor
   ,Zero,Plus,Additive
   ,One,Times,Multiplicative
@@ -61,7 +61,7 @@ stripPRIV = \case
   ZC_W → ZC
   TC_W → TC
 
-class PRIV_C (p ∷ PRIV) where 
+class PRIV_C (p ∷ PRIV) where
   priv ∷ PRIV_W p
 
 instance PRIV_C 'EPS where priv = EPS_W
@@ -123,7 +123,7 @@ instance Functor (Pr p) where
   map f (TCPriv ρ ω) = TCPriv (f ρ) (f ω)
 
 newtype Priv p r = Priv { unPriv ∷ Quantity (Pr p r) }
-  deriving 
+  deriving
   (Eq,Ord,Show
   ,Null,Append,Monoid
   ,Bot,Join,JoinLattice)
@@ -162,12 +162,11 @@ instance Functor RowsT where
     RexpRT r → RexpRT $ f r
     StarRT → StarRT
 
-type MExpSource r = Annotated FullContext (MExp r)
-data MExp r = 
+data MExp r =
     EmptyME
   | VarME 𝕏
-  | ConsME (Type r) (MExpSource r)
-  | AppendME (MExpSource r) (MExpSource r)
+  | ConsME (Type r) (MExp r)
+  | AppendME (MExp r) (MExp r)
   | RexpME RExp (Type r)
   deriving (Eq,Ord,Show)
 
@@ -176,8 +175,8 @@ instance Functor MExp where
   map f = \case
     EmptyME → EmptyME
     VarME x → VarME x
-    ConsME τ m → ConsME (map f τ) (mapp f m)
-    AppendME n m → AppendME (mapp f n) (mapp f m)
+    ConsME τ m → ConsME (map f τ) (map f m)
+    AppendME n m → AppendME (map f n) (map f m)
     RexpME r τ → RexpME r (map f τ)
 
 type TypeSource r = Annotated FullContext (Type r)
@@ -194,7 +193,7 @@ data Type r =
   | BagT Norm Clip (Type r)
   | SetT (Type r)
   | RecordT (𝐿 (𝕊 ∧ Type r))
-  | 𝕄T Norm Clip (RowsT r) (MExpSource r) -- strange pretty print
+  | 𝕄T Norm Clip (RowsT r) (MExp r)
   | Type r :+: Type r
   | Type r :×: Type r
   | Type r :&: Type r
@@ -218,7 +217,7 @@ instance Functor Type where
     BagT ℓ c τ → BagT ℓ c (map f τ)
     SetT τ → SetT (map f τ)
     RecordT as → RecordT $ map (mapPair id $ map f) as
-    𝕄T ℓ c r₁ r₂ → 𝕄T ℓ c (map f r₁) (mapp f r₂)
+    𝕄T ℓ c r₁ r₂ → 𝕄T ℓ c (map f r₁) (map f r₂)
     τ₁ :+: τ₂ → map f τ₁ :+: map f τ₂
     τ₁ :×: τ₂ → map f τ₁ :×: map f τ₂
     τ₁ :&: τ₂ → map f τ₁ :&: map f τ₂
@@ -300,7 +299,7 @@ data SExp (p ∷ PRIV) where
   PairSE ∷ SExpSource p → SExpSource p → SExp p
   FstSE ∷ SExpSource p → SExp p
   SndSE ∷ SExpSource p → SExp p
-  BoxSE ∷ SExpSource p → SExp p 
+  BoxSE ∷ SExpSource p → SExp p
   UnboxSE ∷ SExpSource p → SExp p
   deriving (Eq,Ord,Show)
 

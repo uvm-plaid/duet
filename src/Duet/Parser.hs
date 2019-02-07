@@ -55,19 +55,19 @@ tokMLComment = pNew "multiline comment" $ do
   afterOther
   where
     afterOther = tries
-      [ do () ← void $ pSatisfies "non-delimiter" $ \ c → c ∉ pow ['{','-'] 
+      [ do () ← void $ pSatisfies "non-delimiter" $ \ c → c ∉ pow ['{','-']
            afterOther
-      , do () ← void $ pLit '{' 
+      , do () ← void $ pLit '{'
            afterBrack
-      , do () ← void $ pLit '-' 
+      , do () ← void $ pLit '-'
            afterDash
       ]
     afterBrack = tries
       [ do () ← void $ pSatisfies "non-delimiter" $ \ c → c ∉ pow ['{','-']
            afterOther
-      , do () ← void $ pLit '{' 
+      , do () ← void $ pLit '{'
            afterBrack
-      , do () ← void $ pLit '-' 
+      , do () ← void $ pLit '-'
            () ← afterOther
            afterOther
       ]
@@ -130,20 +130,20 @@ parRowsT = tries
   , do η ← parRExp; return $ RexpRT η
   ]
 
-parMExp ∷ (PRIV_C p) ⇒ PRIV_W p → Parser Token (MExpSource RExp)
-parMExp mode = mixfixParserWithContext "mexp" $ concat
-  [ mixF $ MixFTerminal $ const EmptyME ^$ parLit "[]"
-  , mixF $ MixFTerminal $ VarME ^$ parVar
-  , mixF $ MixFPrefix 6 $ do
+parMExp ∷ (PRIV_C p) ⇒ PRIV_W p → Parser Token (MExp RExp)
+parMExp mode = mixfixParser $ concat
+  [ mix $ MixTerminal $ const EmptyME ^$ parLit "[]"
+  , mix $ MixTerminal $ VarME ^$ parVar
+  , mix $ MixPrefix 6 $ do
       τ ← parType mode
       parLit "∷"
       return $ \ me → ConsME τ me
-  , mixF $ MixFInfixL 3 $ do
+  , mix $ MixInfixL 3 $ do
       parLit "⧺"
       return AppendME
-  , mixF $ MixFTerminal $ do
+  , mix $ MixTerminal $ do
       r ← parRExp
-      parLit "⋅" 
+      parLit "⋅"
       τ ← parType mode
       return $ RexpME r τ
   ]
@@ -497,7 +497,7 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
       parLit "⇒"
       e ← parPExp p
       return $ PFunSE ακs xτs e
-  , mixF $ MixFTerminal $ do 
+  , mixF $ MixFTerminal $ do
        parLit "⟨"
        e₁ ← parSExp p
        parLit ","
@@ -527,7 +527,7 @@ parPExp p = pWithContext "pexp" $ tries
        e₂ ← parPExp p
        return $ BindPE x e₁ e₂
   , case p of
-      ED_W → do 
+      ED_W → do
         parLit "aloop"
         parLit "["
         e₁ ← parSExp p
@@ -563,7 +563,7 @@ parPExp p = pWithContext "pexp" $ tries
        parLit "}"
        return $ LoopPE e₂ e₃ xs x₁ x₂ e₄
   , case p of
-      ED_W → do 
+      ED_W → do
         parLit "mgauss"
         parLit "["
         e₁ ← parSExp p
@@ -579,7 +579,7 @@ parPExp p = pWithContext "pexp" $ tries
         e₄ ← parSExp p
         parLit "}"
         return $ MGaussPE e₁ (EDGaussParams e₂ e₃) xs e₄
-      RENYI_W → do 
+      RENYI_W → do
         parLit "mgauss"
         parLit "["
         e₁ ← parSExp p
@@ -595,7 +595,7 @@ parPExp p = pWithContext "pexp" $ tries
         e₄ ← parSExp p
         parLit "}"
         return $ MGaussPE e₁ (RenyiGaussParams e₂ e₃) xs e₄
-      ZC_W → do 
+      ZC_W → do
         parLit "mgauss"
         parLit "["
         e₁ ← parSExp p
@@ -611,7 +611,7 @@ parPExp p = pWithContext "pexp" $ tries
         return $ MGaussPE e₁ (ZCGaussParams e₂) xs e₄
       _ → abort
   , case p of
-      ED_W → do 
+      ED_W → do
         parLit "bgauss"
         parLit "["
         e₁ ← parSExp p
@@ -627,7 +627,7 @@ parPExp p = pWithContext "pexp" $ tries
         e₄ ← parSExp p
         parLit "}"
         return $ BGaussPE e₁ (EDGaussParams e₂ e₃) xs e₄
-      RENYI_W → do 
+      RENYI_W → do
         parLit "bgauss"
         parLit "["
         e₁ ← parSExp p
@@ -643,7 +643,7 @@ parPExp p = pWithContext "pexp" $ tries
         e₄ ← parSExp p
         parLit "}"
         return $ BGaussPE e₁ (RenyiGaussParams e₂ e₃) xs e₄
-      ZC_W → do 
+      ZC_W → do
         parLit "bgauss"
         parLit "["
         e₁ ← parSExp p
@@ -659,7 +659,7 @@ parPExp p = pWithContext "pexp" $ tries
         return $ BGaussPE e₁ (ZCGaussParams e₂) xs e₄
       _ → abort
   , case p of
-      ED_W → do 
+      ED_W → do
         parLit "gauss"
         parLit "["
         e₁ ← parSExp p
@@ -675,7 +675,7 @@ parPExp p = pWithContext "pexp" $ tries
         e₄ ← parSExp p
         parLit "}"
         return $ GaussPE e₁ (EDGaussParams e₂ e₃) xs e₄
-      RENYI_W → do 
+      RENYI_W → do
         parLit "gauss"
         parLit "["
         e₁ ← parSExp p
@@ -691,7 +691,7 @@ parPExp p = pWithContext "pexp" $ tries
         e₄ ← parSExp p
         parLit "}"
         return $ GaussPE e₁ (RenyiGaussParams e₂ e₃) xs e₄
-      ZC_W → do 
+      ZC_W → do
         parLit "gauss"
         parLit "["
         e₁ ← parSExp p
@@ -707,7 +707,7 @@ parPExp p = pWithContext "pexp" $ tries
         return $ GaussPE e₁ (ZCGaussParams e₂) xs e₄
       _ → abort
   , case p of
-      ED_W → do 
+      ED_W → do
         parLit "exponential"
         parLit "["
         e₁ ← parSExp p

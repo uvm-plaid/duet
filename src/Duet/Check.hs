@@ -31,8 +31,8 @@ freeBvs (τ₁ :⊸: (_ :* τ₂)) = freeBvs τ₁ ∪ freeBvs τ₂
 freeBvs (pargs :⊸⋆: τ) = freeBlpargvs pargs ∪ freeBvs τ
 freeBvs (BoxedT σ τ) = keys σ ∪ freeBvs τ
 
-freeBmexp :: (MExpSource r) → 𝑃 𝕏
-freeBmexp me = case extract me of
+freeBmexp :: (MExp r) → 𝑃 𝕏
+freeBmexp me = case me of
   EmptyME → pø
   VarME x → pø
   ConsME τ me₁ → freeBvs τ ∪ freeBmexp me₁
@@ -164,16 +164,16 @@ mapPPM ∷ (Priv p₁ RNF → Priv p₂ RNF) → PM p₁ a → PM p₂ a
 mapPPM f xM = mkPM $ \ δ γ ᴍ → mapInr (mapFst $ map f) $ runPM δ γ ᴍ xM
 
 -- this will be written monadically
-checkType ∷ (PRIV_C p) ⇒ TypeSource RNF → SM p 𝔹
-checkType τA = case extract τA of
+checkType ∷ (PRIV_C p) ⇒ Type RNF → SM p 𝔹
+checkType τA = case τA of
   ℕˢT η → do
     case η of
       (NatRNF _) → return True
       _ → return False
   ℝˢT η → do
-    case η of
-      (NNRealRNF _) → return True
-      _ → return False
+    case  checkReal η of
+      True → return True
+      False → return False
   ℕT → return True
   ℝT → return True
   𝔻T → return True
@@ -184,33 +184,58 @@ checkType τA = case extract τA of
   𝔹T → return True
   𝕊T → return True
   -- 𝔻𝔽T (𝐿 (𝕊 ∧ Type r)) → undefined
-  BagT ℓ c τ → return $ checkType τ -- how to wrap τ in TypeSource
+  BagT ℓ c τ → checkType τ
   SetT τ → undefined
   -- RecordT (𝐿 (𝕊 ∧ Type r)) → undefined
   𝕄T ℓ c rows me → undefined
-  τ₁ :+: τ₂ → return $ checkType τ₁ ⩓ checkType τ₂
-  τ₁ :×: τ₂ → return $ checkType τ₁ ⩓ checkType τ₂
-  τ₁ :&: τ₂ → return $ checkType τ₁ ⩓ checkType τ₂
+  τ₁ :+: τ₂ → do
+    a ← checkType τ₁
+    b ← checkType τ₂
+    return $ a ⩓ b
+  τ₁ :×: τ₂ → do
+    a ← checkType τ₁
+    b ← checkType τ₂
+    return $ a ⩓ b
+  τ₁ :&: τ₂ → do
+    a ← checkType τ₁
+    b ← checkType τ₂
+    return $ a ⩓ b
   τ₁ :⊸: (s :* τ₂) → do
-    a ← checkType τ₁ ⩓ checkType τ₂
+    a ← checkType τ₁
+    b ← checkType τ₂
+    let c = a ⩓ b
     case s of
-      Inf → return True
-      (Quantity r) → case r of
-        (NNRealRNF _) → return True
-        _ → return False
+      Sens Inf → return $ True ⩓ c
+      Sens (Quantity r) → case checkReal r of
+        True → return $ True ⩓ c
+        False → return False
       _ → return False
   (ακs :* PArgs τps) :⊸⋆: τ → do
-    $ mapEnvL contextKindL (\ δ → assoc ακs ⩌ δ)
-    -- syntax?
-    let f ∷ 𝔹 → 𝔹 → 𝔹 = \ x acc → x ⩓ acc
-    let a = fold True f map $ checkTypeP tps
-    let b = checkType τ
-    return a ⩓ b
-  BoxedT σ' τ → return $ checkType τ
+    error "TODO"
+    -- mapEnvL contextKindL (\ δ → assoc ακs ⩌ δ)
+    -- let a = foldr True (\ x acc → x ⩓ acc) (map checkTypeP τps)
+    -- b ← checkType τ
+    -- return $ a ⩓ b
+  BoxedT σ' τ → checkType τ
 
-checkTypeP :: (Type r ∧ Priv p r) → 𝔹
--- TODO
-checkTypeP (τ :* p) = True
+checkTypeP ∷ (PRIV_C p) ⇒ (Type RNF ∧ Priv p r) → SM p 𝔹
+checkTypeP (τ :* p) = do
+  a ← checkType τ
+  let b = checkKindP p
+  return $ a ⩓ b
+
+checkKindP :: Priv p r → 𝔹
+checkKindP p = case p of
+  _ → error "TODO"
+  -- EDPriv ε δ → case (checkReal ε, checkReal δ) of
+  --   (True, True) → True
+  --   _ → False
+  -- -- TODO: account for other privacy variants
+  -- _ → True
+
+checkReal :: RNF → 𝔹
+checkReal (NNRealRNF _) = True
+checkReal _ = False
 
 inferSens ∷ (PRIV_C p) ⇒ SExpSource p → SM p (Type RNF)
 inferSens eA = case extract eA of
@@ -431,7 +456,7 @@ inferSens eA = case extract eA of
     σ₁ :* τ₁ ← hijack $ inferSens e₁
     case τ₁ of
       𝕄T ℓ _c ηₘ me → do
-        case extract me of
+        case me of
           _ → error "TODO"
           --
           -- (RexpME r τ₁') → do
@@ -654,11 +679,11 @@ isRealMExp me = case me of
         isRealMExp $ me
   ConsME τ me₁ → do
     let b = isRealType τ
-    a ← isRealMExp $ extract $ me₁
+    a ← isRealMExp $ me₁
     return $ a ⩓ b
   AppendME me₁ me₂ → do
-    a ← isRealMExp $ extract $ me₁
-    b ← isRealMExp $ extract $ me₂
+    a ← isRealMExp $ me₁
+    b ← isRealMExp $ me₂
     return $ a ⩓ b
   RexpME r τ → return $ isRealType τ
 
@@ -739,7 +764,7 @@ inferPriv eA = case extract eA of
         | (ς ⊑ ηₛ)
         ⩓ (ℓ ≢ LInf)
         → do
-          b ← isRealMExp $ extract ηₙ
+          b ← isRealMExp ηₙ
           when (not b) $ throw (error "MGauss error isRealMExp check failed" ∷ TypeError)
           tell $ map (Priv ∘ truncate (Quantity $ EDPriv ηᵋ ηᵟ) ∘ unSens) σ₄Keep
           tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
@@ -755,7 +780,7 @@ inferPriv eA = case extract eA of
         σ₄Toss = without xs' σ₄
     case (τ₁,τ₂,τ₄,ιview @ RNF σ₄KeepMax) of
       (ℝˢT ηₛ,ℝˢT ηᵨ,𝕄T L2 _c ηₘ ηₙ,Some ς) | ς ⊑ ηₛ → do
-        b ← isRealMExp $ extract ηₙ
+        b ← isRealMExp ηₙ
         when (not b) $ throw (error "MGauss error isRealMExp check failed" ∷ TypeError)
         tell $ map (Priv ∘ truncate (Quantity $ ZCPriv ηᵨ) ∘ unSens) σ₄Keep
         tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
@@ -772,7 +797,7 @@ inferPriv eA = case extract eA of
         σ₄Toss = without xs' σ₄
     case (τ₁,τ₂,τ₃,τ₄,ιview @ RNF σ₄KeepMax) of
       (ℝˢT ηₛ,ℝˢT ηᵅ,ℝˢT ηᵋ,𝕄T L2 _c ηₘ ηₙ,Some ς) | ς ⊑ ηₛ → do
-        b ← isRealMExp $ extract ηₙ
+        b ← isRealMExp ηₙ
         when (not b) $ throw (error "MGauss error isRealMExp check failed" ∷ TypeError)
         tell $ map (Priv ∘ truncate (Quantity $ RenyiPriv ηᵅ ηᵋ) ∘ unSens) σ₄Keep
         tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
