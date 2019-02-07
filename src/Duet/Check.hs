@@ -384,7 +384,12 @@ inferSens eA = case extract eA of
         σ₃ :* τ₃ ← hijack $ mapEnvL contextTypeL (\ γ → dict [x₁ ↦ 𝕀T ηₘ,x₂ ↦ 𝕀T ηₙ] ⩌ γ) $ inferSens e₃
         let σ₃' = without (pow [x₁,x₂]) σ₃
         tell $ ι (ηₘ × ηₙ) ⨵ σ₃'
-        return $ error "TODO" -- 𝕄T ℓ UClip ηₘ ηₙ τ₃
+        -- TODO: is there a better way to do this than
+        -- also, doesnt work because of annotated fullcontext
+        case ηₙ of
+          _ → error "TODO"
+          -- (NatRNF n) → return $ 𝕄T ℓ UClip (RexpRT ηₘ) (RexpME (NatRE n) τ₃)
+          _ → undefined
       _ → undefined -- TypeError
   MIndexSE e₁ e₂ e₃ → do
     τ₁ ← inferSens e₁
@@ -392,7 +397,7 @@ inferSens eA = case extract eA of
     τ₃ ← inferSens e₃
     case (τ₁,τ₂,τ₃) of
       _ → error "TODO"
-      -- (𝕄T _ℓ _c ηₘ ηₙ τ,𝕀T ηₘ',𝕀T ηₙ') → return τ -- -- | (ηₘ' ≤ ηₘ) ⩓ (ηₙ' ≤ ηₙ) → return τ
+      (𝕄T _ℓ _c ηₘ (RexpME r τ),𝕀T ηₘ',𝕀T ηₙ') → return τ -- -- | (ηₘ' ≤ ηₘ) ⩓ (ηₙ' ≤ ηₙ) → return τ
       -- had error: duet: ⟨⟨𝕄 [L∞ U|1,n] ℝ,ℕ⟩,ℕ⟩
       _ → error $ "Index error: " ⧺ (pprender $ (τ₁ :* τ₂ :* τ₃)) -- TypeError
   MUpdateSE e₁ e₂ e₃ e₄ → do
@@ -417,20 +422,20 @@ inferSens eA = case extract eA of
   MColsSE e → do
     _ :* τ ← hijack $ inferSens e
     case τ of
-      _ → error "TODO"
-      -- 𝕄T _ℓ _c _ηₘ ηₙ _τ' → return $ ℕˢT ηₙ
+      𝕄T _ℓ _c _ηₘ (RexpME r τ) → do
+         case extract r of
+           (NatRE n) → return $ ℕˢT (NatRNF n)
+           _ → undefined -- TypeSource Error
       _ → undefined -- TypeSource Error
   MClipSE ℓ e → do
     τ ← inferSens e
     case τ of
-      _ → error "TODO"
-      -- 𝕄T ℓ' _c ηₘ ηₙ τ' | τ' ≡ 𝔻T → return $ 𝕄T ℓ' (NormClip ℓ) ηₘ ηₙ τ'
+      𝕄T ℓ' _c ηₘ (RexpME r τ') | τ' ≡ 𝔻T → return $ 𝕄T ℓ' (NormClip ℓ) ηₘ (RexpME r τ')
       _ → undefined -- TypeSource Error
   MConvertSE e → do
     τ ← inferSens e
     case τ of
-      _ → error "TODO"
-      -- 𝕄T _ℓ (NormClip ℓ) ηₘ ηₙ τ' | τ' ≡ 𝔻T → return $ 𝕄T ℓ UClip ηₘ ηₙ ℝT
+      𝕄T _ℓ (NormClip ℓ) ηₘ (RexpME r τ') | τ' ≡ 𝔻T → return $ 𝕄T ℓ UClip ηₘ (RexpME r ℝT)
       _ → undefined -- TypeSource Error
   MLipGradSE _g e₁ e₂ e₃ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
@@ -457,17 +462,14 @@ inferSens eA = case extract eA of
     case τ₁ of
       𝕄T ℓ _c ηₘ me → do
         case me of
-          _ → error "TODO"
-          --
-          -- (RexpME r τ₁') → do
-          --   σ₂ :* τ₂ ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ₁') ⩌ γ) $ inferSens e₂
-          --   let (ς :* σ₂') = ifNone (zero :* σ₂) $ dview x σ₂
-          --   tell $ ς ⨵ σ₁
-          --   -- what is this (x)
-          --   tell $ ι (ηₘ × r) ⨵ σ₂'
-          --   -- how to make this a MExpSource?
-          --   return $ 𝕄T ℓ UClip ηₘ (RexpME r τ₂)
-          -- _  → undefined -- TypeSource Error
+          (RexpME r τ₁') → do
+            σ₂ :* τ₂ ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ₁') ⩌ γ) $ inferSens e₂
+            let (ς :* σ₂') = ifNone (zero :* σ₂) $ dview x σ₂
+            tell $ ς ⨵ σ₁
+            -- TODO: what is this?
+            -- tell $ ι (ηₘ × r) ⨵ σ₂'
+            return $ 𝕄T ℓ UClip ηₘ (RexpME r τ₂)
+          _  → undefined -- TypeSource Error
       _  → undefined -- TypeSource Error
   BMapSE e₁ x e₂ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
@@ -483,23 +485,24 @@ inferSens eA = case extract eA of
     σ₁ :* τ₁ ← hijack $ inferSens e₁
     σ₂ :* τ₂ ← hijack $ inferSens e₂
     case (τ₁,τ₂) of
-      _ → error "TODO"
-      -- (𝕄T ℓ₁ _c₁ ηₘ₁ ηₙ₁ τ₁',𝕄T ℓ₂ _c₂ ηₘ₂ ηₙ₂ τ₂')
-      --   | meets
-      --     [ ℓ₁ ≡ ℓ₂
-      --     , ηₘ₁ ≡ ηₘ₂
-      --     , ηₙ₁ ≡ ηₙ₂
-      --     ]
-      --   → do σ₃ :* τ₃ ←
-      --          hijack $
-      --          mapEnvL contextTypeL (\ γ → dict [x₁ ↦ τ₁',x₂ ↦ τ₂'] ⩌ γ) $
-      --          inferSens e₃
-      --        let (ς₁ :* σ₃') = ifNone (zero :* σ₃) $ dview x₁ σ₃
-      --            (ς₂ :* σ₃'') = ifNone (zero :* σ₃') $ dview x₂ σ₃'
-      --        tell $ ς₁ ⨵ σ₁
-      --        tell $ ς₂ ⨵ σ₂
-      --        tell $ ι (ηₘ₁ × ηₙ₁) ⨵ σ₃''
-      --        return $ 𝕄T ℓ₁ UClip ηₘ₁ ηₙ₁ τ₃
+      (𝕄T ℓ₁ _c₁ ηₘ₁ (RexpME r₁ τ₁'),𝕄T ℓ₂ _c₂ ηₘ₂ (RexpME r₂ τ₂'))
+        | meets
+          [ ℓ₁ ≡ ℓ₂
+          , ηₘ₁ ≡ ηₘ₂
+          , r₁ ≡ r₂
+          , τ₁' ≡ τ₂'
+          ]
+        → do σ₃ :* τ₃ ←
+               hijack $
+               mapEnvL contextTypeL (\ γ → dict [x₁ ↦ τ₁',x₂ ↦ τ₂'] ⩌ γ) $
+               inferSens e₃
+             let (ς₁ :* σ₃') = ifNone (zero :* σ₃) $ dview x₁ σ₃
+                 (ς₂ :* σ₃'') = ifNone (zero :* σ₃') $ dview x₂ σ₃'
+             tell $ ς₁ ⨵ σ₁
+             tell $ ς₂ ⨵ σ₂
+             -- TODO: not sure what goes here now
+             -- tell $ ι (ηₘ₁ × ηₙ₁) ⨵ σ₃''
+             return $ 𝕄T ℓ₁ UClip ηₘ₁ (RexpME r₁ τ₃)
       _ → error $ "Map2 error: " ⧺ (pprender $ (τ₁ :* τ₂))
   BMap2SE e₁ e₂ x₁ x₂ e₃ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
@@ -671,7 +674,6 @@ isRealMExp me = case me of
   EmptyME → do
     return False
   VarME x → do
-    -- TODO: does this make sense?
     ᴍ ← askL contextMExpL
     case ᴍ ⋕? x of
       None → error $ fromString (show x) -- TypeSource Error
