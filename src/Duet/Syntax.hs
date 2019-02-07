@@ -167,7 +167,7 @@ data MExp r =
   | VarME 𝕏
   | ConsME (Type r) (MExp r)
   | AppendME (MExp r) (MExp r)
-  | RexpME RExp (Type r)
+  | RexpME r (Type r)
   deriving (Eq,Ord,Show)
 
 instance Functor MExp where
@@ -177,7 +177,7 @@ instance Functor MExp where
     VarME x → VarME x
     ConsME τ m → ConsME (map f τ) (map f m)
     AppendME n m → AppendME (map f n) (map f m)
-    RexpME r τ → RexpME r (map f τ)
+    RexpME r τ → RexpME (f r) (map f τ)
 
 type TypeSource r = Annotated FullContext (Type r)
 data Type r =

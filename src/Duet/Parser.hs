@@ -19,7 +19,7 @@ makePrettyUnion ''Token
 
 tokKeywords ∷ 𝐿 𝕊
 tokKeywords = list
-  ["let","in","pλ","return","on"
+  ["let","in","sλ","pλ","return","on"
   ,"ℕ","ℝ","ℝ⁺","𝔻","𝕀","𝕄","𝔻𝔽","𝔹","𝕊","★","∷","⋅","[]","⧺"
   ,"LR","L2","U"
   ,"real","bag","set","record"
@@ -133,7 +133,6 @@ parRowsT = tries
 parMExp ∷ (PRIV_C p) ⇒ PRIV_W p → Parser Token (MExp RExp)
 parMExp mode = mixfixParser $ concat
   [ mix $ MixTerminal $ const EmptyME ^$ parLit "[]"
-  , mix $ MixTerminal $ VarME ^$ parVar
   , mix $ MixPrefix 6 $ do
       τ ← parType mode
       parLit "∷"
@@ -146,6 +145,7 @@ parMExp mode = mixfixParser $ concat
       parLit "⋅"
       τ ← parType mode
       return $ RexpME r τ
+  , mix $ MixTerminal $ VarME ^$ parVar
   ]
 
 parRExp ∷ Parser Token RExp
@@ -481,6 +481,13 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
              return $ \ e₂ → UntupSE x y e₁ e₂
         ]
   , mixF $ MixFInfixL 10 $ const AppSE ^$ parSpace
+  , mixF $ MixFPrefix 1 $ do
+      parLit "sλ"
+      x ← parVar
+      parLit ":"
+      τ ← parTypeSource p
+      parLit "⇒"
+      return $ \ e → SFunSE x τ e
   , mixF $ MixFTerminal $ do
       parLit "pλ"
       ακs ← pManySepBy (parLit ",") $ do

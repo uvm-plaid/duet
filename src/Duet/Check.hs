@@ -56,58 +56,6 @@ freeBpargs (x :& xs) = freeBpargs xs ∪ freeBparg x
 freeBparg :: Type r ∧ Priv p r → 𝑃 𝕏
 freeBparg (x :* _) = freeBvs x
 
--- this is written non-monadically, eventually we will rewrite to be monadic
-inferKind ∷ 𝕏 ⇰ Kind → RExpPre → 𝑂 Kind
-inferKind δ = \case
-  VarRE x → return $ δ ⋕! x
-  NatRE _ → return $ ℕK
-  NNRealRE _ → return $ ℝK
-  MaxRE e₁ e₂ → do
-    κ₁ ← inferKind δ $ extract e₁
-    κ₂ ← inferKind δ $ extract e₂
-    case (κ₁,κ₂) of
-      (ℕK,ℕK) → return ℕK
-      (ℝK,ℝK) → return ℝK
-      _ → abort
-  MinRE e₁ e₂ → do
-    κ₁ ← inferKind δ $ extract e₁
-    κ₂ ← inferKind δ $ extract e₂
-    case (κ₁,κ₂) of
-      (ℕK,ℕK) → return ℕK
-      (ℝK,ℝK) → return ℝK
-      _ → abort
-  -- re₁ + re₂
-  PlusRE e₁ e₂ → do
-    κ₁ ← inferKind δ $ extract e₁
-    κ₂ ← inferKind δ $ extract e₂
-    case (κ₁,κ₂) of
-      (ℕK,ℕK) → return ℕK
-      (ℝK,ℝK) → return ℝK
-      _ → abort
-  TimesRE e₁ e₂ → do
-    κ₁ ← inferKind δ $ extract e₁
-    κ₂ ← inferKind δ $ extract e₂
-    case (κ₁,κ₂) of
-      (ℕK,ℕK) → return ℕK
-      (ℝK,ℝK) → return ℝK
-      _ → abort
-  DivRE e₁ e₂ → do
-    κ₁ ← inferKind δ $ extract e₁
-    κ₂ ← inferKind δ $ extract e₂
-    case (κ₁,κ₂) of
-      (ℝK,ℝK) → return ℝK
-      _ → abort
-  RootRE e → do
-    κ ← inferKind δ $ extract e
-    case κ of
-      ℝK → return ℝK
-      _ → abort
-  LogRE e → do
-    κ ← inferKind δ $ extract e
-    case κ of
-      ℝK → return ℝK
-      _ → abort
-
 data TypeError = TypeError
   { typeErrorTerm ∷ Doc
   , typeErrorContext ∷ (𝕏 ⇰ Type RNF)
@@ -124,7 +72,7 @@ data Context = Context
 makeLenses ''Context
 makePrettyRecord ''Context
 
-newtype SM p a = SM { unSM ∷ ReaderT Context (WriterT (𝕏 ⇰ Sens RNF) (ErrorT TypeError ID)) a }
+newtype SM (p ∷ PRIV) a = SM { unSM ∷ ReaderT Context (WriterT (𝕏 ⇰ Sens RNF) (ErrorT TypeError ID)) a }
   deriving
   (Functor
   ,Return,Bind,Monad
@@ -138,7 +86,7 @@ mkSM f = SM $ ReaderT $ \ (Context δ γ ᴍ) → WriterT $ ErrorT $ ID $ f δ �
 runSM ∷ 𝕏 ⇰ Kind → 𝕏 ⇰ Type RNF → 𝕏 ⇰ MExp RNF → SM p a → TypeError ∨ ((𝕏 ⇰ Sens RNF) ∧ a)
 runSM δ γ ᴍ = unID ∘ unErrorT ∘ unWriterT ∘ runReaderT (Context δ γ ᴍ) ∘ unSM
 
-newtype PM p a = PM { unPM ∷ ReaderT Context (WriterT (𝕏 ⇰ Priv p RNF) (ErrorT TypeError ID)) a }
+newtype PM (p ∷ PRIV) a = PM { unPM ∷ ReaderT Context (WriterT (𝕏 ⇰ Priv p RNF) (ErrorT TypeError ID)) a }
   deriving
   (Functor
   ,Return,Bind,Monad
@@ -163,24 +111,75 @@ pmFromSM xM = mkPM $ \ δ γ ᴍ → mapInr (mapFst $ map $ Priv ∘ truncate In
 mapPPM ∷ (Priv p₁ RNF → Priv p₂ RNF) → PM p₁ a → PM p₂ a
 mapPPM f xM = mkPM $ \ δ γ ᴍ → mapInr (mapFst $ map f) $ runPM δ γ ᴍ xM
 
+-- this is written non-monadically, eventually we will rewrite to be monadic
+inferKind ∷ RExpPre → SM p Kind
+inferKind = \case
+  VarRE x → do
+    δ ← askL contextKindL
+    return $ δ ⋕! x
+  NatRE _ → return $ ℕK
+  NNRealRE _ → return $ ℝK
+  MaxRE e₁ e₂ → do
+    κ₁ ← inferKind $ extract e₁
+    κ₂ ← inferKind $ extract e₂
+    case (κ₁,κ₂) of
+      (ℕK,ℕK) → return ℕK
+      (ℝK,ℝK) → return ℝK
+      _ → error "TYPE ERROR"
+  MinRE e₁ e₂ → do
+    κ₁ ← inferKind $ extract e₁
+    κ₂ ← inferKind $ extract e₂
+    case (κ₁,κ₂) of
+      (ℕK,ℕK) → return ℕK
+      (ℝK,ℝK) → return ℝK
+      _ → error "TYPE ERROR"
+  -- re₁ + re₂
+  PlusRE e₁ e₂ → do
+    κ₁ ← inferKind $ extract e₁
+    κ₂ ← inferKind $ extract e₂
+    case (κ₁,κ₂) of
+      (ℕK,ℕK) → return ℕK
+      (ℝK,ℝK) → return ℝK
+      _ → error "TYPE ERROR"
+  TimesRE e₁ e₂ → do
+    κ₁ ← inferKind $ extract e₁
+    κ₂ ← inferKind $ extract e₂
+    case (κ₁,κ₂) of
+      (ℕK,ℕK) → return ℕK
+      (ℝK,ℝK) → return ℝK
+      _ → error "TYPE ERROR"
+  DivRE e₁ e₂ → do
+    κ₁ ← inferKind $ extract e₁
+    κ₂ ← inferKind $ extract e₂
+    case (κ₁,κ₂) of
+      (ℝK,ℝK) → return ℝK
+      _ → error "TYPE ERROR"
+  RootRE e → do
+    κ ← inferKind $ extract e
+    case κ of
+      ℝK → return ℝK
+      _ → error "TYPE ERROR"
+  LogRE e → do
+    κ ← inferKind $ extract e
+    case κ of
+      ℝK → return ℝK
+      _ → error "TYPE ERROR"
+
 -- this will be written monadically
-checkType ∷ (PRIV_C p) ⇒ Type RNF → SM p 𝔹
+checkType ∷ ∀ p. (PRIV_C p) ⇒ Type RExp → SM p 𝔹
 checkType τA = case τA of
   ℕˢT η → do
-    case η of
-      (NatRNF _) → return True
-      _ → return False
+    k ← inferKind $ extract η
+    return $ k ≡ ℕK
   ℝˢT η → do
-    case  checkReal η of
-      True → return True
-      False → return False
+    k ← inferKind $ extract η
+    return $ k ≡ ℝK
   ℕT → return True
   ℝT → return True
   𝔻T → return True
   𝕀T η → do
-    case η of
-      (NatRNF _) → return True
-      _ → return False
+    k ← inferKind $ extract η
+    return $ k ≡ ℕK
   𝔹T → return True
   𝕊T → return True
   -- 𝔻𝔽T (𝐿 (𝕊 ∧ Type r)) → undefined
@@ -206,37 +205,33 @@ checkType τA = case τA of
     let c = a ⩓ b
     case s of
       Sens Inf → return $ True ⩓ c
-      Sens (Quantity r) → case checkReal r of
-        True → return $ True ⩓ c
-        False → return False
+      Sens (Quantity r) → do
+        k ← inferKind $ extract r
+        return $ (⩓) c $ case k of
+          ℝK → True
+          ℕK → False
       _ → return False
-  (ακs :* PArgs τps) :⊸⋆: τ → do
+  (ακs :* PArgs (τps ∷ 𝐿 (Type RExp ∧ Priv p' RExp))) :⊸⋆: τ → do
     _ :* a ← hijack $  mapEnvL contextKindL (\ δ → assoc ακs ⩌ δ) $ checkType τ
-    -- TODO: can we fold over this list?
-    -- e.g. -- let a = foldr True (\ x acc → x ⩓ acc) (map checkTypeP τps)
-    let _ = map checkTypeP τps
-    return $ a
+    map and $ mapM checkTypeP τps
   BoxedT σ' τ → checkType τ
 
-checkTypeP ∷ (PRIV_C p) ⇒ (Type RNF ∧ Priv p RNF) → SM p 𝔹
+checkTypeP ∷ ∀ p₁ p₂. (PRIV_C p₁) ⇒ (Type RExp ∧ Priv p₂ RExp) → SM p₁ 𝔹
 checkTypeP (τ :* p) = do
   a ← checkType τ
-  let b = checkKindP p
+  b ← checkKindP p
   case (a ⩓ b) of
     False → throw (error "kinding error" ∷ TypeError)
     True → return $ True
 
-checkKindP :: Priv p RNF → 𝔹
+checkKindP :: ∀ p₁ p₂. Priv p₂ RExp → SM p₁ 𝔹
 checkKindP p = case p of
-  Priv (Quantity (EDPriv ε δ)) → case (checkReal ε, checkReal δ) of
-    (True, True) → True
-    _ → False
+  Priv (Quantity (EDPriv ε δ)) → do
+    kᵋ ← inferKind $ extract ε
+    kᵟ ← inferKind $ extract δ
+    return $ pow [kᵋ,kᵟ] ⊆ single ℝK
   -- TODO: account for other privacy variants
-  _ → True
-
-checkReal :: RNF → 𝔹
-checkReal (NNRealRNF _) = True
-checkReal _ = False
+  _ → return True
 
 inferSens ∷ (PRIV_C p) ⇒ SExpSource p → SM p (Type RNF)
 inferSens eA = case extract eA of
@@ -424,10 +419,7 @@ inferSens eA = case extract eA of
   MColsSE e → do
     _ :* τ ← hijack $ inferSens e
     case τ of
-      𝕄T _ℓ _c _ηₘ (RexpME r τ) → do
-         case extract r of
-           (NatRE n) → return $ ℕˢT (NatRNF n)
-           _ → undefined -- TypeSource Error
+      𝕄T _ℓ _c _ηₘ (RexpME r τ) → return $ ℕˢT r
       _ → undefined -- TypeSource Error
   MClipSE ℓ e → do
     τ ← inferSens e
@@ -540,9 +532,8 @@ inferSens eA = case extract eA of
         tell σ₂'
         return τ₂
   SFunSE x τ e → do
-    -- TODO: RNF vs RExp problems
-    -- a ← checkType $ extract $ τ
-    -- when (not a) $ throw (error "kinding error in sfun" ∷ TypeError)
+    a ← checkType $ extract τ
+    when (not a) $ throw (error "kinding error in sfun" ∷ TypeError)
     let τ' = map normalizeRExp $ extract τ
     σ :* τ'' ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ') ⩌ γ) $ inferSens e
     let (ς :* σ') = ifNone (zero :* σ) $ dview x σ
