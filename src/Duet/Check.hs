@@ -190,7 +190,17 @@ checkType τA = case τA of
   BagT ℓ c τ → checkType τ
   SetT τ → undefined
   -- RecordT (𝐿 (𝕊 ∧ Type r)) → undefined
-  𝕄T ℓ c rows me → undefined
+  𝕄T ℓ c rows me → do
+    case (rows, me) of
+      ((RexpRT r₁), (RexpME r₂ τ)) → do
+        k₁ ← inferKind $ extract r₁
+        k₂ ← inferKind $ extract r₂
+        a ← checkType τ
+        return $ (pow [k₁,k₂] ⊆ single ℕK) ⩓ a
+      ((RexpRT r), _) → do
+        k ← inferKind $ extract r
+        return $ k ≡ ℕK
+      _ → return True
   τ₁ :+: τ₂ → do
     a ← checkType τ₁
     b ← checkType τ₂
