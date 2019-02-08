@@ -72,6 +72,8 @@ instance Functor Quantity where
     Quantity x → Quantity $ f x
     Inf → Inf
 
+-- ⌉s′⌈ˢ ≡ truncate s s′
+-- ⌉Σ⌈ˢ ≡ map (Sens ∘ truncate s ∘ unSens) Σ
 truncate ∷ Quantity a → Quantity b → Quantity a
 truncate _ Zero         = Zero
 truncate p Inf          = p

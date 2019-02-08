@@ -116,8 +116,6 @@ inferKind ∷ RExpPre → SM p Kind
 inferKind = \case
   VarRE x → do
     δ ← askL contextKindL
-    -- TODO: δ seems empty
-    traceM $ show𝕊 δ
     case δ ⋕? x of
       Some κ → return κ
       None → error "kinding failure: kind variable lookup error"

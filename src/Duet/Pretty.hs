@@ -21,23 +21,17 @@ instance (Pretty r) ⇒ Pretty (MExp r) where
     VarME x → pretty x
     ConsME τ m → ppAtLevel 6 $ ppSeparated $ list
       [ ppAlign $ pretty τ
-      , ppSpace 1
       , ppKeyPun "∷"
-      , ppSpace 1
       , ppAlign $ pretty m
       ]
     AppendME n m → ppAtLevel 3 $ ppSeparated $ list
       [ ppAlign $ pretty n
-      , ppSpace 1
       , ppKeyPun "⧺"
-      , ppSpace 1
-      , ppAlign $ pretty m
+      , ppBump $ ppAlign $ pretty m
       ]
     RexpME r τ → ppAtLevel 8 $ ppSeparated $ list
       [ ppAlign $ pretty r
-      , ppSpace 1
       , ppKeyPun "⋅"
-      , ppSpace 1
       , ppAlign $ pretty τ
       ]
 
