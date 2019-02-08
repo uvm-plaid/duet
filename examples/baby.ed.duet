@@ -2,12 +2,24 @@ let main = pλ ε   : ℝ⁺,
               δ   : ℝ⁺
               .
               ε   : ℝ⁺[ε],
-              δ   : ℝ⁺[blah],
+              δ   : ℝ⁺[δ],
               df :  𝕄 [L∞ , U | ★ , ℕ ∷ ℝ ∷ [] ]
               ⇒
-  let f = sλ x : ℝ⁺[blahblah] ⇒ x 
-  in
   result ← gauss[ℝ⁺[1.0], ε, δ] <df> { real (rows df) };
   return result
-in 
-main
+in main
+
+-- bad kinding example
+-- let main = pλ ε   : ℝ⁺,
+--               δ   : ℝ⁺
+--               .
+--               ε   : ℝ⁺[ε],
+--               δ   : ℝ⁺[blah],
+--               df :  𝕄 [L∞ , U | ★ , ℕ ∷ ℝ ∷ [] ]
+--               ⇒
+--   let f = sλ x : ℝ⁺[blahblah] ⇒ x
+--   in
+--   result ← gauss[ℝ⁺[1.0], ε, δ] <df> { real (rows df) };
+--   return result
+-- in
+-- main

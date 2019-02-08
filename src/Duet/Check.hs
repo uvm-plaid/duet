@@ -116,7 +116,11 @@ inferKind ∷ RExpPre → SM p Kind
 inferKind = \case
   VarRE x → do
     δ ← askL contextKindL
-    return $ δ ⋕! x
+    -- TODO: δ seems empty
+    traceM $ show𝕊 δ
+    case δ ⋕? x of
+      Some k → return k
+      None → error "kinding failure: kind variable lookup error"
   NatRE _ → return $ ℕK
   NNRealRE _ → return $ ℝK
   MaxRE e₁ e₂ → do
@@ -380,21 +384,14 @@ inferSens eA = case extract eA of
         σ₃ :* τ₃ ← hijack $ mapEnvL contextTypeL (\ γ → dict [x₁ ↦ 𝕀T ηₘ,x₂ ↦ 𝕀T ηₙ] ⩌ γ) $ inferSens e₃
         let σ₃' = without (pow [x₁,x₂]) σ₃
         tell $ ι (ηₘ × ηₙ) ⨵ σ₃'
-        -- TODO: is there a better way to do this than
-        -- also, doesnt work because of annotated fullcontext
-        case ηₙ of
-          _ → error "TODO" -- RExp vs RNF mismatch
-          -- (NatRNF n) → return $ 𝕄T ℓ UClip (RexpRT ηₘ) (RexpME (NatRE n) τ₃)
-          _ → undefined
+        return $ 𝕄T ℓ UClip (RexpRT ηₘ) (RexpME ηₙ τ₃)
       _ → undefined -- TypeError
   MIndexSE e₁ e₂ e₃ → do
     τ₁ ← inferSens e₁
     τ₂ ← inferSens e₂
     τ₃ ← inferSens e₃
     case (τ₁,τ₂,τ₃) of
-      _ → error "TODO"
-      -- RExp vs RNF mismatch
-      (𝕄T _ℓ _c ηₘ (RexpME r τ),𝕀T ηₘ',𝕀T ηₙ') → return τ -- -- | (ηₘ' ≤ ηₘ) ⩓ (ηₙ' ≤ ηₙ) → return τ
+      (𝕄T _ℓ _c (RexpRT ηₘ) (RexpME r τ),𝕀T ηₘ',𝕀T ηₙ') | (ηₘ' ≤ ηₘ) ⩓ (ηₙ' ≤ r) → return τ
       -- had error: duet: ⟨⟨𝕄 [L∞ U|1,n] ℝ,ℕ⟩,ℕ⟩
       _ → error $ "Index error: " ⧺ (pprender $ (τ₁ :* τ₂ :* τ₃)) -- TypeError
   MUpdateSE e₁ e₂ e₃ e₄ → do
@@ -404,9 +401,8 @@ inferSens eA = case extract eA of
     τ₄ ← inferSens e₄
     case (τ₁,τ₂,τ₃,τ₄) of
       -- TODO: why does this check fail for FW?
-      _ → error "TODO" -- RExp RNF mismatch
-      -- (𝕄T ℓ c ηₘ (RexpME r τ),𝕀T ηₘ',𝕀T ηₙ',τ') | {-(ηₘ' ≤ ηₘ) ⩓ -}(ηₙ' ≤ ηₙ) ⩓ (τ ≡ τ') →
-      --                                     return $ 𝕄T ℓ c ηₘ (RexpME r τ)
+      (𝕄T ℓ c ηₘ (RexpME r τ),𝕀T ηₘ',𝕀T ηₙ',τ') | {-(ηₘ' ≤ ηₘ) ⩓ -}(ηₙ' ≤ r) ⩓ (τ ≡ τ') →
+                                          return $ 𝕄T ℓ c ηₘ (RexpME r τ)
       _ → error $ "Update error: " ⧺ (pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄)) -- TypeError
   MRowsSE e → do
     σ :* τ ← hijack $ inferSens e
@@ -444,7 +440,7 @@ inferSens eA = case extract eA of
           , τ₂' ≡ 𝔻T
           , τ₃' ≡ 𝔻T
           , rₘ₁ ≡ one
-          -- , r₃ ≡ one -- TODO:RExp vs RNF/one
+          , r₃ ≡ one
           , r₁ ≡ r₂
           , rₘ₂ ≡ rₘ₃
           ]
@@ -454,13 +450,13 @@ inferSens eA = case extract eA of
   MMapSE e₁ x e₂ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
     case τ₁ of
-      𝕄T ℓ _c ηₘ (RexpME r τ₁') → do
+      𝕄T ℓ _c (RexpRT ηₘ) (RexpME r τ₁') → do
         σ₂ :* τ₂ ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ₁') ⩌ γ) $ inferSens e₂
         let (ς :* σ₂') = ifNone (zero :* σ₂) $ dview x σ₂
         tell $ ς ⨵ σ₁
-        -- TODO: what is this?
-        -- tell $ ι (ηₘ × r) ⨵ σ₂'
-        return $ 𝕄T ℓ UClip ηₘ (RexpME r τ₂)
+        -- TODO: what is ι?
+        tell $ ι (ηₘ × r) ⨵ σ₂'
+        return $ 𝕄T ℓ UClip (RexpRT ηₘ) (RexpME r τ₂)
       _  → undefined -- TypeSource Error
   BMapSE e₁ x e₂ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
@@ -491,8 +487,7 @@ inferSens eA = case extract eA of
                  (ς₂ :* σ₃'') = ifNone (zero :* σ₃') $ dview x₂ σ₃'
              tell $ ς₁ ⨵ σ₁
              tell $ ς₂ ⨵ σ₂
-             -- TODO: RNF vs RExp
-             -- tell $ ι (r₁ × r₂) ⨵ σ₃''
+             tell $ ι (r₁ × r₂) ⨵ σ₃''
              return $ 𝕄T ℓ₁ UClip (RexpRT r₁) (RexpME r₂ τ₃)
       _ → error $ "Map2 error: " ⧺ (pprender $ (τ₁ :* τ₂))
   BMap2SE e₁ e₂ x₁ x₂ e₃ → do
@@ -561,6 +556,8 @@ inferSens eA = case extract eA of
       $ mapEnvL contextKindL (\ δ → assoc ακs ⩌ δ) -- this is doing "   Δ′ = Δ ⊎ {β₁:κ₁,…,βₙ:κₙ}   "
       $ mapEnvL contextTypeL (\ γ → assoc xτs' ⩌ γ)
       $ inferPriv e
+    a ← map and $ mapM checkType $ map (extract ∘ snd) xτs
+    when (not a) $ throw (error "kinding error in pfun" ∷ TypeError)
     let fvs = freeBvs τ
     let isClosed = (fvs ∩ pow xs) ≡ pø
     case isClosed of
