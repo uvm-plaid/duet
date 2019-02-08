@@ -6,6 +6,8 @@ let main = pλ ε  : ℝ⁺,
               ε : ℝ⁺[ε],
               δ : ℝ⁺[δ]
               ⇒
+
+  -- OLD PROPOSAL
   -- partition df into rows where: (1) first col is 1 and (2) others
   --                                                      function from partition value and partition to τ
   --               function from df rows to members of partition values       ↓
@@ -16,6 +18,10 @@ let main = pλ ε  : ℝ⁺,
   in mgauss[ℝ⁺[1.0], ε, δ] <df> { (unbox ps) } -- now what do we do about the name of the partition?
 
   -- maybe this instead?
+  -- ALSO OLD PROPOSAL
   let ps = box(partition df {true, false} {row ⇒ row#[0,0] ≡ 1})
   in mapP (unbox ps) { pName, p ⇒ v ← gauss[ℝ⁺[1.0], ε, δ] <df> {p}; return ⟨pName, v⟩ }
+
+  -- newest proposal
+  parallel df {true, false} {row ⇒ row#[0,0] ≡ 1} {b, p ⇒ x ← gauss[ℝ⁺[1.0], ε, δ] <df> { p#[0,1] }; return ⟨b, x⟩}
 in main
