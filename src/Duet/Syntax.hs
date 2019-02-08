@@ -11,6 +11,12 @@ data Kind =
   | ℝK
   deriving (Eq,Ord,Show)
 
+instance POrd Kind where
+  ℕK ⊑ ℕK = True
+  ℕK ⊑ ℝK = True
+  ℝK ⊑ ℝK = True
+  _ ⊑ _ = False
+
 data Norm = L1 | L2 | LInf
   deriving (Eq,Ord,Show)
 

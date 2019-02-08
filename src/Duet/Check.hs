@@ -119,7 +119,7 @@ inferKind = \case
     -- TODO: δ seems empty
     traceM $ show𝕊 δ
     case δ ⋕? x of
-      Some k → return k
+      Some κ → return κ
       None → error "kinding failure: kind variable lookup error"
   NatRE _ → return $ ℕK
   NNRealRE _ → return $ ℝK
@@ -173,17 +173,17 @@ inferKind = \case
 checkType ∷ ∀ p. (PRIV_C p) ⇒ Type RExp → SM p 𝔹
 checkType τA = case τA of
   ℕˢT η → do
-    k ← inferKind $ extract η
-    return $ k ≡ ℕK
+    κ ← inferKind $ extract η
+    return $ κ ⊑ ℕK
   ℝˢT η → do
-    k ← inferKind $ extract η
-    return $ k ≡ ℝK
+    κ ← inferKind $ extract η
+    return $ κ ⊑ ℝK
   ℕT → return True
   ℝT → return True
   𝔻T → return True
   𝕀T η → do
-    k ← inferKind $ extract η
-    return $ k ≡ ℕK
+    κ ← inferKind $ extract η
+    return $ κ ⊑ ℕK
   𝔹T → return True
   𝕊T → return True
   -- 𝔻𝔽T (𝐿 (𝕊 ∧ Type r)) → undefined
@@ -193,13 +193,13 @@ checkType τA = case τA of
   𝕄T ℓ c rows me → do
     case (rows, me) of
       ((RexpRT r₁), (RexpME r₂ τ)) → do
-        k₁ ← inferKind $ extract r₁
-        k₂ ← inferKind $ extract r₂
+        κ₁ ← inferKind $ extract r₁
+        κ₂ ← inferKind $ extract r₂
         a ← checkType τ
-        return $ (pow [k₁,k₂] ⊆ single ℕK) ⩓ a
+        return $ and [a,κ₁ ⊑ ℕK,κ₂ ⊑ ℕK]
       ((RexpRT r), _) → do
-        k ← inferKind $ extract r
-        return $ k ≡ ℕK
+        κ ← inferKind $ extract r
+        return $ κ ⊑ ℕK
       _ → return True
   τ₁ :+: τ₂ → do
     a ← checkType τ₁
@@ -220,14 +220,13 @@ checkType τA = case τA of
     case s of
       Sens Inf → return $ True ⩓ c
       Sens (Quantity r) → do
-        k ← inferKind $ extract r
-        return $ (⩓) c $ case k of
-          ℝK → True
-          ℕK → False
+        κ ← inferKind $ extract r
+        return $ (⩓) c $ κ ⊑ ℝK
       _ → return False
   (ακs :* PArgs (τps ∷ 𝐿 (Type RExp ∧ Priv p' RExp))) :⊸⋆: τ → do
-    _ :* a ← hijack $  mapEnvL contextKindL (\ δ → assoc ακs ⩌ δ) $ checkType τ
-    map and $ mapM checkTypeP τps
+   mapEnvL contextKindL (\ δ → assoc ακs ⩌ δ) $ do
+     _ :* a ← hijack $  checkType τ
+     map and $ mapM checkTypeP τps
   BoxedT σ' τ → checkType τ
 
 checkTypeP ∷ ∀ p₁ p₂. (PRIV_C p₁) ⇒ (Type RExp ∧ Priv p₂ RExp) → SM p₁ 𝔹
@@ -241,9 +240,9 @@ checkTypeP (τ :* p) = do
 checkKindP :: ∀ p₁ p₂. Priv p₂ RExp → SM p₁ 𝔹
 checkKindP p = case p of
   Priv (Quantity (EDPriv ε δ)) → do
-    kᵋ ← inferKind $ extract ε
-    kᵟ ← inferKind $ extract δ
-    return $ pow [kᵋ,kᵟ] ⊆ single ℝK
+    κ₁ ← inferKind $ extract ε
+    κ₂ ← inferKind $ extract δ
+    return $ and [κ₁ ⊑ ℝK,κ₂ ⊑ ℝK]
   -- TODO: account for other privacy variants
   _ → return True
 
@@ -560,22 +559,22 @@ inferSens eA = case extract eA of
   PFunSE ακs xτs e → do
     let xτs' = map (mapSnd (map normalizeRExp ∘ extract)) xτs
         xs = map fst xτs
-    σ :* τ ←
-      smFromPM
-      $ hijack
-      $ mapEnvL contextKindL (\ δ → assoc ακs ⩌ δ) -- this is doing "   Δ′ = Δ ⊎ {β₁:κ₁,…,βₙ:κₙ}   "
-      $ mapEnvL contextTypeL (\ γ → assoc xτs' ⩌ γ)
-      $ inferPriv e
-    a ← map and $ mapM checkType $ map (extract ∘ snd) xτs
-    when (not a) $ throw (error "kinding error in pfun" ∷ TypeError)
-    let fvs = freeBvs τ
-    let isClosed = (fvs ∩ pow xs) ≡ pø
-    case isClosed of
-      False → error $ "Lambda type/scoping error in return expression of type: " ⧺ (pprender τ)
-      True → do
-        tell $ map (Sens ∘ truncate Inf ∘ unPriv) $ without (pow xs) σ
-        let τps = mapOn xτs' $ \ (x :* τ') → τ' :* ifNone null (σ ⋕? x)
-        return $ (ακs :* PArgs τps) :⊸⋆: τ
+    mapEnvL contextKindL (\ δ → assoc ακs ⩌ δ) $ do
+      σ :* τ ←
+        smFromPM
+        $ hijack
+        $ mapEnvL contextTypeL (\ γ → assoc xτs' ⩌ γ)
+        $ inferPriv e
+      a ← map and $ mapM checkType $ map (extract ∘ snd) xτs
+      when (not a) $ throw (error "kinding error in pfun" ∷ TypeError)
+      let fvs = freeBvs τ
+      let isClosed = (fvs ∩ pow xs) ≡ pø
+      case isClosed of
+        False → error $ "Lambda type/scoping error in return expression of type: " ⧺ (pprender τ)
+        True → do
+          tell $ map (Sens ∘ truncate Inf ∘ unPriv) $ without (pow xs) σ
+          let τps = mapOn xτs' $ \ (x :* τ') → τ' :* ifNone null (σ ⋕? x)
+          return $ (ακs :* PArgs τps) :⊸⋆: τ
   TupSE e₁ e₂ → do
     τ₁ ← inferSens e₁
     τ₂ ← inferSens e₂
