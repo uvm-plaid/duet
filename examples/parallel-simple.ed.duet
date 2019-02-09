@@ -11,17 +11,17 @@ let main = pλ ε  : ℝ⁺,
   -- partition df into rows where: (1) first col is 1 and (2) others
   --                                                      function from partition value and partition to τ
   --               function from df rows to members of partition values       ↓
-  --                    set of partition values      ↓                        ↓ 
+  --                    set of partition values      ↓                        ↓
   --                 dataframe   ↓                   ↓                        ↓
   --                     ↓       ↓                   ↓                        ↓
-  let ps = box(partition df {true, false} {row ⇒ row#[0,0] ≡ 1} {pName, p ⇒ ⟨pName, rows p⟩})
-  in mgauss[ℝ⁺[1.0], ε, δ] <df> { (unbox ps) } -- now what do we do about the name of the partition?
+  -- let ps = box(partition df {true, false} {row ⇒ row#[0,0] ≡ 1} {pName, p ⇒ ⟨pName, rows p⟩})
+  -- in mgauss[ℝ⁺[1.0], ε, δ] <df> { (unbox ps) } -- now what do we do about the name of the partition?
 
   -- maybe this instead?
   -- ALSO OLD PROPOSAL
-  let ps = box(partition df {true, false} {row ⇒ row#[0,0] ≡ 1})
-  in mapP (unbox ps) { pName, p ⇒ v ← gauss[ℝ⁺[1.0], ε, δ] <df> {p}; return ⟨pName, v⟩ }
+  -- let ps = box(partition df {true, false} {row ⇒ row#[0,0] ≡ 1})
+  -- in mapP (unbox ps) { pName, p ⇒ v ← gauss[ℝ⁺[1.0], ε, δ] <df> {p}; return ⟨pName, v⟩ }
 
   -- newest proposal
-  parallel df {true, false} {row ⇒ row#[0,0] ≡ 1} {b, p ⇒ x ← gauss[ℝ⁺[1.0], ε, δ] <df> { p#[0,1] }; return ⟨b, x⟩}
+  parallel df ℙ{true, false} {row ⇒ row#[0,0] ≡ 1} {b, p ⇒ x ← gauss[ℝ⁺[1.0], ε, δ] <df> { p#[0,1] }; return x}
 in main

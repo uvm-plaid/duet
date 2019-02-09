@@ -23,8 +23,8 @@ tokKeywords = list
   ,"ℕ","ℝ","ℝ⁺","𝔻","𝕀","𝕄","𝔻𝔽","𝔹","𝕊","★","∷","⋅","[]","⧺"
   ,"LR","L2","U"
   ,"real","bag","set","record"
-  ,"countBag","filterBag","partitionDF","addColDF","mapDF","joinDF₁"
-  ,"matrix","mcreate","clip","∇","mmap","bmap","idx"
+  ,"countBag","filterBag","partitionDF","addColDF","mapDF","joinDF₁","parallel"
+  ,"matrix","mcreate","clip","∇","mmap","bmap","idx", "ℙ"
   ,"aloop","loop","gauss","mgauss","bgauss","rows","cols","exponential","rand-resp"
   ,"sample","rand-nat"
   ,"L1","L2","L∞","U"
@@ -505,6 +505,12 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
       e ← parPExp p
       return $ PFunSE ακs xτs e
   , mixF $ MixFTerminal $ do
+      parLit "ℙ"
+      parLit "{"
+      ses ← pManySepBy (parLit ",") $ parSExp p
+      parLit "}"
+      return $ SetSE ses
+  , mixF $ MixFTerminal $ do
        parLit "⟨"
        e₁ ← parSExp p
        parLit ","
@@ -533,6 +539,22 @@ parPExp p = pWithContext "pexp" $ tries
        parLit ";"
        e₂ ← parPExp p
        return $ BindPE x e₁ e₂
+  , do parLit "parallel"
+       e₁ ← parSExp p
+       e₂ ← parSExp p
+       parLit "{"
+       x₁ ← parVar
+       parLit "⇒"
+       e₃ ← parSExp p
+       parLit "}"
+       parLit "{"
+       x₂ ← parVar
+       parLit ","
+       x₃ ← parVar
+       parLit "⇒"
+       e₄ ← parPExp p
+       parLit "}"
+       return $ ParallelPE e₁ e₂ x₁ e₃ x₂ x₃ e₄
   , case p of
       ED_W → do
         parLit "aloop"

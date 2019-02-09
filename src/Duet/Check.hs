@@ -56,6 +56,12 @@ freeBpargs (x :& xs) = freeBpargs xs ∪ freeBparg x
 freeBparg :: Type r ∧ Priv p r → 𝑃 𝕏
 freeBparg (x :* _) = freeBvs x
 
+getConsMAt :: (MExp r) → ℕ → (Type r)
+getConsMAt EmptyME n = error "matrix/dataframe column index error"
+getConsMAt (ConsME τ m) 0 = τ
+getConsMAt (ConsME τ m) n = (getConsMAt m (n-1))
+getConsMAt _ n = error "expected ConsME"
+
 data TypeError = TypeError
   { typeErrorTerm ∷ Doc
   , typeErrorContext ∷ (𝕏 ⇰ Type RNF)
@@ -186,7 +192,7 @@ checkType τA = case τA of
   𝕊T → return True
   -- 𝔻𝔽T (𝐿 (𝕊 ∧ Type r)) → undefined
   BagT ℓ c τ → checkType τ
-  SetT τ → undefined
+  SetT τ → checkType τ
   -- RecordT (𝐿 (𝕊 ∧ Type r)) → undefined
   𝕄T ℓ c rows me → do
     case (rows, me) of
@@ -399,6 +405,9 @@ inferSens eA = case extract eA of
     τ₃ ← inferSens e₃
     case (τ₁,τ₂,τ₃) of
       (𝕄T _ℓ _c (RexpRT ηₘ) (RexpME r τ),𝕀T ηₘ',𝕀T ηₙ') | (ηₘ' ≤ ηₘ) ⩓ (ηₙ' ≤ r) → return τ
+      -- dataframe etc.
+      (𝕄T _ℓ _c StarRT (RexpME r τ),𝕀T ηₘ',𝕀T ηₙ') | (ηₙ' ≤ r) → return τ
+      (𝕄T _ℓ _c StarRT (ConsME τ m),𝕀T ηₘ',𝕀T (NatRNF ηₙ')) → return $ getConsMAt (ConsME τ m) ηₙ'
       -- had error: duet: ⟨⟨𝕄 [L∞ U|1,n] ℝ,ℕ⟩,ℕ⟩
       _ → error $ "Index error: " ⧺ (pprender $ (τ₁ :* τ₂ :* τ₃)) -- TypeError
   MUpdateSE e₁ e₂ e₃ e₄ → do
@@ -573,6 +582,20 @@ inferSens eA = case extract eA of
           tell $ map (Sens ∘ truncate Inf ∘ unPriv) $ without (pow xs) σ
           let τps = mapOn xτs' $ \ (x :* τ') → τ' :* ifNone null (σ ⋕? x)
           return $ (ακs :* PArgs τps) :⊸⋆: τ
+  SetSE es → do
+    -- homogeneity check
+    l ← mapM (hijack ∘ inferSens) es
+    let hm = 1 ≡ (count $ uniques $ map snd l)
+    -- uniqueness check
+    let un = (count es) ≡ (count $ uniques es)
+    case hm ⩓ un of
+      False → error "Set expression is not homogenous/unique"
+      True → do
+        case es of
+          (x :& xs) → do
+            τ ← inferSens x
+            return $ SetT τ
+          _ → error $ "typing error in setse"
   TupSE e₁ e₂ → do
     τ₁ ← inferSens e₁
     τ₂ ← inferSens e₂
@@ -748,6 +771,23 @@ inferPriv eA = case extract eA of
         tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
         return ℝT
       _ → error $ "Gauss error: " ⧺ (pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄ :* ιview @ RNF σ₄KeepMax))
+  ParallelPE e₁ e₂ x₁ e₃ x₂ x₃ e₄ → do
+    τ₁ ← pmFromSM $ inferSens e₁
+    τ₂ ← pmFromSM $ inferSens e₂
+    case τ₁ of
+      (𝕄T ℓ c _ me) → do
+        case τ₂ of
+          (SetT τ₂') → do
+            σ₃ :* τ₃ ← pmFromSM $ hijack $ mapEnvL contextTypeL (\ γ → (x₁ ↦ (𝕄T ℓ c (RexpRT (NatRNF 1)) me)) ⩌ γ) $ inferSens e₃
+            case (τ₂' ≡ τ₃) of
+              False → error $ "ParallelPE partitioning type mismatch" ⧺ (pprender (τ₂',τ₃))
+              True → do
+                σ₄ :* τ₄ ← hijack $ mapEnvL contextTypeL (\ γ → (x₂ ↦ τ₂') ⩌ (x₃ ↦ (𝕄T ℓ c StarRT me)) ⩌ γ) $ inferPriv e₄
+                -- tell σ₃
+                tell σ₄
+                return $ (𝕄T ℓ c StarRT (RexpME (NatRNF 1) (𝕄T ℓ c StarRT me)))
+          _ → error $ "SetT type expected in second argument of ParallelPE" ⧺ (pprender τ₂)
+      _ → error $ "𝕄T type expected in first argument of ParallelPE" ⧺ (pprender τ₁)
   MGaussPE e₁ (EDGaussParams e₂ e₃) xs e₄ → do
     let xs' = pow xs
     τ₁ ← pmFromSM $ inferSens e₁
@@ -883,8 +923,6 @@ inferPriv eA = case extract eA of
         mapPPM (onPriv $ map $ convertRENYIEDPr ηᵟ) $ inferPriv e₂
       _ → error "type error: ConvertRENYIEDPE"
   e → error $ fromString $ show e
-
-
 
 
 -- infraRed :: PExp -> KEnv → TEnv -> (TypeSource RNF, PEnv)
