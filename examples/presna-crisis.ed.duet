@@ -1,5 +1,5 @@
 -- Presna algorithm
-let getXY = sλ m : 𝕄 [L∞ , U | ★ , ℕ ∷ ℕ ∷ ℕ ∷ ℕ ∷ 𝕊 ∷ [] ] ⇒
+let getXY = sλ m : 𝕄 [L∞ , U | ★ , ℕ ∷ ℕ ∷ ℕ ∷ ℕ ∷ 𝕊 ∷ ℕ ∷ ℕ ∷ ℕ ∷ ℕ ∷ 𝕊 ∷ [] ] ⇒
   ⟨ row#[0,2], row#[0,3] ⟩
 in
 let main = pλ ε : ℝ⁺,
@@ -17,15 +17,11 @@ let main = pλ ε : ℝ⁺,
   -- result of the join is a ℕ ∷ ℕ ∷ ℕ ∷ ℕ ∷ 𝕊 ∷ ℕ ∷ ℕ ∷ ℕ ∷ ℕ ∷ 𝕊 ∷ []
   --                        |    INCOMING      |      OUTGOING     |
 
-  parallel incoming { true, false } { row ⇒ (getXY row) ∈ crisis }
-      { n, p ⇒ case n of
-          -- crisis blocks
-          true → parallel (join₁[p, 4, outgoing, 4]) blocks { row ⇒ getXY row }
-                  { b, p ⇒ noisyCount ← gauss[ℝ⁺[1.0], ε, δ] <outgoing> { rows p };
-                           return ⟨b, noisyCount⟩ }
-          -- non-crisis blocks
-          false → parallel p blocks { row ⇒ getXY row }
-                  { b, p ⇒ noisyCount ← gauss[ℝ⁺[1.0], ε, δ] <outgoing> { rows p };
-                           return ⟨b, noisyCount⟩ }
-      };
+  parallel (join₁[outgoing, 4, incoming, 4]) { true, false } { row ⇒ (getXY row) ∈ crisis }
+      { n, pb ⇒ 
+          r ← parallel pb blocks { row ⇒ getXY row }
+                { b, p ⇒ noisyCount ← gauss[ℝ⁺[1.0], ε, δ] <incoming, outgoing> { rows p };
+                         return ⟨b, noisyCount⟩ };
+          return ⟨n, r⟩
+      }
 in main
