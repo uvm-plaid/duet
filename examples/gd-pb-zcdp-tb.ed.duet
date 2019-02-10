@@ -18,12 +18,10 @@ let main = pλ m  : ℕ,
   -- having tested some examples, it does seem to work
   let ρᵢ = (-2√(k² ε ㏒(1/δ) + k² ㏒(1/δ)²) + 2 k ㏒(1/δ) + k ε) / k² in
   ZCDP[ δ ] {
-    loop k on m₀ <xs,ys> { a, θ ⇒ 
+    loop k on m₀ <xs,ys> { a, θ ⇒
       let s = ℝ⁺[1.0] / real (rows xs) in
-      g ← mgauss[ s , ρᵢ ] <xs,ys> { ∇[ LR | θ ; clip[L2] xs, ys ] } ;
+      g ← mgauss[ s , ρᵢ ] <xs,ys> { ∇[ LR | θ ; mclip[L2] xs, ys ] } ;
       return mmap θ , mmap g { x ⇒ η ⋅ x } { x , y ⇒ x - y }
     }
   }
 in main
-
-

@@ -76,7 +76,7 @@ instance (Pretty r) ⇒ Pretty (Type r) where
     𝔻𝔽T as → ppAtLevel 2 $ ppSeparated $ list
              [ ppKeyPun "𝔻𝔽"
              , ppPun "["
-             , ppAlign $ ppSeparated $ list $ inbetween (ppPun ",") $ mapOn as $ \ (n :* t) → 
+             , ppAlign $ ppSeparated $ list $ inbetween (ppPun ",") $ mapOn as $ \ (n :* t) →
                  ppBotLevel $ concat [ppAlign $ ppPun n,ppPun ":",ppAlign $ pretty t]
              , ppPun "]"
              ]
@@ -88,7 +88,7 @@ instance (Pretty r) ⇒ Pretty (Type r) where
              , ppAlign $ pretty c
              , ppPun "]"
              , ppPun "["
-             , ppAlign $ ppSeparated $ list $ inbetween (ppPun ",") $ mapOn as $ \ (n :* t) → 
+             , ppAlign $ ppSeparated $ list $ inbetween (ppPun ",") $ mapOn as $ \ (n :* t) →
                  ppBotLevel $ concat [ppAlign $ ppPun n,ppPun ":",ppAlign $ pretty t]
              , ppPun "]"
              ]
@@ -102,13 +102,17 @@ instance (Pretty r) ⇒ Pretty (Type r) where
       , ppBump $ pretty τ
       ]
     SetT τ → ppAtLevel 5 $ ppSeparated $ list
-      [ ppKeyPun "Set"
+      [ ppKeyPun "𝓟"
+      , ppBump $ pretty τ
+      ]
+    DiscT τ → ppAtLevel 5 $ ppSeparated $ list
+      [ ppKeyPun "𝐝"
       , ppBump $ pretty τ
       ]
     RecordT as → ppAtLevel 2 $ ppSeparated $ list
              [ ppKeyPun "Record"
              , ppPun "["
-             , ppAlign $ ppSeparated $ list $ inbetween (ppPun ",") $ mapOn as $ \ (n :* t) → 
+             , ppAlign $ ppSeparated $ list $ inbetween (ppPun ",") $ mapOn as $ \ (n :* t) →
                  ppBotLevel $ concat [ppAlign $ ppPun n,ppPun ":",ppAlign $ pretty t]
              , ppPun "]"
              ]
@@ -150,13 +154,13 @@ instance (Pretty r) ⇒ Pretty (Type r) where
       [ concat
         [ ppPun "∀"
         , ppSpace 1
-        , ppAlign $ ppSeparated $ list $ inbetween (ppPun ",") $ mapOn ακs $ \ (α :* κ) → 
+        , ppAlign $ ppSeparated $ list $ inbetween (ppPun ",") $ mapOn ακs $ \ (α :* κ) →
            ppBotLevel $ concat [ppAlign $ pretty α,ppPun ":",ppAlign $ pretty κ]
         ]
-      , ppSeparated 
+      , ppSeparated
           $ list
           $ mapFirst (\ s → ppSeparated $ list [ppPun ".",s])
-          $ mapAfterFirst (\ s → ppSeparated $ list [ppPun ",",s]) 
+          $ mapAfterFirst (\ s → ppSeparated $ list [ppPun ",",s])
           $ mapOn τps $ \ (τ' :* p) →
               ppBotLevel $ concat [ppAlign $ pretty τ',ppPun "@",ppAlign $ pretty p]
       , concat [ppPun "⇒",ppSpace 1,ppAlign $ pretty τ]

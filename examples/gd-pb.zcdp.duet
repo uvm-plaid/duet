@@ -12,10 +12,9 @@ let main = pλ m  : ℕ,
               η  : ℝ
               ⇒
   let m₀ = mcreate[ L∞ | ℕ[1] , cols xs ] { i , j ⇒ 0.0 } in
-  loop k on m₀ <xs,ys> { a, θ ⇒ 
+  loop k on m₀ <xs,ys> { a, θ ⇒
     let s = ℝ⁺[1.0] / real (rows xs) in
-    g ← mgauss[ s , ρ ] <xs,ys> { ∇[ LR | θ ; clip[L2] xs, ys ] } ;
+    g ← mgauss[ s , ρ ] <xs,ys> { ∇[ LR | θ ; mclip[L2] xs, ys ] } ;
     return mmap θ , mmap g { x ⇒ η ⋅ x } { x , y ⇒ x - y }
   }
 in main
-

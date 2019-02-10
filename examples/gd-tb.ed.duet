@@ -17,10 +17,9 @@ let main = pλ m  : ℕ,
   let εᵢ = ε / (ℝ⁺[2.0] ⋅ √ (ℝ⁺[2.0] ⋅ real k ⋅ (㏒ (ℝ⁺[2.0]/δ)))) in
   let δᵢ = δ / (ℝ⁺[2.0] ⋅ real k) in
   let m₀ = mcreate[ L∞ | ℕ[1] , cols xs ] { i , j ⇒ 0.0 } in
-  aloop[ δ / ℝ⁺[2.0] ] k on m₀ <xs,ys> { a, θ ⇒ 
+  aloop[ δ / ℝ⁺[2.0] ] k on m₀ <xs,ys> { a, θ ⇒
     let s = ℝ⁺[1.0] / real (rows xs) in
-    g ← mgauss[ s , εᵢ , δᵢ ] <xs,ys> { ∇[ LR | θ ; clip[L2] xs, ys ] } ;
+    g ← mgauss[ s , εᵢ , δᵢ ] <xs,ys> { ∇[ LR | θ ; mclip[L2] xs, ys ] } ;
     return mmap θ , mmap g { x ⇒ η ⋅ x } { x , y ⇒ x - y }
   }
 in main
-

@@ -24,7 +24,7 @@ tokKeywords = list
   ,"LR","L2","U"
   ,"real","bag","set","record"
   ,"countBag","filterBag","partitionDF","addColDF","mapDF","joinDF₁","parallel"
-  ,"matrix","mcreate","clip","∇","mmap","bmap","idx", "ℙ"
+  ,"matrix","mcreate","mclip","clip","∇","mmap","bmap","idx","𝓟","𝐝","conv","disc"
   ,"aloop","loop","gauss","mgauss","bgauss","rows","cols","exponential","rand-resp"
   ,"sample","rand-nat"
   ,"L1","L2","L∞","U"
@@ -228,6 +228,10 @@ parType mode = mixfixParser $ concat
       parLit "]"
       return $ 𝕄T ℓ c ηₘ ηₙ
   , mix $ MixTerminal $ do
+      parLit "𝐝"
+      τ ← parType mode
+      return $ DiscT τ
+  , mix $ MixTerminal $ do
       parLit "𝔻𝔽"
       parLit "["
       as ← pOneOrMoreSepBy (parLit ",") $ do
@@ -402,7 +406,7 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
   , mixF $ MixFPrefix 10 $ const MColsSE ^$ parLit "cols"
   , mixF $ MixFPrefix 10 $ const IdxSE ^$ parLit "idx"
   , mixF $ MixFPrefix 10 $ do
-      parLit "clip"
+      parLit "mclip"
       parLit "["
       ℓ ← parNorm
       parLit "]"
@@ -505,7 +509,7 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
       e ← parPExp p
       return $ PFunSE ακs xτs e
   , mixF $ MixFTerminal $ do
-      parLit "ℙ"
+      parLit "𝓟"
       parLit "{"
       ses ← pManySepBy (parLit ",") $ parSExp p
       parLit "}"
@@ -519,6 +523,9 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
        return $ TupSE e₁ e₂
   , mixF $ MixFPrefix 10 $ const BoxSE ^$ parLit "box"
   , mixF $ MixFPrefix 10 $ const UnboxSE ^$ parLit "unbox"
+  , mixF $ MixFPrefix 10 $ const ClipSE ^$ parLit "clip"
+  , mixF $ MixFPrefix 10 $ const ConvSE ^$ parLit "conv"
+  , mixF $ MixFPrefix 10 $ const DiscSE ^$ parLit "disc"
   ]
 
 parPExp ∷ (PRIV_C p) ⇒ PRIV_W p → Parser Token (PExpSource p)

@@ -687,6 +687,24 @@ inferSens eA = case extract eA of
         tell σ
         return τ₂
       _ → error $ "Cannot unbox type: " ⧺ (pprender τ₁)
+  ClipSE e → do
+    σ :* τ ← hijack $ inferSens e
+    case τ of
+      DiscT τ₁ → do
+        tell σ
+        return τ₁
+      _ → error $ "Cannot clip type: " ⧺ (pprender τ)
+  ConvSE e → do
+    σ :* τ ← hijack $ inferSens e
+    case τ of
+      DiscT τ₁ → do
+        tell $ map (Sens ∘ truncate Inf ∘ unSens) σ
+        return τ₁
+      _ → error $ "Cannot conv type: " ⧺ (pprender τ)
+  DiscSE e → do
+    σ :* τ ← hijack $ inferSens e
+    tell $ map (Sens ∘ truncate (Quantity (NatRNF 1)) ∘ unSens) σ
+    return $ DiscT τ
   e → error $ fromString $ show e
 
 isRealMExp ∷ MExp RNF → PM p 𝔹

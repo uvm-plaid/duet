@@ -27,5 +27,5 @@ let main = pλ ε  : ℝ⁺,
   -- in mapP (unbox ps) { pName, p ⇒ v ← gauss[ℝ⁺[1.0], ε, δ] <df> {p}; return ⟨pName, v⟩ }
 
   -- newest proposal
-  parallel df, ℙ{1, 2}, {row ⇒ row#[q,r]} {b, p ⇒ x ← gauss[ℝ⁺[1.0], ε, δ] <df,s,t> { p#[s,t] }; return ⟨b, x⟩}
+  parallel df, 𝓟{1, 2}, {row ⇒ row#[q,r]} {b, p ⇒ x ← gauss[ℝ⁺[1.0], ε, δ] <df,s,t> { p#[s,t] }; return ⟨b, x⟩}
 in main

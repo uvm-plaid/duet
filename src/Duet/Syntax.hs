@@ -200,6 +200,7 @@ data Type r =
   | SetT (Type r)
   | RecordT (𝐿 (𝕊 ∧ Type r))
   | 𝕄T Norm Clip (RowsT r) (MExp r)
+  | DiscT (Type r)
   | Type r :+: Type r
   | Type r :×: Type r
   | Type r :&: Type r
@@ -224,6 +225,7 @@ instance Functor Type where
     SetT τ → SetT (map f τ)
     RecordT as → RecordT $ map (mapPair id $ map f) as
     𝕄T ℓ c r₁ r₂ → 𝕄T ℓ c (map f r₁) (map f r₂)
+    DiscT τ → map f τ
     τ₁ :+: τ₂ → map f τ₁ :+: map f τ₂
     τ₁ :×: τ₂ → map f τ₁ :×: map f τ₂
     τ₁ :&: τ₂ → map f τ₁ :&: map f τ₂
@@ -308,6 +310,9 @@ data SExp (p ∷ PRIV) where
   SndSE ∷ SExpSource p → SExp p
   BoxSE ∷ SExpSource p → SExp p
   UnboxSE ∷ SExpSource p → SExp p
+  ClipSE ∷ SExpSource p → SExp p
+  ConvSE ∷ SExpSource p → SExp p
+  DiscSE ∷ SExpSource p → SExp p
   deriving (Eq,Ord,Show)
 
 data GaussParams (p ∷ PRIV) where
