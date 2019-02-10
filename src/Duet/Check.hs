@@ -784,7 +784,7 @@ inferPriv eA = case extract eA of
               False → error $ "ParallelPE partitioning type mismatch" ⧺ (pprender (τ₂',τ₃))
               True → do
                 σ₄ :* τ₄ ← hijack $ mapEnvL contextTypeL (\ γ → (x₂ ↦ τ₂') ⩌ (x₃ ↦ (𝕄T ℓ c StarRT me)) ⩌ γ) $ inferPriv e₄
-                -- tell σ₃
+                tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₃
                 tell σ₄
                 return $ (𝕄T ℓ c StarRT (RexpME (NatRNF 1) (𝕄T ℓ c StarRT (RexpME (NatRNF 1) τ₄))))
           _ → error $ "SetT type expected in second argument of ParallelPE" ⧺ (pprender τ₂)
