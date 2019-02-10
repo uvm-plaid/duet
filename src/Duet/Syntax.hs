@@ -194,7 +194,7 @@ data Type r =
   | 𝕀T r
   | 𝔹T
   | 𝕊T
-  | 𝔻𝔽T (𝐿 (𝕊 ∧ Type r)) -- TODO: this should become syntactic sugar?
+  | 𝔻𝔽T (𝐿 (𝕊 ∧ Type r)) -- TODO: remove
   | BagT Norm Clip (Type r)
   | SetT (Type r)
   | RecordT (𝐿 (𝕊 ∧ Type r))

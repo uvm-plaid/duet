@@ -116,7 +116,6 @@ pmFromSM xM = mkPM $ \ δ γ ᴍ → mapInr (mapFst $ map $ Priv ∘ truncate In
 mapPPM ∷ (Priv p₁ RNF → Priv p₂ RNF) → PM p₁ a → PM p₂ a
 mapPPM f xM = mkPM $ \ δ γ ᴍ → mapInr (mapFst $ map f) $ runPM δ γ ᴍ xM
 
--- this is written non-monadically, eventually we will rewrite to be monadic
 inferKind ∷ RExpPre → SM p Kind
 inferKind = \case
   VarRE x → do
@@ -140,7 +139,6 @@ inferKind = \case
       (ℕK,ℕK) → return ℕK
       (ℝK,ℝK) → return ℝK
       _ → error "TYPE ERROR"
-  -- re₁ + re₂
   PlusRE e₁ e₂ → do
     κ₁ ← inferKind $ extract e₁
     κ₂ ← inferKind $ extract e₂
@@ -811,7 +809,7 @@ inferPriv eA = case extract eA of
                 tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₃
                 tell σ₄
                 return $ (𝕄T ℓ c StarRT (RexpME (NatRNF 1) (𝕄T ℓ c StarRT (RexpME (NatRNF 1) τ₄))))
-          _ → error $ "SetT type expected in second argument of ParallelPE" ⧺ (pprender τ₂)
+          _ → error $ "𝓟 expected in second argument of ParallelPE" ⧺ (pprender τ₂)
       _ → error $ "𝕄T type expected in first argument of ParallelPE" ⧺ (pprender τ₁)
   MGaussPE e₁ (EDGaussParams e₂ e₃) xs e₄ → do
     let xs' = pow xs
@@ -950,7 +948,6 @@ inferPriv eA = case extract eA of
         mapPPM (onPriv $ map $ convertRENYIEDPr ηᵟ) $ inferPriv e₂
       _ → error "type error: ConvertRENYIEDPE"
   e → error $ fromString $ show e
-
 
 -- infraRed :: PExp -> KEnv → TEnv -> (TypeSource RNF, PEnv)
 --
