@@ -191,7 +191,6 @@ data Type r =
   | ℝˢT r
   | ℕT
   | ℝT
-  | 𝔻T
   | 𝕀T r
   | 𝔹T
   | 𝕊T
@@ -200,7 +199,7 @@ data Type r =
   | SetT (Type r)
   | RecordT (𝐿 (𝕊 ∧ Type r))
   | 𝕄T Norm Clip (RowsT r) (MExp r)
-  | DiscT (Type r)
+  | 𝔻T (Type r)
   | Type r :+: Type r
   | Type r :×: Type r
   | Type r :&: Type r
@@ -216,7 +215,6 @@ instance Functor Type where
     ℝˢT r → ℝˢT $ f r
     ℕT → ℕT
     ℝT → ℝT
-    𝔻T → 𝔻T
     𝕀T r → 𝕀T $ f r
     𝔹T → 𝔹T
     𝕊T → 𝕊T
@@ -225,7 +223,7 @@ instance Functor Type where
     SetT τ → SetT (map f τ)
     RecordT as → RecordT $ map (mapPair id $ map f) as
     𝕄T ℓ c r₁ r₂ → 𝕄T ℓ c (map f r₁) (map f r₂)
-    DiscT τ → map f τ
+    𝔻T τ → 𝔻T $ map f τ
     τ₁ :+: τ₂ → map f τ₁ :+: map f τ₂
     τ₁ :×: τ₂ → map f τ₁ :×: map f τ₂
     τ₁ :&: τ₂ → map f τ₁ :&: map f τ₂

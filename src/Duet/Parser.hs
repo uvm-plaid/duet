@@ -206,7 +206,6 @@ parType mode = mixfixParser $ concat
       return $ ℝˢT η
   , mix $ MixTerminal $ const ℕT ^$ parLit "ℕ"
   , mix $ MixTerminal $ const ℝT ^$ parLit "ℝ"
-  , mix $ MixTerminal $ const 𝔻T ^$ parLit "𝔻"
   , mix $ MixTerminal $ const 𝔹T ^$ parLit "𝔹"
   , mix $ MixTerminal $ const 𝕊T ^$ parLit "𝕊"
   , mix $ MixTerminal $ do
@@ -228,9 +227,8 @@ parType mode = mixfixParser $ concat
       parLit "]"
       return $ 𝕄T ℓ c ηₘ ηₙ
   , mix $ MixTerminal $ do
-      parLit "𝐝"
-      τ ← parType mode
-      return $ DiscT τ
+      parLit "𝔻"
+      return $ 𝔻T ℝT
   , mix $ MixTerminal $ do
       parLit "𝔻𝔽"
       parLit "["
@@ -255,6 +253,7 @@ parType mode = mixfixParser $ concat
   -- TODO: support parsing sensitivity and clip
   , mix $ MixPrefix 6 $ const (BagT L1 UClip) ^$ parLit "bag"
   , mix $ MixPrefix 6 $ const (SetT) ^$ parLit "set"
+  , mix $ MixPrefix 6 $ const (𝔻T) ^$ parLit "𝐝"
   , mix $ MixInfixL 3 $ const (:+:) ^$ parLit "+"
   , mix $ MixInfixL 4 $ const (:×:) ^$ parLit "×"
   , mix $ MixInfixL 4 $ const (:&:) ^$ parLit "&"

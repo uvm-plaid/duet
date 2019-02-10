@@ -71,7 +71,7 @@ instance (Pretty r) ⇒ Pretty (Type r) where
     ℝT → ppKeyPun "ℝ"
     𝔹T → ppKeyPun "𝔹"
     𝕊T → ppKeyPun "𝕊"
-    𝔻T → ppKeyPun "𝔻 "
+    𝔻T ℝT → ppKeyPun "𝔻 "
     𝕀T r → concat[ppKeyPun "𝕀",ppPun "[",pretty r,ppPun "]"]
     𝔻𝔽T as → ppAtLevel 2 $ ppSeparated $ list
              [ ppKeyPun "𝔻𝔽"
@@ -105,7 +105,7 @@ instance (Pretty r) ⇒ Pretty (Type r) where
       [ ppKeyPun "𝓟"
       , ppBump $ pretty τ
       ]
-    DiscT τ → ppAtLevel 5 $ ppSeparated $ list
+    𝔻T τ → ppAtLevel 5 $ ppSeparated $ list
       [ ppKeyPun "𝐝"
       , ppBump $ pretty τ
       ]

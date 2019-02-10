@@ -12,7 +12,6 @@ freeBvs (ℕˢT _) = pø
 freeBvs (ℝˢT _) = pø
 freeBvs ℕT = pø
 freeBvs ℝT = pø
-freeBvs 𝔻T = pø
 freeBvs (𝕀T _) = pø
 freeBvs 𝔹T = pø
 freeBvs 𝕊T = pø
@@ -24,6 +23,7 @@ freeBvs (SetT τ) = freeBvs τ
 freeBvs (RecordT Nil) = pø
 freeBvs (RecordT (x :& xs)) = freeBrcrdvs x ∪ freeBvs (RecordT xs)
 freeBvs (𝕄T _ _ _ me) = freeBmexp me
+freeBvs (𝔻T τ) = freeBvs τ
 freeBvs (τ₁ :+: τ₂) = freeBvs τ₁ ∪ freeBvs τ₂
 freeBvs (τ₁ :×: τ₂) = freeBvs τ₁ ∪ freeBvs τ₂
 freeBvs (τ₁ :&: τ₂) = freeBvs τ₁ ∪ freeBvs τ₂
@@ -184,7 +184,6 @@ checkType τA = case τA of
     return $ κ ⊑ ℝK
   ℕT → return True
   ℝT → return True
-  𝔻T → return True
   𝕀T η → do
     κ ← inferKind $ extract η
     return $ κ ⊑ ℕK
@@ -205,6 +204,7 @@ checkType τA = case τA of
         κ ← inferKind $ extract r
         return $ κ ⊑ ℕK
       _ → return True
+  𝔻T τ → checkType τ
   τ₁ :+: τ₂ → do
     a ← checkType τ₁
     b ← checkType τ₂
@@ -278,7 +278,7 @@ inferSens eA = case extract eA of
       (𝕀T η₁,𝕀T η₂) → return $ 𝕀T $ η₁ ⊔ η₂
       (ℕT,ℕT) → return ℕT
       (ℝT,ℝT) → return ℝT
-      (𝔻T,𝔻T) → return 𝔻T
+      (𝔻T ℝT,𝔻T ℝT) → return $ 𝔻T ℝT
       _ → undefined -- TypeError
   MinSE e₁ e₂ → do
     τ₁ ← inferSens e₁
@@ -289,7 +289,7 @@ inferSens eA = case extract eA of
       (𝕀T η₁,𝕀T η₂) → return $ 𝕀T $ η₁ ⊓ η₂
       (ℕT,ℕT) → return ℕT
       (ℝT,ℝT) → return ℝT
-      (𝔻T,𝔻T) → return 𝔻T
+      (𝔻T ℝT,𝔻T ℝT) → return $ 𝔻T ℝT
       _ → undefined -- TypeError
   PlusSE e₁ e₂ → do
     τ₁ ← inferSens e₁
@@ -300,7 +300,7 @@ inferSens eA = case extract eA of
       (𝕀T η₁,𝕀T η₂) → return $ 𝕀T $ η₁ + η₂
       (ℕT,ℕT) → return ℕT
       (ℝT,ℝT) → return ℝT
-      (𝔻T,𝔻T) → return 𝔻T
+      (𝔻T ℝT,𝔻T ℝT) → return $ 𝔻T ℝT
       _ → undefined -- TypeError
   TimesSE e₁ e₂ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
@@ -329,7 +329,7 @@ inferSens eA = case extract eA of
         return ℕT
       (ℕT,ℕT) → do tell $ σ₁ ⧺ σ₂ ; return ℕT
       (ℝT,ℝT) → do tell $ σ₁ ⧺ σ₂ ; return ℝT
-      (𝔻T,𝔻T) → do tell $ σ₁ ⧺ σ₂ ; return 𝔻T
+      (𝔻T ℝT,𝔻T ℝT) → do tell $ σ₁ ⧺ σ₂ ; return $ 𝔻T ℝT
       _ → error $ "Times error: " ⧺ (pprender $ (τ₁ :* τ₂))
   DivSE e₁ e₂ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
@@ -343,21 +343,21 @@ inferSens eA = case extract eA of
         tell $ ι (one / η₂) ⨵ σ₁ ⧺ σ₂
         return $ ℝT
       (ℝT,ℝT) → return ℝT
-      (𝔻T,𝔻T) → return 𝔻T
+      (𝔻T ℝT,𝔻T ℝT) → return $ 𝔻T ℝT
       _ → undefined -- TypeError
   RootSE e → do
     σ :* τ ← hijack $ inferSens e
     case τ of
       ℝˢT η → do tell σ ; return $ ℝˢT $ rootRNF η
       ℝT → do tell $ top ⨵ σ ; return ℝT
-      𝔻T → return 𝔻T
+      𝔻T ℝT → return $ 𝔻T ℝT
       _ → undefined -- TypeError
   LogSE e → do
     σ :* τ ← hijack $ inferSens e
     case τ of
       ℝˢT η → do tell σ ; return $ ℝˢT $ rootRNF η
       ℝT → do tell $ top ⨵ σ ; return ℝT
-      𝔻T → return 𝔻T
+      𝔻T ℝT → return $ 𝔻T ℝT
       _ → undefined -- TypeError
   ModSE e₁ e₂ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
@@ -387,7 +387,7 @@ inferSens eA = case extract eA of
       (ℝˢT _η₁,ℝˢT _η₂) → return ℝT
       (ℕT,ℕT) → return ℕT
       (ℝT,ℝT) → return ℝT
-      (𝔻T,𝔻T) → return 𝔻T
+      (𝔻T ℝT,𝔻T ℝT) → return $ 𝔻T ℝT
       _ → error $ "Minus error: " ⧺ (pprender $ (τ₁ :* τ₂)) -- TypeError
   MCreateSE ℓ e₁ e₂ x₁ x₂ e₃ → do
     τ₁ ← inferSens e₁
@@ -437,12 +437,12 @@ inferSens eA = case extract eA of
   MClipSE ℓ e → do
     τ ← inferSens e
     case τ of
-      𝕄T ℓ' _c ηₘ (RexpME r τ') | τ' ≡ 𝔻T → return $ 𝕄T ℓ' (NormClip ℓ) ηₘ (RexpME r τ')
+      𝕄T ℓ' _c ηₘ (RexpME r τ') | τ' ≡ (𝔻T ℝT) → return $ 𝕄T ℓ' (NormClip ℓ) ηₘ (RexpME r τ')
       _ → undefined -- TypeSource Error
   MConvertSE e → do
     τ ← inferSens e
     case τ of
-      𝕄T _ℓ (NormClip ℓ) ηₘ (RexpME r τ') | τ' ≡ 𝔻T → return $ 𝕄T ℓ UClip ηₘ (RexpME r ℝT)
+      𝕄T _ℓ (NormClip ℓ) ηₘ (RexpME r τ') | τ' ≡ 𝔻T ℝT → return $ 𝕄T ℓ UClip ηₘ (RexpME r ℝT)
       _ → undefined -- TypeSource Error
   MLipGradSE _g e₁ e₂ e₃ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
@@ -454,8 +454,8 @@ inferSens eA = case extract eA of
       (𝕄T _ℓ₁ _c₁ ( RexpRT rₘ₁ ) (RexpME r₁ τ₁'),𝕄T _ℓ₂ (NormClip ℓ) ( RexpRT rₘ₂ ) (RexpME r₂ τ₂'),𝕄T _ℓ₃ _c₃ ( RexpRT rₘ₃ ) (RexpME r₃ τ₃'))
         | meets
           [ τ₁' ≡ ℝT
-          , τ₂' ≡ 𝔻T
-          , τ₃' ≡ 𝔻T
+          , τ₂' ≡ 𝔻T ℝT
+          , τ₃' ≡ 𝔻T ℝT
           , rₘ₁ ≡ one
           , r₃ ≡ one
           , r₁ ≡ r₂
@@ -690,21 +690,21 @@ inferSens eA = case extract eA of
   ClipSE e → do
     σ :* τ ← hijack $ inferSens e
     case τ of
-      DiscT τ₁ → do
+      𝔻T τ₁ → do
         tell σ
         return τ₁
       _ → error $ "Cannot clip type: " ⧺ (pprender τ)
   ConvSE e → do
     σ :* τ ← hijack $ inferSens e
     case τ of
-      DiscT τ₁ → do
+      𝔻T τ₁ → do
         tell $ map (Sens ∘ truncate Inf ∘ unSens) σ
         return τ₁
       _ → error $ "Cannot conv type: " ⧺ (pprender τ)
   DiscSE e → do
     σ :* τ ← hijack $ inferSens e
     tell $ map (Sens ∘ truncate (Quantity (NatRNF 1)) ∘ unSens) σ
-    return $ DiscT τ
+    return $ 𝔻T τ
   e → error $ fromString $ show e
 
 isRealMExp ∷ MExp RNF → PM p 𝔹
