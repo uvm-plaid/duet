@@ -4,7 +4,11 @@ let main = pλ ε  : ℝ⁺,
               .
               df : 𝕄 [L∞ , U | ★ , ℕ ∷ ℝ ∷ [] ],
               ε : ℝ⁺[ε],
-              δ : ℝ⁺[δ]
+              δ : ℝ⁺[δ],
+              q : ℕ[0],
+              r : ℕ[0],
+              s : ℕ[0],
+              t : ℕ[1]
               ⇒
 
   -- OLD PROPOSAL
@@ -23,5 +27,5 @@ let main = pλ ε  : ℝ⁺,
   -- in mapP (unbox ps) { pName, p ⇒ v ← gauss[ℝ⁺[1.0], ε, δ] <df> {p}; return ⟨pName, v⟩ }
 
   -- newest proposal
-  parallel df ℙ{true, false} {row ⇒ row#[0,0] ≡ 1} {b, p ⇒ x ← gauss[ℝ⁺[1.0], ε, δ] <df> { p#[0,1] }; return x}
+  parallel df, ℙ{1, 2}, {row ⇒ row#[q,r]} {b, p ⇒ x ← gauss[ℝ⁺[1.0], ε, δ] <df,s,t> { p#[s,t] }; return ⟨b, x⟩}
 in main

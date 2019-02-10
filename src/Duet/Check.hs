@@ -406,8 +406,9 @@ inferSens eA = case extract eA of
     case (τ₁,τ₂,τ₃) of
       (𝕄T _ℓ _c (RexpRT ηₘ) (RexpME r τ),𝕀T ηₘ',𝕀T ηₙ') | (ηₘ' ≤ ηₘ) ⩓ (ηₙ' ≤ r) → return τ
       -- dataframe etc.
+      (𝕄T _ℓ _c (RexpRT ηₘ) (ConsME τ m), _ηₘ', ℕˢT (NatRNF ηₙ')) → return $ getConsMAt (ConsME τ m) ηₙ'
       (𝕄T _ℓ _c StarRT (RexpME r τ),𝕀T ηₘ',𝕀T ηₙ') | (ηₙ' ≤ r) → return τ
-      (𝕄T _ℓ _c StarRT (ConsME τ m),𝕀T ηₘ',𝕀T (NatRNF ηₙ')) → return $ getConsMAt (ConsME τ m) ηₙ'
+      (𝕄T _ℓ _c StarRT (ConsME τ m), _ηₘ',ℕˢT (NatRNF ηₙ')) → return $ getConsMAt (ConsME τ m) ηₙ'
       -- had error: duet: ⟨⟨𝕄 [L∞ U|1,n] ℝ,ℕ⟩,ℕ⟩
       _ → error $ "Index error: " ⧺ (pprender $ (τ₁ :* τ₂ :* τ₃)) -- TypeError
   MUpdateSE e₁ e₂ e₃ e₄ → do
@@ -785,7 +786,7 @@ inferPriv eA = case extract eA of
                 σ₄ :* τ₄ ← hijack $ mapEnvL contextTypeL (\ γ → (x₂ ↦ τ₂') ⩌ (x₃ ↦ (𝕄T ℓ c StarRT me)) ⩌ γ) $ inferPriv e₄
                 -- tell σ₃
                 tell σ₄
-                return $ (𝕄T ℓ c StarRT (RexpME (NatRNF 1) (𝕄T ℓ c StarRT me)))
+                return $ (𝕄T ℓ c StarRT (RexpME (NatRNF 1) (𝕄T ℓ c StarRT (RexpME (NatRNF 1) τ₄))))
           _ → error $ "SetT type expected in second argument of ParallelPE" ⧺ (pprender τ₂)
       _ → error $ "𝕄T type expected in first argument of ParallelPE" ⧺ (pprender τ₁)
   MGaussPE e₁ (EDGaussParams e₂ e₃) xs e₄ → do
@@ -898,7 +899,7 @@ inferPriv eA = case extract eA of
     τ₁ ← pmFromSM $ inferSens e₁
     τ₂ ← pmFromSM $ inferSens e₂
     -- also, following line is sketchy?? -DCD
-    𝕄T _ℓ _c (RexpRT r₁) (RexpME r₂ τ₃) ← pmFromSM $ inferSens e₃
+    𝕄T _ℓ _c (RexpRT r₁) (RexpME _r₂ τ₃) ← pmFromSM $ inferSens e₃
     σ₄ :* τ₄ ← pmFromSM $ hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ₃) ⩌ γ) $ inferSens e₄
     let σ₄' = delete x σ₄
     let σ₄Keep = restrict xs' σ₄'

@@ -541,7 +541,9 @@ parPExp p = pWithContext "pexp" $ tries
        return $ BindPE x e₁ e₂
   , do parLit "parallel"
        e₁ ← parSExp p
+       parLit ","
        e₂ ← parSExp p
+       parLit ","
        parLit "{"
        x₁ ← parVar
        parLit "⇒"
