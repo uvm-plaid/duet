@@ -13,25 +13,19 @@ let main = pλ ε : ℝ⁺,
               ε : ℝ⁺[ε],
               δ : ℝ⁺[δ]
               ⇒
-  -- NORMAL mode
-  q₁ ← parallel outgoing blocks { row ⇒ getXY row }
-         { b, p ⇒ noisyCount ← gauss[ℝ⁺[1.0], ε, δ] <outgoing> { rows p };
-                  return ⟨b, noisyCount⟩ };
-
   -- CRISIS mode
   -- result of the join is a ℕ ∷ ℕ ∷ ℕ ∷ ℕ ∷ 𝕊 ∷ ℕ ∷ ℕ ∷ ℕ ∷ ℕ ∷ 𝕊 ∷ []
   --                        |    INCOMING      |      OUTGOING     |
 
-  q₂₃ ← parallel incoming { true, false } { row ⇒ (getXY row) ∈ crisis }
-          { n, p ⇒ case n of
-              -- crisis blocks
-              true → parallel (join₁[p, 4, outgoing, 4]) blocks { row ⇒ getXY row }
-                       { b, p ⇒ noisyCount ← gauss[ℝ⁺[1.0], ε, δ] <outgoing> { rows p };
-                                return ⟨b, noisyCount⟩ }
-              -- non-crisis blocks
-              false → parallel p blocks { row ⇒ getXY row }
-                       { b, p ⇒ noisyCount ← gauss[ℝ⁺[1.0], ε, δ] <outgoing> { rows p };
-                                return ⟨b, noisyCount⟩ }
-          };
-  return ⟨q₁, q₂₃⟩
+  parallel incoming { true, false } { row ⇒ (getXY row) ∈ crisis }
+      { n, p ⇒ case n of
+          -- crisis blocks
+          true → parallel (join₁[p, 4, outgoing, 4]) blocks { row ⇒ getXY row }
+                  { b, p ⇒ noisyCount ← gauss[ℝ⁺[1.0], ε, δ] <outgoing> { rows p };
+                           return ⟨b, noisyCount⟩ }
+          -- non-crisis blocks
+          false → parallel p blocks { row ⇒ getXY row }
+                  { b, p ⇒ noisyCount ← gauss[ℝ⁺[1.0], ε, δ] <outgoing> { rows p };
+                           return ⟨b, noisyCount⟩ }
+      };
 in main
