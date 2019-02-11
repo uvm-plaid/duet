@@ -2,7 +2,7 @@
 let main = pλ ε  : ℝ⁺,
               δ  : ℝ⁺
               .
-              df : 𝕄 [L∞ , U | ★ , ℕ ∷ ℝ ∷ [] ],
+              df : 𝕄 [L∞ , U | ★ , 𝐝 ℕ ∷ 𝐝 ℝ ∷ [] ],
               ε : ℝ⁺[ε],
               δ : ℝ⁺[δ],
               q : ℕ[0],
@@ -11,21 +11,27 @@ let main = pλ ε  : ℝ⁺,
               t : ℕ[1]
               ⇒
 
-  -- OLD PROPOSAL
-  -- partition df into rows where: (1) first col is 1 and (2) others
-  --                                                      function from partition value and partition to τ
-  --               function from df rows to members of partition values       ↓
-  --                    set of partition values      ↓                        ↓
-  --                 dataframe   ↓                   ↓                        ↓
-  --                     ↓       ↓                   ↓                        ↓
-  -- let ps = box(partition df {true, false} {row ⇒ row#[0,0] ≡ 1} {pName, p ⇒ ⟨pName, rows p⟩})
-  -- in mgauss[ℝ⁺[1.0], ε, δ] <df> { (unbox ps) } -- now what do we do about the name of the partition?
-
-  -- maybe this instead?
-  -- ALSO OLD PROPOSAL
-  -- let ps = box(partition df {true, false} {row ⇒ row#[0,0] ≡ 1})
-  -- in mapP (unbox ps) { pName, p ⇒ v ← gauss[ℝ⁺[1.0], ε, δ] <df> {p}; return ⟨pName, v⟩ }
-
-  -- newest proposal
-  parallel df, 𝓟{1, 2}, {row ⇒ row#[q,r]} {b, p ⇒ x ← gauss[ℝ⁺[1.0], ε, δ] <df,s,t> { p#[s,t] }; return ⟨b, x⟩}
+  --          must be 1-sens in row
+  --                         ↓
+  parallel[ df, ℘ {1, 2} ] {row ⇒ row#[q,r]} { b, p ⇒ 
+  --                                              ↑
+  --     this is the only variable that gets a non-∞ privacy cost when referenced
+    x ← gauss[ℝ⁺[1.0], ε, δ] <p> { p#[s,t] };
+    return ⟨b, x⟩
+  }
 in main
+
+
+-- Γ                                        , ⌉Σᴳ₀⌈⸢1⸣                     ⊢ eᴳ₀ : 𝕄 [ ℓ , c | ★ , s ]
+-- Γ                                        , Σᴳ₁                          ⊢ eᴳ₁ : ℘ τ₁
+-- Γ ⊎ {x₂ : 𝕄 [ ℓ , c | 1 , s ]}           , Σᴳ₂ ⊎ {x₂ @ᴳ 1}              ⊢ eᴳ₂ : τ₁
+-- Γ ⊎ {x₃ : τ₁ , x₄ : 𝕄 [ ℓ , c | ★ , s ]} , Σᴿ₃ ⊎ {x₃ @ᴿ ∞, x₄ @ᴿ ⟨ε,δ⟩} ⊢ eᴿ₃ : τ₂
+-- --------------------------------------------------------------------------------------
+--   Γ 
+-- , ⌉Σᴳ₁ + Σᴳ₂⌈⸢∞ᴿ⸣ + ⌉Σᴿ₃⌈⸢∞ᴿ⸣ + ⌉Σᴳ₀⌈⸢⟨ε,δ⟩⸣
+-- ⊢ parallel[ eᴳ₀ , eᴳ₁ ] { x₂ ⇒ eᴳ₂ } { x₃ , x₄ ⇒ eᴿ₃ } 
+-- : ℘ τ₂
+
+
+-- Σᴳ₀          = { a @ 1     , b @ 0.5   , c @ ⊥ , d @ ⊥ } -- sensitivities
+-- ⌉Σᴳ₀⌈⸢⟨ε,δ⟩⸣ = { a @ ⟨ε,δ⟩ , b @ ⟨ε,δ⟩ , c @ ⊥ , d @ ⊥ } -- privacies

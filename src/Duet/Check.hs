@@ -592,8 +592,8 @@ inferSens eA = case extract eA of
     l ← mapM (hijack ∘ inferSens) es
     let hm = 1 ≡ (count $ uniques $ map snd l)
     -- uniqueness check
-    let un = (count es) ≡ (count $ uniques es)
-    case hm ⩓ un of
+    -- let un = (count es) ≡ (count $ uniques es) -- ℘ {a,b} ≜ ℘ {a} ∪ ℘ {b} 
+    case hm {- ⩓ un -} of
       False → error "Set expression is not homogenous/unique"
       True → do
         case es of
@@ -659,6 +659,8 @@ inferSens eA = case extract eA of
     case τ₁ ≡ τ₂ of
       True → return 𝔹T
       _ → error $ "Equals error: " ⧺ (pprender (τ₁, τ₂))
+  TrueSE → return 𝔹T
+  FalseSE → return 𝔹T
   DFPartitionSE e₁ a e₂ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
     τ₂ ← inferSens e₂

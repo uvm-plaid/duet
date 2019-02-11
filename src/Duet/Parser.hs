@@ -31,6 +31,7 @@ tokKeywords = list
   ,"dyn","real"
   ,"ZCDP","RENYI"
   ,"box","unbox","boxed"
+  ,"true","false" -- add support for these literals in the sensitivity language
   ]
 
 tokPunctuation ∷ 𝐿 𝕊

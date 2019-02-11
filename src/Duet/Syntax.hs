@@ -260,6 +260,8 @@ data SExp (p ∷ PRIV) where
   ModSE ∷ SExpSource p → SExpSource p → SExp p
   MinusSE ∷ SExpSource p → SExpSource p → SExp p
   EqualsSE ∷ SExpSource p → SExpSource p → SExp p
+  TrueSE ∷ SExp p
+  FalseSE ∷ SExp p
   AndSE ∷ SExpSource p → SExpSource p → SExp p
   OrSE ∷ SExpSource p → SExpSource p → SExp p
   -- dataframe operations
