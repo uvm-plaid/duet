@@ -43,13 +43,6 @@ ghc-options:
   - -Wno-orphans
   - -Wno-partial-type-signatures
 
-    # library:
-    #   source-dirs:
-    #     - src
-    #   dependencies:
-    #     - base
-    #     - uvmhs
-
 executable:
   source-dirs:
     - src
