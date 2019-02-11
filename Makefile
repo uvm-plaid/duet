@@ -1,6 +1,10 @@
 NAME := duet
 ARGS := check examples/gd-pb.ed.duet
 
+# stack ghci
+# :set args check "examples/gd-pb.ed.duet"
+# main
+
 .PHONY: run
 run: $(NAME).cabal
 	stack run -- $(ARGS)
@@ -15,7 +19,7 @@ interact: $(NAME).cabal
 
 .PHONY: build
 build: $(NAME).cabal
-	stack build
+	stack build --fast
 
 .PHONY: build-profile
 build-profile: $(NAME).cabal
@@ -47,4 +51,3 @@ clean:
 
 $(NAME).cabal: package.yaml
 	hpack --force
-

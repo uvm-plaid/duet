@@ -42,6 +42,8 @@ ghc-options:
   - -Wall
   - -Wno-orphans
   - -Wno-partial-type-signatures
+  - -j
+  - -O0
 
 executable:
   source-dirs:

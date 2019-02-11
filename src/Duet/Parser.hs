@@ -23,8 +23,8 @@ tokKeywords = list
   ,"ℕ","ℝ","ℝ⁺","𝔻","𝕀","𝕄","𝔻𝔽","𝔹","𝕊","★","∷","⋅","[]","⧺"
   ,"LR","L2","U"
   ,"real","bag","set","record"
-  ,"countBag","filterBag","partitionDF","addColDF","mapDF","joinDF₁"
-  ,"matrix","mcreate","clip","∇","mmap","bmap","idx"
+  ,"countBag","filterBag","partitionDF","addColDF","mapDF","joinDF₁","parallel"
+  ,"matrix","mcreate","mclip","clip","∇","mmap","bmap","idx","𝓟","𝐝","conv","disc"
   ,"aloop","loop","gauss","mgauss","bgauss","rows","cols","exponential","rand-resp"
   ,"sample","rand-nat"
   ,"L1","L2","L∞","U"
@@ -206,7 +206,6 @@ parType mode = mixfixParser $ concat
       return $ ℝˢT η
   , mix $ MixTerminal $ const ℕT ^$ parLit "ℕ"
   , mix $ MixTerminal $ const ℝT ^$ parLit "ℝ"
-  , mix $ MixTerminal $ const 𝔻T ^$ parLit "𝔻"
   , mix $ MixTerminal $ const 𝔹T ^$ parLit "𝔹"
   , mix $ MixTerminal $ const 𝕊T ^$ parLit "𝕊"
   , mix $ MixTerminal $ do
@@ -227,6 +226,9 @@ parType mode = mixfixParser $ concat
       ηₙ ← parMExp mode
       parLit "]"
       return $ 𝕄T ℓ c ηₘ ηₙ
+  , mix $ MixTerminal $ do
+      parLit "𝔻"
+      return $ 𝔻T ℝT
   , mix $ MixTerminal $ do
       parLit "𝔻𝔽"
       parLit "["
@@ -251,6 +253,7 @@ parType mode = mixfixParser $ concat
   -- TODO: support parsing sensitivity and clip
   , mix $ MixPrefix 6 $ const (BagT L1 UClip) ^$ parLit "bag"
   , mix $ MixPrefix 6 $ const (SetT) ^$ parLit "set"
+  , mix $ MixPrefix 6 $ const (𝔻T) ^$ parLit "𝐝"
   , mix $ MixInfixL 3 $ const (:+:) ^$ parLit "+"
   , mix $ MixInfixL 4 $ const (:×:) ^$ parLit "×"
   , mix $ MixInfixL 4 $ const (:&:) ^$ parLit "&"
@@ -402,7 +405,7 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
   , mixF $ MixFPrefix 10 $ const MColsSE ^$ parLit "cols"
   , mixF $ MixFPrefix 10 $ const IdxSE ^$ parLit "idx"
   , mixF $ MixFPrefix 10 $ do
-      parLit "clip"
+      parLit "mclip"
       parLit "["
       ℓ ← parNorm
       parLit "]"
@@ -505,6 +508,12 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
       e ← parPExp p
       return $ PFunSE ακs xτs e
   , mixF $ MixFTerminal $ do
+      parLit "𝓟"
+      parLit "{"
+      ses ← pManySepBy (parLit ",") $ parSExp p
+      parLit "}"
+      return $ SetSE ses
+  , mixF $ MixFTerminal $ do
        parLit "⟨"
        e₁ ← parSExp p
        parLit ","
@@ -513,6 +522,9 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
        return $ TupSE e₁ e₂
   , mixF $ MixFPrefix 10 $ const BoxSE ^$ parLit "box"
   , mixF $ MixFPrefix 10 $ const UnboxSE ^$ parLit "unbox"
+  , mixF $ MixFPrefix 10 $ const ClipSE ^$ parLit "clip"
+  , mixF $ MixFPrefix 10 $ const ConvSE ^$ parLit "conv"
+  , mixF $ MixFPrefix 10 $ const DiscSE ^$ parLit "disc"
   ]
 
 parPExp ∷ (PRIV_C p) ⇒ PRIV_W p → Parser Token (PExpSource p)
@@ -533,6 +545,24 @@ parPExp p = pWithContext "pexp" $ tries
        parLit ";"
        e₂ ← parPExp p
        return $ BindPE x e₁ e₂
+  , do parLit "parallel"
+       e₁ ← parSExp p
+       parLit ","
+       e₂ ← parSExp p
+       parLit ","
+       parLit "{"
+       x₁ ← parVar
+       parLit "⇒"
+       e₃ ← parSExp p
+       parLit "}"
+       parLit "{"
+       x₂ ← parVar
+       parLit ","
+       x₃ ← parVar
+       parLit "⇒"
+       e₄ ← parPExp p
+       parLit "}"
+       return $ ParallelPE e₁ e₂ x₁ e₃ x₂ x₃ e₄
   , case p of
       ED_W → do
         parLit "aloop"

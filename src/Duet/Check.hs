@@ -12,18 +12,17 @@ freeBvs (ℕˢT _) = pø
 freeBvs (ℝˢT _) = pø
 freeBvs ℕT = pø
 freeBvs ℝT = pø
-freeBvs 𝔻T = pø
 freeBvs (𝕀T _) = pø
 freeBvs 𝔹T = pø
 freeBvs 𝕊T = pø
--- TODO: there is a better way to do this, map/fold?
 freeBvs (𝔻𝔽T Nil) = pø
 freeBvs (𝔻𝔽T (x :& xs)) = freeBrcrdvs x ∪ freeBvs (𝔻𝔽T xs)
-freeBvs (BagT ℓ c τ) = freeBvs τ
+freeBvs (BagT _ _ τ) = freeBvs τ
 freeBvs (SetT τ) = freeBvs τ
 freeBvs (RecordT Nil) = pø
 freeBvs (RecordT (x :& xs)) = freeBrcrdvs x ∪ freeBvs (RecordT xs)
 freeBvs (𝕄T _ _ _ me) = freeBmexp me
+freeBvs (𝔻T τ) = freeBvs τ
 freeBvs (τ₁ :+: τ₂) = freeBvs τ₁ ∪ freeBvs τ₂
 freeBvs (τ₁ :×: τ₂) = freeBvs τ₁ ∪ freeBvs τ₂
 freeBvs (τ₁ :&: τ₂) = freeBvs τ₁ ∪ freeBvs τ₂
@@ -34,10 +33,10 @@ freeBvs (BoxedT σ τ) = keys σ ∪ freeBvs τ
 freeBmexp :: (MExp r) → 𝑃 𝕏
 freeBmexp me = case me of
   EmptyME → pø
-  VarME x → pø
+  VarME _ → pø
   ConsME τ me₁ → freeBvs τ ∪ freeBmexp me₁
   AppendME me₁ me₂  → freeBmexp me₁ ∪ freeBmexp me₂
-  RexpME r τ → freeBvs τ
+  RexpME _ τ → freeBvs τ
 
 freeBrcrdvs :: 𝕊 ∧ Type r → 𝑃 𝕏
 freeBrcrdvs (_ :* x) = freeBvs x
@@ -55,6 +54,12 @@ freeBpargs (x :& xs) = freeBpargs xs ∪ freeBparg x
 
 freeBparg :: Type r ∧ Priv p r → 𝑃 𝕏
 freeBparg (x :* _) = freeBvs x
+
+getConsMAt :: (MExp r) → ℕ → (Type r)
+getConsMAt EmptyME _ = error "matrix/dataframe column index error"
+getConsMAt (ConsME τ _) 0 = τ
+getConsMAt (ConsME _ m) n = (getConsMAt m (n-1))
+getConsMAt _ _ = error "expected ConsME"
 
 data TypeError = TypeError
   { typeErrorTerm ∷ Doc
@@ -111,7 +116,6 @@ pmFromSM xM = mkPM $ \ δ γ ᴍ → mapInr (mapFst $ map $ Priv ∘ truncate In
 mapPPM ∷ (Priv p₁ RNF → Priv p₂ RNF) → PM p₁ a → PM p₂ a
 mapPPM f xM = mkPM $ \ δ γ ᴍ → mapInr (mapFst $ map f) $ runPM δ γ ᴍ xM
 
--- this is written non-monadically, eventually we will rewrite to be monadic
 inferKind ∷ RExpPre → SM p Kind
 inferKind = \case
   VarRE x → do
@@ -135,7 +139,6 @@ inferKind = \case
       (ℕK,ℕK) → return ℕK
       (ℝK,ℝK) → return ℝK
       _ → error "TYPE ERROR"
-  -- re₁ + re₂
   PlusRE e₁ e₂ → do
     κ₁ ← inferKind $ extract e₁
     κ₂ ← inferKind $ extract e₂
@@ -166,6 +169,13 @@ inferKind = \case
     case κ of
       ℝK → return ℝK
       _ → error "TYPE ERROR"
+  MinusRE e₁ e₂ → do
+    κ₁ ← inferKind $ extract e₁
+    κ₂ ← inferKind $ extract e₂
+    case (κ₁,κ₂) of
+      (ℕK,ℕK) → return ℕK
+      (ℝK,ℝK) → return ℝK
+      _ → error "TYPE ERROR"
 
 -- this will be written monadically
 checkType ∷ ∀ p. (PRIV_C p) ⇒ Type RExp → SM p 𝔹
@@ -178,17 +188,16 @@ checkType τA = case τA of
     return $ κ ⊑ ℝK
   ℕT → return True
   ℝT → return True
-  𝔻T → return True
   𝕀T η → do
     κ ← inferKind $ extract η
     return $ κ ⊑ ℕK
   𝔹T → return True
   𝕊T → return True
-  -- 𝔻𝔽T (𝐿 (𝕊 ∧ Type r)) → undefined
-  BagT ℓ c τ → checkType τ
-  SetT τ → undefined
-  -- RecordT (𝐿 (𝕊 ∧ Type r)) → undefined
-  𝕄T ℓ c rows me → do
+  𝔻𝔽T _ → undefined
+  BagT _ℓ _c τ → checkType τ
+  SetT τ → checkType τ
+  RecordT _ → undefined
+  𝕄T _ℓ _c rows me → do
     case (rows, me) of
       ((RexpRT r₁), (RexpME r₂ τ)) → do
         κ₁ ← inferKind $ extract r₁
@@ -199,6 +208,7 @@ checkType τA = case τA of
         κ ← inferKind $ extract r
         return $ κ ⊑ ℕK
       _ → return True
+  𝔻T τ → checkType τ
   τ₁ :+: τ₂ → do
     a ← checkType τ₁
     b ← checkType τ₂
@@ -223,9 +233,9 @@ checkType τA = case τA of
       _ → return False
   (ακs :* PArgs (τps ∷ 𝐿 (Type RExp ∧ Priv p' RExp))) :⊸⋆: τ → do
    mapEnvL contextKindL (\ δ → assoc ακs ⩌ δ) $ do
-     _ :* a ← hijack $  checkType τ
+     _ :* _a ← hijack $  checkType τ
      map and $ mapM checkTypeP τps
-  BoxedT σ' τ → checkType τ
+  BoxedT _σ τ → checkType τ
 
 checkTypeP ∷ ∀ p₁ p₂. (PRIV_C p₁) ⇒ (Type RExp ∧ Priv p₂ RExp) → SM p₁ 𝔹
 checkTypeP (τ :* p) = do
@@ -272,7 +282,7 @@ inferSens eA = case extract eA of
       (𝕀T η₁,𝕀T η₂) → return $ 𝕀T $ η₁ ⊔ η₂
       (ℕT,ℕT) → return ℕT
       (ℝT,ℝT) → return ℝT
-      (𝔻T,𝔻T) → return 𝔻T
+      (𝔻T ℝT,𝔻T ℝT) → return $ 𝔻T ℝT
       _ → undefined -- TypeError
   MinSE e₁ e₂ → do
     τ₁ ← inferSens e₁
@@ -283,7 +293,7 @@ inferSens eA = case extract eA of
       (𝕀T η₁,𝕀T η₂) → return $ 𝕀T $ η₁ ⊓ η₂
       (ℕT,ℕT) → return ℕT
       (ℝT,ℝT) → return ℝT
-      (𝔻T,𝔻T) → return 𝔻T
+      (𝔻T ℝT,𝔻T ℝT) → return $ 𝔻T ℝT
       _ → undefined -- TypeError
   PlusSE e₁ e₂ → do
     τ₁ ← inferSens e₁
@@ -294,7 +304,7 @@ inferSens eA = case extract eA of
       (𝕀T η₁,𝕀T η₂) → return $ 𝕀T $ η₁ + η₂
       (ℕT,ℕT) → return ℕT
       (ℝT,ℝT) → return ℝT
-      (𝔻T,𝔻T) → return 𝔻T
+      (𝔻T ℝT,𝔻T ℝT) → return $ 𝔻T ℝT
       _ → undefined -- TypeError
   TimesSE e₁ e₂ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
@@ -323,7 +333,7 @@ inferSens eA = case extract eA of
         return ℕT
       (ℕT,ℕT) → do tell $ σ₁ ⧺ σ₂ ; return ℕT
       (ℝT,ℝT) → do tell $ σ₁ ⧺ σ₂ ; return ℝT
-      (𝔻T,𝔻T) → do tell $ σ₁ ⧺ σ₂ ; return 𝔻T
+      (𝔻T ℝT,𝔻T ℝT) → do tell $ σ₁ ⧺ σ₂ ; return $ 𝔻T ℝT
       _ → error $ "Times error: " ⧺ (pprender $ (τ₁ :* τ₂))
   DivSE e₁ e₂ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
@@ -337,21 +347,21 @@ inferSens eA = case extract eA of
         tell $ ι (one / η₂) ⨵ σ₁ ⧺ σ₂
         return $ ℝT
       (ℝT,ℝT) → return ℝT
-      (𝔻T,𝔻T) → return 𝔻T
+      (𝔻T ℝT,𝔻T ℝT) → return $ 𝔻T ℝT
       _ → undefined -- TypeError
   RootSE e → do
     σ :* τ ← hijack $ inferSens e
     case τ of
       ℝˢT η → do tell σ ; return $ ℝˢT $ rootRNF η
       ℝT → do tell $ top ⨵ σ ; return ℝT
-      𝔻T → return 𝔻T
+      𝔻T ℝT → return $ 𝔻T ℝT
       _ → undefined -- TypeError
   LogSE e → do
     σ :* τ ← hijack $ inferSens e
     case τ of
       ℝˢT η → do tell σ ; return $ ℝˢT $ rootRNF η
       ℝT → do tell $ top ⨵ σ ; return ℝT
-      𝔻T → return 𝔻T
+      𝔻T ℝT → return $ 𝔻T ℝT
       _ → undefined -- TypeError
   ModSE e₁ e₂ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
@@ -381,7 +391,7 @@ inferSens eA = case extract eA of
       (ℝˢT _η₁,ℝˢT _η₂) → return ℝT
       (ℕT,ℕT) → return ℕT
       (ℝT,ℝT) → return ℝT
-      (𝔻T,𝔻T) → return 𝔻T
+      (𝔻T ℝT,𝔻T ℝT) → return $ 𝔻T ℝT
       _ → error $ "Minus error: " ⧺ (pprender $ (τ₁ :* τ₂)) -- TypeError
   MCreateSE ℓ e₁ e₂ x₁ x₂ e₃ → do
     τ₁ ← inferSens e₁
@@ -399,6 +409,10 @@ inferSens eA = case extract eA of
     τ₃ ← inferSens e₃
     case (τ₁,τ₂,τ₃) of
       (𝕄T _ℓ _c (RexpRT ηₘ) (RexpME r τ),𝕀T ηₘ',𝕀T ηₙ') | (ηₘ' ≤ ηₘ) ⩓ (ηₙ' ≤ r) → return τ
+      -- dataframe etc.
+      (𝕄T _ℓ _c (RexpRT _ηₘ) (ConsME τ m), _ηₘ', ℕˢT (NatRNF ηₙ')) → return $ getConsMAt (ConsME τ m) ηₙ'
+      (𝕄T _ℓ _c StarRT (RexpME r τ),𝕀T _ηₘ',𝕀T ηₙ') | (ηₙ' ≤ r) → return τ
+      (𝕄T _ℓ _c StarRT (ConsME τ m), _ηₘ',ℕˢT (NatRNF ηₙ')) → return $ getConsMAt (ConsME τ m) ηₙ'
       -- had error: duet: ⟨⟨𝕄 [L∞ U|1,n] ℝ,ℕ⟩,ℕ⟩
       _ → error $ "Index error: " ⧺ (pprender $ (τ₁ :* τ₂ :* τ₃)) -- TypeError
   MUpdateSE e₁ e₂ e₃ e₄ → do
@@ -408,7 +422,7 @@ inferSens eA = case extract eA of
     τ₄ ← inferSens e₄
     case (τ₁,τ₂,τ₃,τ₄) of
       -- TODO: why does this check fail for FW?
-      (𝕄T ℓ c ηₘ (RexpME r τ),𝕀T ηₘ',𝕀T ηₙ',τ') | {-(ηₘ' ≤ ηₘ) ⩓ -}(ηₙ' ≤ r) ⩓ (τ ≡ τ') →
+      (𝕄T ℓ c ηₘ (RexpME r τ),𝕀T _ηₘ',𝕀T ηₙ',τ') | {-(ηₘ' ≤ ηₘ) ⩓ -}(ηₙ' ≤ r) ⩓ (τ ≡ τ') →
                                           return $ 𝕄T ℓ c ηₘ (RexpME r τ)
       _ → error $ "Update error: " ⧺ (pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄)) -- TypeError
   MRowsSE e → do
@@ -422,17 +436,17 @@ inferSens eA = case extract eA of
   MColsSE e → do
     _ :* τ ← hijack $ inferSens e
     case τ of
-      𝕄T _ℓ _c _ηₘ (RexpME r τ) → return $ ℕˢT r
+      𝕄T _ℓ _c _ηₘ (RexpME r _τ') → return $ ℕˢT r
       _ → undefined -- TypeSource Error
   MClipSE ℓ e → do
     τ ← inferSens e
     case τ of
-      𝕄T ℓ' _c ηₘ (RexpME r τ') | τ' ≡ 𝔻T → return $ 𝕄T ℓ' (NormClip ℓ) ηₘ (RexpME r τ')
+      𝕄T ℓ' _c ηₘ (RexpME r τ') | τ' ≡ (𝔻T ℝT) → return $ 𝕄T ℓ' (NormClip ℓ) ηₘ (RexpME r τ')
       _ → undefined -- TypeSource Error
   MConvertSE e → do
     τ ← inferSens e
     case τ of
-      𝕄T _ℓ (NormClip ℓ) ηₘ (RexpME r τ') | τ' ≡ 𝔻T → return $ 𝕄T ℓ UClip ηₘ (RexpME r ℝT)
+      𝕄T _ℓ (NormClip ℓ) ηₘ (RexpME r τ') | τ' ≡ 𝔻T ℝT → return $ 𝕄T ℓ UClip ηₘ (RexpME r ℝT)
       _ → undefined -- TypeSource Error
   MLipGradSE _g e₁ e₂ e₃ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
@@ -444,8 +458,8 @@ inferSens eA = case extract eA of
       (𝕄T _ℓ₁ _c₁ ( RexpRT rₘ₁ ) (RexpME r₁ τ₁'),𝕄T _ℓ₂ (NormClip ℓ) ( RexpRT rₘ₂ ) (RexpME r₂ τ₂'),𝕄T _ℓ₃ _c₃ ( RexpRT rₘ₃ ) (RexpME r₃ τ₃'))
         | meets
           [ τ₁' ≡ ℝT
-          , τ₂' ≡ 𝔻T
-          , τ₃' ≡ 𝔻T
+          , τ₂' ≡ 𝔻T ℝT
+          , τ₃' ≡ 𝔻T ℝT
           , rₘ₁ ≡ one
           , r₃ ≡ one
           , r₁ ≡ r₂
@@ -501,7 +515,7 @@ inferSens eA = case extract eA of
     σ₁ :* τ₁ ← hijack $ inferSens e₁
     σ₂ :* τ₂ ← hijack $ inferSens e₂
     case (τ₁,τ₂) of
-      (BagT ℓ₁ c₁ τ₁',BagT ℓ₂ c₂ τ₂')
+      (BagT ℓ₁ _c₁ τ₁',BagT ℓ₂ _c₂ τ₂')
         | ℓ₁ ≡ ℓ₂
         → do σ₃ :* τ₃ ←
                hijack $
@@ -573,6 +587,20 @@ inferSens eA = case extract eA of
           tell $ map (Sens ∘ truncate Inf ∘ unPriv) $ without (pow xs) σ
           let τps = mapOn xτs' $ \ (x :* τ') → τ' :* ifNone null (σ ⋕? x)
           return $ (ακs :* PArgs τps) :⊸⋆: τ
+  SetSE es → do
+    -- homogeneity check
+    l ← mapM (hijack ∘ inferSens) es
+    let hm = 1 ≡ (count $ uniques $ map snd l)
+    -- uniqueness check
+    let un = (count es) ≡ (count $ uniques es)
+    case hm ⩓ un of
+      False → error "Set expression is not homogenous/unique"
+      True → do
+        case es of
+          (x :& _xs) → do
+            τ ← inferSens x
+            return $ SetT τ
+          _ → error $ "typing error in setse"
   TupSE e₁ e₂ → do
     τ₁ ← inferSens e₁
     τ₂ ← inferSens e₂
@@ -602,7 +630,7 @@ inferSens eA = case extract eA of
   BagFilterSE e₁ x e₂ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
     case τ₁ of
-      BagT ℓ c τ₁' → do
+      BagT _ℓ _c τ₁' → do
         σ₂ :* τ₂ ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ₁') ⩌ γ) $ inferSens e₂
         let (ς :* σ₂') = ifNone (zero :* σ₂) $ dview x σ₂
         tell $ ς ⨵ σ₁
@@ -663,6 +691,24 @@ inferSens eA = case extract eA of
         tell σ
         return τ₂
       _ → error $ "Cannot unbox type: " ⧺ (pprender τ₁)
+  ClipSE e → do
+    σ :* τ ← hijack $ inferSens e
+    case τ of
+      𝔻T τ₁ → do
+        tell σ
+        return τ₁
+      _ → error $ "Cannot clip type: " ⧺ (pprender τ)
+  ConvSE e → do
+    σ :* τ ← hijack $ inferSens e
+    case τ of
+      𝔻T τ₁ → do
+        tell $ map (Sens ∘ truncate Inf ∘ unSens) σ
+        return τ₁
+      _ → error $ "Cannot conv type: " ⧺ (pprender τ)
+  DiscSE e → do
+    σ :* τ ← hijack $ inferSens e
+    tell $ map (Sens ∘ truncate (Quantity (NatRNF 1)) ∘ unSens) σ
+    return $ 𝔻T τ
   e → error $ fromString $ show e
 
 isRealMExp ∷ MExp RNF → PM p 𝔹
@@ -673,8 +719,8 @@ isRealMExp me = case me of
     ᴍ ← askL contextMExpL
     case ᴍ ⋕? x of
       None → error $ fromString (show x) -- TypeSource Error
-      Some me → do
-        isRealMExp $ me
+      Some m → do
+        isRealMExp $ m
   ConsME τ me₁ → do
     let b = isRealType τ
     a ← isRealMExp $ me₁
@@ -683,10 +729,10 @@ isRealMExp me = case me of
     a ← isRealMExp $ me₁
     b ← isRealMExp $ me₂
     return $ a ⩓ b
-  RexpME r τ → return $ isRealType τ
+  RexpME _r τ → return $ isRealType τ
 
 isRealType :: (Type r) → 𝔹
-isRealType (ℝˢT r) = True
+isRealType (ℝˢT _r) = True
 isRealType (ℝT) = True
 isRealType _ = False
 
@@ -748,6 +794,23 @@ inferPriv eA = case extract eA of
         tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
         return ℝT
       _ → error $ "Gauss error: " ⧺ (pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄ :* ιview @ RNF σ₄KeepMax))
+  ParallelPE e₁ e₂ x₁ e₃ x₂ x₃ e₄ → do
+    τ₁ ← pmFromSM $ inferSens e₁
+    τ₂ ← pmFromSM $ inferSens e₂
+    case τ₁ of
+      (𝕄T ℓ c _ me) → do
+        case τ₂ of
+          (SetT τ₂') → do
+            σ₃ :* τ₃ ← pmFromSM $ hijack $ mapEnvL contextTypeL (\ γ → (x₁ ↦ (𝕄T ℓ c (RexpRT (NatRNF 1)) me)) ⩌ γ) $ inferSens e₃
+            case (τ₂' ≡ τ₃) of
+              False → error $ "ParallelPE partitioning type mismatch" ⧺ (pprender (τ₂',τ₃))
+              True → do
+                σ₄ :* τ₄ ← hijack $ mapEnvL contextTypeL (\ γ → (x₂ ↦ τ₂') ⩌ (x₃ ↦ (𝕄T ℓ c StarRT me)) ⩌ γ) $ inferPriv e₄
+                tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₃
+                tell σ₄
+                return $ (𝕄T ℓ c StarRT (RexpME (NatRNF 1) (𝕄T ℓ c StarRT (RexpME (NatRNF 1) τ₄))))
+          _ → error $ "𝓟 expected in second argument of ParallelPE" ⧺ (pprender τ₂)
+      _ → error $ "𝕄T type expected in first argument of ParallelPE" ⧺ (pprender τ₁)
   MGaussPE e₁ (EDGaussParams e₂ e₃) xs e₄ → do
     let xs' = pow xs
     τ₁ ← pmFromSM $ inferSens e₁
@@ -851,25 +914,27 @@ inferPriv eA = case extract eA of
         -- TODO: make sure ℓ and c are correct
         return $ BagT ℓ c ℝT
       _ → error $ "BGauss error: " ⧺ (pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄ :* ιview @ RNF σ₄KeepMax))
-  GaussPE e₁ (RenyiGaussParams e₂ e₃) xs e₄ → undefined
-  GaussPE e₁ (ZCGaussParams e₂) xs e₃ → undefined
+  GaussPE _e₁ (RenyiGaussParams _e₂ _e₃) _xs _e₄ → undefined
+  GaussPE _e₁ (ZCGaussParams _e₂) _xs _e₃ → undefined
   ExponentialPE e₁ (EDExponentialParams e₂) e₃ xs x e₄ → do
     let xs' = pow xs
     τ₁ ← pmFromSM $ inferSens e₁
     τ₂ ← pmFromSM $ inferSens e₂
-    -- also, following line is sketchy?? -DCD
-    𝕄T _ℓ _c (RexpRT r₁) (RexpME r₂ τ₃) ← pmFromSM $ inferSens e₃
-    σ₄ :* τ₄ ← pmFromSM $ hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ₃) ⩌ γ) $ inferSens e₄
-    let σ₄' = delete x σ₄
-    let σ₄Keep = restrict xs' σ₄'
-        σ₄KeepMax = joins $ values σ₄Keep
-        σ₄Toss = without xs' σ₄'
-    case (τ₁,τ₂,ιview @ RNF σ₄KeepMax) of
-      (ℝˢT ηₛ,ℝˢT ηᵋ,Some ς) | (ς ⊑ ηₛ) ⩓ (τ₄ ≡ ℝT) ⩓ (r₁ ≡ one) → do
-        tell $ map (Priv ∘ truncate (Quantity $ EDPriv ηᵋ zero) ∘ unSens) σ₄Keep
-        tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
-        return $ τ₃
-      _ → error $ "Exponential error: " ⧺ (pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄ :* ιview @ RNF σ₄KeepMax))
+    mat ← pmFromSM $ inferSens e₃
+    case mat of
+      𝕄T _ℓ _c (RexpRT r₁) (RexpME _r₂ τ₃) → do
+        σ₄ :* τ₄ ← pmFromSM $ hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ₃) ⩌ γ) $ inferSens e₄
+        let σ₄' = delete x σ₄
+        let σ₄Keep = restrict xs' σ₄'
+            σ₄KeepMax = joins $ values σ₄Keep
+            σ₄Toss = without xs' σ₄'
+        case (τ₁,τ₂,ιview @ RNF σ₄KeepMax) of
+          (ℝˢT ηₛ,ℝˢT ηᵋ,Some ς) | (ς ⊑ ηₛ) ⩓ (τ₄ ≡ ℝT) ⩓ (r₁ ≡ one) → do
+            tell $ map (Priv ∘ truncate (Quantity $ EDPriv ηᵋ zero) ∘ unSens) σ₄Keep
+            tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
+            return $ τ₃
+          _ → error $ "Exponential error: " ⧺ (pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄ :* ιview @ RNF σ₄KeepMax))
+      _ → error "type error: ExponentialPE"
   ConvertZCEDPE e₁ e₂ → do
     τ₁ ← pmFromSM $ inferSens e₁
     case τ₁ of
@@ -883,9 +948,6 @@ inferPriv eA = case extract eA of
         mapPPM (onPriv $ map $ convertRENYIEDPr ηᵟ) $ inferPriv e₂
       _ → error "type error: ConvertRENYIEDPE"
   e → error $ fromString $ show e
-
-
-
 
 -- infraRed :: PExp -> KEnv → TEnv -> (TypeSource RNF, PEnv)
 --

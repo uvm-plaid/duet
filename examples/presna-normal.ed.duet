@@ -1,0 +1,19 @@
+-- Presna algorithm
+let getXY = sλ m : 𝕄 [L∞ , U | ★ , ℕ ∷ ℕ ∷ ℕ ∷ ℕ ∷ 𝕊 ∷ [] ] ⇒
+  ⟨ row#[0,2], row#[0,3] ⟩
+in
+let main = pλ ε : ℝ⁺,
+              δ : ℝ⁺
+              .
+              -- interval:ℕ,phone_id:ℕ,x:ℕ,y:ℕ,hash:𝕊
+              incoming : 𝕄 [L∞ , U | ★ , ℕ ∷ ℕ ∷ ℕ ∷ ℕ ∷ 𝕊 ∷ [] ],
+              outgoing : 𝕄 [L∞ , U | ★ , ℕ ∷ ℕ ∷ ℕ ∷ ℕ ∷ 𝕊 ∷ [] ],
+              blocks   : set ℕ × ℕ,      -- set of all the blocks of interest
+              ε : ℝ⁺[ε],
+              δ : ℝ⁺[δ]
+              ⇒
+  -- NORMAL mode
+  parallel outgoing blocks { row ⇒ getXY row }
+       { b, p ⇒ noisyCount ← gauss[ℝ⁺[1.0], ε, δ] <outgoing> { rows p };
+                return ⟨b, noisyCount⟩ }
+in main

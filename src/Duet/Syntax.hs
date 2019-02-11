@@ -191,15 +191,15 @@ data Type r =
   | ℝˢT r
   | ℕT
   | ℝT
-  | 𝔻T
   | 𝕀T r
   | 𝔹T
   | 𝕊T
-  | 𝔻𝔽T (𝐿 (𝕊 ∧ Type r)) -- TODO: this should become syntactic sugar?
+  | 𝔻𝔽T (𝐿 (𝕊 ∧ Type r)) -- TODO: remove
   | BagT Norm Clip (Type r)
   | SetT (Type r)
   | RecordT (𝐿 (𝕊 ∧ Type r))
   | 𝕄T Norm Clip (RowsT r) (MExp r)
+  | 𝔻T (Type r)
   | Type r :+: Type r
   | Type r :×: Type r
   | Type r :&: Type r
@@ -215,7 +215,6 @@ instance Functor Type where
     ℝˢT r → ℝˢT $ f r
     ℕT → ℕT
     ℝT → ℝT
-    𝔻T → 𝔻T
     𝕀T r → 𝕀T $ f r
     𝔹T → 𝔹T
     𝕊T → 𝕊T
@@ -224,6 +223,7 @@ instance Functor Type where
     SetT τ → SetT (map f τ)
     RecordT as → RecordT $ map (mapPair id $ map f) as
     𝕄T ℓ c r₁ r₂ → 𝕄T ℓ c (map f r₁) (map f r₂)
+    𝔻T τ → 𝔻T $ map f τ
     τ₁ :+: τ₂ → map f τ₁ :+: map f τ₂
     τ₁ :×: τ₂ → map f τ₁ :×: map f τ₂
     τ₁ :&: τ₂ → map f τ₁ :&: map f τ₂
@@ -302,11 +302,15 @@ data SExp (p ∷ PRIV) where
   CaseSE ∷ SExpSource p → 𝕏 → SExpSource p → 𝕏 → SExpSource p → SExp p
   TupSE ∷ SExpSource p → SExpSource p → SExp p
   UntupSE ∷ 𝕏 → 𝕏 → SExpSource p → SExpSource p → SExp p
+  SetSE ∷ 𝐿 (SExpSource p) → SExp p
   PairSE ∷ SExpSource p → SExpSource p → SExp p
   FstSE ∷ SExpSource p → SExp p
   SndSE ∷ SExpSource p → SExp p
   BoxSE ∷ SExpSource p → SExp p
   UnboxSE ∷ SExpSource p → SExp p
+  ClipSE ∷ SExpSource p → SExp p
+  ConvSE ∷ SExpSource p → SExp p
+  DiscSE ∷ SExpSource p → SExp p
   deriving (Eq,Ord,Show)
 
 data GaussParams (p ∷ PRIV) where
@@ -339,6 +343,7 @@ data PExp (p ∷ PRIV) where
   EDLoopPE ∷ SExpSource 'ED → SExpSource 'ED → SExpSource 'ED → 𝐿 𝕏 → 𝕏 → 𝕏 → PExpSource 'ED → PExp 'ED
   LoopPE ∷ SExpSource p → SExpSource p → 𝐿 𝕏 → 𝕏 → 𝕏 → PExpSource p → PExp p
   GaussPE ∷ SExpSource p → GaussParams p → 𝐿 𝕏 → SExpSource p → PExp p
+  ParallelPE ∷ SExpSource p → SExpSource p → 𝕏 → SExpSource p → 𝕏 → 𝕏 → PExpSource p → PExp p
   MGaussPE ∷ SExpSource p → GaussParams p → 𝐿 𝕏 → SExpSource p → PExp p
   BGaussPE ∷ SExpSource p → GaussParams p → 𝐿 𝕏 → SExpSource p → PExp p
   LaplacePE ∷ SExpSource p → LaplaceParams p → 𝐿 𝕏 → SExpSource p → PExp p
