@@ -30,6 +30,7 @@ newtype Sens r = Sens { unSens ∷ Quantity r }
   ,One,Times,Multiplicative
   ,Null,Append,Monoid
   ,Unit,Cross,Prodoid
+  ,POrd
   ,Bot,Join,JoinLattice
   ,Top,Meet,MeetLattice
   ,Lattice)

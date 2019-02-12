@@ -56,6 +56,12 @@ instance (Join a) ⇒ Join (Quantity a) where
   Quantity x ⊔ Quantity y = Quantity $ x ⊔ y
 instance (Join a) ⇒ JoinLattice (Quantity a)
 
+instance (POrd a) ⇒ POrd (Quantity a) where
+  Zero ⊑ _ = True
+  Quantity x ⊑ Quantity y = x ⊑ y
+  _ ⊑ Inf = True
+  _ ⊑ _ = False
+
 instance Top (Quantity a) where top = Inf
 instance (Meet a) ⇒ Meet (Quantity a) where
   Zero ⊓ _ = Zero
