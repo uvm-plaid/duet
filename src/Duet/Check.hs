@@ -591,9 +591,7 @@ inferSens eA = case extract eA of
     -- homogeneity check
     l ← mapM (hijack ∘ inferSens) es
     let hm = 1 ≡ (count $ uniques $ map snd l)
-    -- uniqueness check
-    -- let un = (count es) ≡ (count $ uniques es) -- ℘ {a,b} ≜ ℘ {a} ∪ ℘ {b} 
-    case hm {- ⩓ un -} of
+    case hm of
       False → error "Set expression is not homogenous/unique"
       True → do
         case es of
@@ -796,23 +794,30 @@ inferPriv eA = case extract eA of
         tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
         return ℝT
       _ → error $ "Gauss error: " ⧺ (pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄ :* ιview @ RNF σ₄KeepMax))
-  ParallelPE e₁ e₂ x₁ e₃ x₂ x₃ e₄ → do
-    τ₁ ← pmFromSM $ inferSens e₁
-    τ₂ ← pmFromSM $ inferSens e₂
-    case τ₁ of
-      (𝕄T ℓ c _ me) → do
-        case τ₂ of
-          (SetT τ₂') → do
-            σ₃ :* τ₃ ← pmFromSM $ hijack $ mapEnvL contextTypeL (\ γ → (x₁ ↦ (𝕄T ℓ c (RexpRT (NatRNF 1)) me)) ⩌ γ) $ inferSens e₃
-            case (τ₂' ≡ τ₃) of
-              False → error $ "ParallelPE partitioning type mismatch" ⧺ (pprender (τ₂',τ₃))
-              True → do
-                σ₄ :* τ₄ ← hijack $ mapEnvL contextTypeL (\ γ → (x₂ ↦ τ₂') ⩌ (x₃ ↦ (𝕄T ℓ c StarRT me)) ⩌ γ) $ inferPriv e₄
-                tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₃
-                tell σ₄
-                return $ (𝕄T ℓ c StarRT (RexpME (NatRNF 1) (𝕄T ℓ c StarRT (RexpME (NatRNF 1) τ₄))))
-          _ → error $ "𝓟 expected in second argument of ParallelPE" ⧺ (pprender τ₂)
-      _ → error $ "𝕄T type expected in first argument of ParallelPE" ⧺ (pprender τ₁)
+  ParallelPE e₀ e₁ x₂ e₂ x₃ x₄ e₃ → do
+    σ₀ :* τ₀ ← pmFromSM  $ hijack $ inferSens e₀
+    σ₁ :* τ₁ ← pmFromSM $ hijack $ inferSens e₁
+    case τ₀ of
+      (𝕄T ℓ c StarRT me) | and $ values (map (≡ (Quantity (NatRNF 1)))  (map unSens σ₀)) → do
+        case τ₁ of
+          (SetT τ₁') → do
+            σ₂ :* τ₂ ← pmFromSM $ hijack $ mapEnvL contextTypeL (\ γ → (x₂ ↦ (𝕄T ℓ c (RexpRT (NatRNF 1)) me)) ⩌ γ) $ inferSens e₂
+            let σₓ₂ = without (single𝑃 x₂) σ₂
+            case (τ₁' ≡ τ₂) of
+              False → error $ "ParallelPE partitioning type mismatch" ⧺ (pprender (τ₁',τ₂))
+              True | and $ values (map (≡ (Quantity (NatRNF 1)))  (map unSens σₓ₂)) → do
+                σ₃ :* τ₃ ← hijack $ mapEnvL contextTypeL (\ γ → (x₃ ↦ τ₁') ⩌ (x₄ ↦ (𝕄T ℓ c StarRT me)) ⩌ γ) $ inferPriv e₃
+                let σₓ₃ = without (single𝑃 x₃) σ₃
+                let σₓ₄ = without (single𝑃 x₄) σ₃
+                -- let a  = and $ values (map (≡ Inf) σₓ₃)
+                -- let b  = and $ values (map (≡ (Quantity $ EDPriv ??)))  (map unSens σₓ₄))
+                tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₁
+                tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₂
+                -- tell $ map (truncate Inf) σ₃
+                -- tell $ map (truncate (Quantity $ EDPriv ??)) σ₀
+                return $ (SetT τ₃)
+          _ → error $ "℘ expected in second argument of ParallelPE" ⧺ (pprender τ₁)
+      _ → error $ "𝕄T type expected in first argument of ParallelPE" ⧺ (pprender τ₀)
   MGaussPE e₁ (EDGaussParams e₂ e₃) xs e₄ → do
     let xs' = pow xs
     τ₁ ← pmFromSM $ inferSens e₁

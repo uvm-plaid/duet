@@ -24,14 +24,14 @@ tokKeywords = list
   ,"LR","L2","U"
   ,"real","bag","set","record"
   ,"countBag","filterBag","partitionDF","addColDF","mapDF","joinDF₁","parallel"
-  ,"matrix","mcreate","mclip","clip","∇","mmap","bmap","idx","𝓟","𝐝","conv","disc"
+  ,"matrix","mcreate","mclip","clip","∇","mmap","bmap","idx","℘","𝐝","conv","disc"
   ,"aloop","loop","gauss","mgauss","bgauss","rows","cols","exponential","rand-resp"
   ,"sample","rand-nat"
   ,"L1","L2","L∞","U"
   ,"dyn","real"
   ,"ZCDP","RENYI"
   ,"box","unbox","boxed"
-  ,"true","false" -- add support for these literals in the sensitivity language
+  ,"true","false"
   ]
 
 tokPunctuation ∷ 𝐿 𝕊
@@ -304,6 +304,12 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
       d ← parNNDbl
       parLit "]"
       return $ ℝˢSE d
+  , mixF $ MixFTerminal $ do
+      parLit "true"
+      return $ TrueSE
+  , mixF $ MixFTerminal $ do
+      parLit "false"
+      return $ FalseSE
   , mixF $ MixFPrefix 10 $ const DynSE ^$ parLit "dyn"
   , mixF $ MixFTerminal $ ℕSE ^$ parNat
   , mixF $ MixFTerminal $ ℝSE ^$ parDbl
@@ -509,7 +515,7 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
       e ← parPExp p
       return $ PFunSE ακs xτs e
   , mixF $ MixFTerminal $ do
-      parLit "𝓟"
+      parLit "℘"
       parLit "{"
       ses ← pManySepBy (parLit ",") $ parSExp p
       parLit "}"
@@ -547,10 +553,11 @@ parPExp p = pWithContext "pexp" $ tries
        e₂ ← parPExp p
        return $ BindPE x e₁ e₂
   , do parLit "parallel"
+       parLit "["
        e₁ ← parSExp p
        parLit ","
        e₂ ← parSExp p
-       parLit ","
+       parLit "]"
        parLit "{"
        x₁ ← parVar
        parLit "⇒"
