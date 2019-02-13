@@ -23,8 +23,8 @@ tokKeywords = list
   ,"ℕ","ℝ","ℝ⁺","𝔻","𝕀","𝕄","𝔻𝔽","𝔹","𝕊","★","∷","⋅","[]","⧺"
   ,"LR","L2","U"
   ,"real","bag","set","record"
-  ,"countBag","filterBag","partitionDF","addColDF","mapDF","joinDF₁","parallel"
-  ,"matrix","mcreate","mclip","clip","∇","mmap","bmap","idx","℘","𝐝","conv","disc"
+  ,"countBag","filterBag","partitionDF","addColDF","mapDF","join₁","joinDF₁","parallel"
+  ,"matrix","mcreate","mclip","clip","∇","mmap","bmap","idx","℘","𝐝","conv","disc","∈"
   ,"aloop","loop","gauss","mgauss","bgauss","rows","cols","exponential","rand-resp"
   ,"sample","rand-nat"
   ,"L1","L2","L∞","U"
@@ -251,9 +251,14 @@ parType mode = mixfixParser $ concat
         return $ a :* τ
       parLit "]"
       return $ RecordT as
+  , mix $ MixTerminal $ do
+      parLit "℘"
+      parLit "("
+      τ ← parType mode
+      parLit ")"
+      return $ SetT τ
   -- TODO: support parsing sensitivity and clip
   , mix $ MixPrefix 6 $ const (BagT L1 UClip) ^$ parLit "bag"
-  , mix $ MixPrefix 6 $ const (SetT) ^$ parLit "set"
   , mix $ MixPrefix 6 $ const (𝔻T) ^$ parLit "𝐝"
   , mix $ MixInfixL 3 $ const (:+:) ^$ parLit "+"
   , mix $ MixInfixL 4 $ const (:×:) ^$ parLit "×"
@@ -325,6 +330,7 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
   , mixF $ MixFInfixL 5 $ const MinusSE ^$ parLit "-"
   , mixF $ MixFInfixL 2 $ const MinusSE ^$ parLit "≟"
   , mixF $ MixFInfixL 2 $ const EqualsSE ^$ parLit "≡"
+  , mixF $ MixFInfixL 2 $ const MemberSE ^$ parLit "∈"
   , mixF $ MixFInfixL 1 $ const AndSE ^$ parLit "∧"
   , mixF $ MixFInfixL 1 $ const OrSE ^$ parLit "∨"
   , mixF $ MixFPrefix 10 $ const BagCountSE ^$ parLit "countBag"
@@ -351,6 +357,18 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
       e₂ ← parSExp p
       parLit "}"
       return $ DFMapSE e₁ x e₂
+  , mixF $ MixFTerminal $ do
+      parLit "join₁"
+      parLit "["
+      e₁ ← parSExp p
+      parLit ","
+      e₂ ← parSExp p
+      parLit ","
+      e₃ ← parSExp p
+      parLit ","
+      e₄ ← parSExp p
+      parLit "]"
+      return $ JoinSE e₁ e₂ e₃ e₄
   , mixF $ MixFPrefix 10 $ do
       parLit "addColDF"
       parLit "⧼"

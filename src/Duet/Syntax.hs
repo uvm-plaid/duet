@@ -291,6 +291,7 @@ data SExp (p ∷ PRIV) where
   -- | MUnbGradSE (SExpSource p) (SExpSource p) (SExpSource p)
   MMapSE ∷ SExpSource p → 𝕏  → SExpSource p → SExp p
   MMap2SE ∷ SExpSource p → SExpSource p → 𝕏 → 𝕏 → SExpSource p → SExp p
+  JoinSE ∷ SExpSource p → SExpSource p → SExpSource p → SExpSource p → SExp p
   BMapSE ∷ SExpSource p → 𝕏  → SExpSource p → SExp p
   BMap2SE ∷ SExpSource p → SExpSource p → 𝕏 → 𝕏 → SExpSource p → SExp p
   -- | MMapRowSE (SExpSource p) 𝕏 (SExpSource p)
@@ -311,6 +312,7 @@ data SExp (p ∷ PRIV) where
   TupSE ∷ SExpSource p → SExpSource p → SExp p
   UntupSE ∷ 𝕏 → 𝕏 → SExpSource p → SExpSource p → SExp p
   SetSE ∷ 𝐿 (SExpSource p) → SExp p
+  MemberSE ∷ SExpSource p → SExpSource p → SExp p
   PairSE ∷ SExpSource p → SExpSource p → SExp p
   FstSE ∷ SExpSource p → SExp p
   SndSE ∷ SExpSource p → SExp p

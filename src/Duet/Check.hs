@@ -61,6 +61,11 @@ getConsMAt (ConsME τ _) 0 = τ
 getConsMAt (ConsME _ m) n = (getConsMAt m (n-1))
 getConsMAt _ _ = error "expected ConsME"
 
+joinConsMs :: (MExp r) → (MExp r) → (MExp r)
+joinConsMs (ConsME τ me₁) me₂ = (ConsME τ (joinConsMs me₁ me₂))
+joinConsMs EmptyME me = me
+joinConsMs _ _ = error "joinConsMs error: expected ConsME or EmptyME"
+
 data TypeError = TypeError
   { typeErrorTerm ∷ Doc
   , typeErrorContext ∷ (𝕏 ⇰ Type RNF)
@@ -479,6 +484,16 @@ inferSens eA = case extract eA of
         tell $ ι (ηₘ × r) ⨵ σ₂'
         return $ 𝕄T ℓ UClip (RexpRT ηₘ) (RexpME r τ₂)
       _  → undefined -- TypeSource Error
+  JoinSE e₁ e₂ e₃ e₄ → do
+    τ₁ ← inferSens e₁
+    τ₂ ← inferSens e₂
+    τ₃ ← inferSens e₃
+    τ₄ ← inferSens e₄
+    case (τ₁,τ₂,τ₃,τ₄) of
+      (𝕄T _ _ _ me₁, ℕˢT (NatRNF η₁),𝕄T _ _ _ me₂, ℕˢT (NatRNF η₂))
+        | (getConsMAt me₁ η₁) ≡ (getConsMAt me₂ η₂) → do
+          return $ 𝕄T LInf UClip StarRT (joinConsMs me₁ me₂)
+      _  → error $ "join₁ failed" ⧺ (pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄))
   BMapSE e₁ x e₂ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
     case τ₁ of
@@ -598,7 +613,13 @@ inferSens eA = case extract eA of
           (x :& _xs) → do
             τ ← inferSens x
             return $ SetT τ
-          _ → error $ "typing error in setse"
+          _ → error $ "typing error in SetSE"
+  MemberSE e₁ e₂ → do
+    τ₁ ← inferSens e₁
+    τ₂ ← inferSens e₂
+    case (τ₁,τ₂) of
+      (τ₁', SetT τ₂') | τ₁' ≡ τ₂' → return 𝔹T
+      _ → error $ "MemberSE error: " ⧺ (pprender (τ₁, τ₂))
   TupSE e₁ e₂ → do
     τ₁ ← inferSens e₁
     τ₂ ← inferSens e₂

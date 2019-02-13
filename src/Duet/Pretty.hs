@@ -102,8 +102,10 @@ instance (Pretty r) ⇒ Pretty (Type r) where
       , ppBump $ pretty τ
       ]
     SetT τ → ppAtLevel 5 $ ppSeparated $ list
-      [ ppKeyPun "𝓟"
-      , ppBump $ pretty τ
+      [ ppKeyPun "℘"
+      , ppPun "{"
+      , ppAlign $ pretty τ
+      , ppPun "}"
       ]
     𝔻T τ → ppAtLevel 5 $ ppSeparated $ list
       [ ppKeyPun "𝐝"

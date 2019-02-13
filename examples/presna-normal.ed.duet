@@ -1,20 +1,23 @@
--- Presna algorithm
-let getXY = sλ m : 𝕄 [L∞ , U | ★ , 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 𝕊 ∷ [] ] ⇒
-  ⟨ row#[0,2], row#[0,3] ⟩
-in
+-- Presna algorithms
 let main = pλ ε : ℝ⁺,
               δ : ℝ⁺
               .
               -- interval:ℕ,phone_id:ℕ,x:ℕ,y:ℕ,hash:𝕊
               incoming : 𝕄 [L∞ , U | ★ , 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 𝕊 ∷ [] ],
               outgoing : 𝕄 [L∞ , U | ★ , 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 𝕊 ∷ [] ],
-              blocks   : set (𝐝 ℕ × 𝐝 ℕ),      -- set of all the blocks of interest
+              blocks   : ℘ (𝐝 ℕ × 𝐝 ℕ),      -- set of all the blocks of interest
               ε : ℝ⁺[ε],
-              δ : ℝ⁺[δ]
+              δ : ℝ⁺[δ],
+              r : ℕ[0],
+              s : ℕ[2],
+              t : ℕ[3]
               ⇒
   -- NORMAL mode
-  parallel[ outgoing , blocks ] { row ⇒ getXY row } { b, p ⇒ 
-    noisyCount ← gauss[ℝ⁺[1.0], ε, δ] <p> { rows p };
-    return ⟨b, noisyCount⟩ 
+  let getXY = sλ row : 𝕄 [L∞ , U | 1 , 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 𝕊 ∷ [] ] ⇒
+    ⟨ row#[r,s], row#[r,t] ⟩
+  in
+  parallel[ outgoing , blocks ] { row ⇒ getXY row } { b, p ⇒
+    noisyCount ← gauss[ℝ⁺[1.0], ε, δ] <p> { real (rows p) };
+    return ⟨b, noisyCount⟩
   }
 in main

@@ -1,28 +1,34 @@
 -- Presna algorithm
-let getXY = sλ m : 𝕄 [L∞ , U | ★ , 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 𝕊 ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 𝕊 ∷ [] ] ⇒
-  ⟨ row#[0,2], row#[0,3] ⟩
-in
 let main = pλ ε : ℝ⁺,
               δ : ℝ⁺
               .
               -- interval:ℕ,phone_id:ℕ,x:ℕ,y:ℕ,hash:𝕊
               incoming : 𝕄 [L∞ , U | ★ , 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 𝕊 ∷ [] ],
               outgoing : 𝕄 [L∞ , U | ★ , 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 𝕊 ∷ [] ],
-              blocks   : 𝑃 (𝐝 ℕ × 𝐝 ℕ),      -- set of all the blocks of interest
-              crisis   : 𝑃 (𝐝 ℕ × 𝐝 ℕ),      -- set of blocks in crisis
+              blocks   : ℘ (𝐝 ℕ × 𝐝 ℕ),      -- set of all the blocks of interest
+              crisis   : ℘ (𝐝 ℕ × 𝐝 ℕ),      -- set of blocks in crisis
               ε : ℝ⁺[ε],
-              δ : ℝ⁺[δ]
+              δ : ℝ⁺[δ],
+              r : ℕ[0],
+              s : ℕ[2],
+              t : ℕ[3],
+              u : ℕ[4],
+              v : ℕ[4]
               ⇒
+
+  let getXY = sλ row : 𝕄 [L∞ , U | 1 , 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 𝕊 ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 𝕊 ∷ [] ] ⇒
+    ⟨ row#[r,s], row#[r,t] ⟩
+  in
   -- CRISIS mode
   -- result of the join is a ℕ ∷ ℕ ∷ ℕ ∷ ℕ ∷ 𝕊 ∷ ℕ ∷ ℕ ∷ ℕ ∷ ℕ ∷ 𝕊 ∷ []
   --                        |    INCOMING      |      OUTGOING     |
   --           eventually we want a list of variables here, do not worry about this for now
   --           ⌄
   -- parallel <> [ join₁[outgoing, embed x + embed y, incoming, 4] , ℘ { true, false } ] { row ⇒ (getXY row) ∈ crisis }
-  parallel [ join₁[outgoing, 4, incoming, 4] , ℘ { true, false } ] { row ⇒ (getXY row) ∈ crisis }
-      { n, pb ⇒ 
-          r ← parallel pb blocks { row ⇒ getXY row }
-                { b, p ⇒ noisyCount ← gauss[ℝ⁺[1.0], ε, δ] <incoming, outgoing> { rows p };
+  parallel [ join₁[outgoing, u, incoming, v] , ℘ { true, false } ] { row ⇒ (getXY row) ∈ crisis }
+      { n, pb ⇒
+          r ← parallel [pb, blocks] { row ⇒ getXY row }
+                { b, p ⇒ noisyCount ← gauss[ℝ⁺[1.0], ε, δ] <p> { real (rows p) };
                          return ⟨b, noisyCount⟩ };
           return ⟨n, r⟩
       }
