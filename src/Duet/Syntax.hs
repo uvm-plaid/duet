@@ -87,6 +87,11 @@ deriving instance (Eq r) ⇒ Eq (Pr p r)
 deriving instance (Ord r) ⇒ Ord (Pr p r)
 deriving instance (Show r) ⇒ Show (Pr p r)
 
+fun :: Sens (Quantity a) -> Quantity a
+
+fun (Sens (Quantity k)) = k
+fun _ = undefined
+
 instance (Append r,Meet r) ⇒ Append (Pr p r) where
   EpsPriv ε₁ ⧺ EpsPriv ε₂ = EpsPriv $ ε₁ ⧺ ε₂
   EDPriv ε₁ δ₁ ⧺ EDPriv ε₂ δ₂ = EDPriv (ε₁ ⧺ ε₂) (δ₁ ⧺ δ₂)

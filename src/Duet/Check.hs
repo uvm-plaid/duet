@@ -737,6 +737,8 @@ isRealType (ℝT) = True
 isRealType _ = False
 
 -- TODO: define and use these in place of truncate
+
+
 truncateSS ∷ Sens r → Sens r → Sens r
 truncateSS = undefined
 
@@ -809,29 +811,28 @@ inferPriv eA = case extract eA of
     σ₀ :* τ₀ ← pmFromSM  $ hijack $ inferSens e₀
     σ₁ :* τ₁ ← pmFromSM $ hijack $ inferSens e₁
     case τ₀ of
-      (𝕄T ℓ c StarRT me) | joins (values σ₀) ⊑ ι 1 → case τ₁ of
-        (SetT τ₁') → do
-          σ₂ :* τ₂ ← pmFromSM 
-            $ hijack 
-            $ mapEnvL contextTypeL (\ γ → (x₂ ↦ (𝕄T ℓ c (RexpRT (NatRNF 1)) me)) ⩌ γ) 
-            $ inferSens e₂
-          let σₓ₂ = without (single𝑃 x₂) σ₂
-          case (τ₁' ≡ τ₂) of
-            False → error $ "ParallelPE partitioning type mismatch" ⧺ (pprender (τ₁',τ₂))
-            True | and $ values (map (≡ (Quantity (NatRNF 1)))  (map unSens σₓ₂)) → do
-              σ₃ :* τ₃ ← hijack $ mapEnvL contextTypeL (\ γ → (x₃ ↦ τ₁') ⩌ (x₄ ↦ (𝕄T ℓ c StarRT me)) ⩌ γ) $ inferPriv e₃
-              let σₓ₃ = without (single𝑃 x₃) σ₃
-              -- p is ⟨ε,δ⟩ in type rule
-              let p:*σₓ₃₄ = ifNone (bot :* σₓ₃) $ dview x₄ σₓ₃
-              let σₓ₄ = without (single𝑃 x₄) σ₃
-              -- let a  = and $ values (map (≡ Inf) σₓ₃)
-              -- let b  = and $ values (map (≡ (Quantity $ EDPriv ??)))  (map unSens σₓ₄))
-              tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₁
-              tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₂
-              -- tell $ map (truncate Inf) σ₃
-              tell $ map (Priv ∘ truncate (unPriv p) ∘ unSens) σ₀
-              return $ (SetT τ₃)
-            _ → error $ "℘ expected in second argument of ParallelPE" ⧺ (pprender τ₁)
+      (𝕄T ℓ c StarRT me) | joins (values σ₀) ⊑ ι 1 →
+        case τ₁ of
+          (SetT τ₁') → do
+            σ₂ :* τ₂ ← pmFromSM
+              $ hijack
+              $ mapEnvL contextTypeL (\ γ → (x₂ ↦ (𝕄T ℓ c (RexpRT (NatRNF 1)) me)) ⩌ γ)
+              $ inferSens e₂
+            let σₓ₂ = without (single𝑃 x₂) σ₂
+            case (τ₁' ≡ τ₂) of
+              False → error $ "ParallelPE partitioning type mismatch" ⧺ (pprender (τ₁',τ₂))
+              True | and $ values (map (⊑ (Quantity (NatRNF 1))) (map unSens σₓ₂)) → do
+                σ₃ :* τ₃ ← hijack $ mapEnvL contextTypeL (\ γ → (x₃ ↦ τ₁') ⩌ (x₄ ↦ (𝕄T ℓ c StarRT me)) ⩌ γ) $ inferPriv e₃
+                let σₓ₃ = without (single𝑃 x₃) σ₃
+                -- p is ⟨ε,δ⟩ in type rule
+                let p':*σₓ₃₄ = ifNone (bot :* σₓ₃) $ dview x₄ σₓ₃
+                tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₁
+                tell $ map (Priv ∘ truncate Inf ∘ unSens) σₓ₂
+                tell $ map (Priv ∘ truncate Inf ∘ unPriv) σₓ₃₄
+                tell $ map (Priv ∘ truncate (unPriv p') ∘ unSens) σ₀
+                return $ (SetT τ₃)
+              _ → error $ "sensitivity error in ParallelPE"
+          _ → error $ "℘ expected in second argument of ParallelPE" ⧺ (pprender τ₁)
       _ → error $ "𝕄T type expected in first argument of ParallelPE" ⧺ (pprender τ₀)
   MGaussPE e₁ (EDGaussParams e₂ e₃) xs e₄ → do
     let xs' = pow xs

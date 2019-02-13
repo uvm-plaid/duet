@@ -30,7 +30,7 @@ instance (Times a) ⇒ Times (Quantity a) where
 instance (Multiplicative a) ⇒ Multiplicative (Quantity a)
 
 instance Null (Quantity a) where null = Zero
-instance (Append a) ⇒ Append (Quantity a) where 
+instance (Append a) ⇒ Append (Quantity a) where
   Zero ⧺ x = x
   x ⧺ Zero = x
   Inf ⧺ _ = Inf
@@ -85,7 +85,9 @@ truncate _ Zero         = Zero
 truncate p Inf          = p
 truncate p (Quantity _) = p
 
-class 
+
+
+class
   (Functor p
   ,∀ a. Eq a ⇒ Eq (p a)
   ,∀ a. Additive a ⇒ Additive (p a)
