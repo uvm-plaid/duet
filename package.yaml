@@ -53,3 +53,8 @@ executable:
   dependencies:
     - base
     - uvmhs
+    - random
+    - mwc-random
+    - filepath
+    - csv
+    - cassava

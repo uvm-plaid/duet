@@ -8,7 +8,12 @@ import Duet.RNF
 import Duet.Quantity
 
 -- libraries
--- import Text.CSV
+import System.Random
+import System.Random.MWC
+import System.FilePath
+
+import Text.CSV
+import Data.Csv
 -- import Text.Parsec.Error
 -- import System.Environment
 -- import Debug.Trace
@@ -24,9 +29,9 @@ type Matrix v = (ℕ ⇰ (ℕ ⇰ v))
 maxElem ::  Ord b => [(a, b)] -> a
 maxElem = fst . maximumBy (comparing snd)
 
--- | Returns minimum element
+-- | Returns minimum elementParse
 minElem ::  Ord b => [(a, b)] -> a
-minElem = fst . minimumBy (comparing snd)
+minElem = fst . minimumBy (comparing sndParse)
 
 -- | Defining Val algebraic data type
 data Val =
@@ -54,9 +59,9 @@ seval _ (ℕSE n)        = NatV n
 seval _ (ℝSE n)        = RealV n
 seval _ (ℝˢSE n)       = RealV n
 seval _ (ℕˢSE n)       = NatV n
-seval env (SRealNatE e) =
-  case (seval env e) of
-    (NatV n) -> RealV $ mkDouble n
+-- seval env (SRealNatE e) =
+--   case (seval env e) of
+--     (NatV n) -> RealV $ mkDouble n
 
 -- variables
 seval env (VarSE x) | x ∈ env  = env ⋕! x
@@ -103,8 +108,8 @@ seval env (IdxSE e) =
           negMat ∷ Matrix 𝔻 = scale (-1.0) posMat
       in MatrixV (posMat === negMat)
 
-seval env (SMTrE e) =
-  case seval env e of (MatrixV m) → MatrixV $ tr m
+-- seval env (SMTrE e) =
+--   case seval env e of (MatrixV m) → MatrixV $ tr m
 
 -- clip operation for only L2 norm
 seval env (MClipSE norm e) =
@@ -114,16 +119,16 @@ seval env (MClipSE norm e) =
     (l, _) → error $ "Invalid norm for clip: " ++ (show l)
 
 -- gradient
-seval env (SGradE LR _ e₁ e₂ e3) =
+seval env (MLipGradSE LR _ e₁ e₂ e3) =
   case (seval env e₁, seval env e₂, seval env e3) of
     (MatrixV θ, MatrixV xs, MatrixV ys) →
-      if (rows θ == 1 && rows ys == 1)
-      then
-        let θ'  ∷ Vector 𝔻 = flatten θ
-            ys' ∷ Vector 𝔻 = flatten ys
-        in MatrixV $ asRow $ ngrad θ' xs ys'
-      else
-        error $ "Incorrect matrix dimensions for gradient: " ++ (show (rows θ, rows ys))
+      case (rows θ == 1 && rows ys == 1) of
+        True →
+          let θ'  ∷ Vector 𝔻 = flatten θ
+              ys' ∷ Vector 𝔻 = flatten ys
+          in MatrixV $ asRow $ ngrad θ' xs ys'
+        False →
+          error $ "Incorrect matrix dimensions for gradient: " ++ (show (rows θ, rows ys))
     (a, b, c) → error $ "No pattern for " ++ (show (a, b, c))
 
 -- create matrix
@@ -161,7 +166,7 @@ peval env (AppPE _ f vars) =
   case seval env f of
     (PFunV args body env') →
       let vs    ∷ [Val] = map ((⋕!) env) vars
-          env'' ∷ Env   = foldr (\(var, val) → Map.insert var val) env' (zip args vs)
+          env'' ∷ Env   = foldr (\(var, val) → (⩌ (var ↦ val))) env' (zip args vs)
       in peval env'' body
 
 -- sample on two matrices and compute on sample
@@ -191,7 +196,7 @@ peval env (MGaussPE r ε δ vs e) =
 peval env (LoopPE δ' k init xs x₁ x₂ e) =
   case (seval env k, seval env init) of
     (NatV k', initV) →
-      iter k' initV x₁ x₂ 0 e env
+      iter₁ k' initV x₁ x₂ 0 e env
 
 -- evaluate sensitivity expression and return in the context of the privacy language
 peval env (ReturnPE e) =
@@ -202,7 +207,7 @@ peval env (ExponentialPE s ε xs x body) =
   case (seval env s, seval env ε, seval env xs) of
     (RealV s', RealV ε', MatrixV xs') →
       let xs''     = map (\row' → fromLists [row']) $ toLists xs'
-          envs     = map (\m → Map.insert x (MatrixV m) env) xs''
+          envs     = map (\m → (x ↦ (MatrixV m)) ⩌ env) xs''
           getScore = \env1 → case seval env1 body of
             (RealV   r) → r
             (MatrixV m) | size m == (1, 1) → head $ head $ toLists m
@@ -220,11 +225,11 @@ peval env e = error $ "Unknown expression: " ++ (show e)
 
 
 -- | Helper function for loop expressions
-iter ∷ Natural → Val → 𝕏 → 𝕏 → ℕ → PExp → Env → IO Val
-iter 0 v _ _ _ _ _ = return v
-iter k v t x kp body env = do
-  newVal ← peval (x ↦ v ⩌ (t ↦ (NatV $ nat kp) ⩌ env) body)
-  iter (k - 1) newVal t x (kp+1) body env
+iter₁ ∷ Natural → Val → 𝕏 → 𝕏 → ℕ → PExp → Env → IO Val
+iter₁ 0 v _ _ _ _ _ = return v
+iter₁ k v t x kp body env = do
+  newVal ← peval ((x ↦ v) ⩌ ((t ↦ (NatV $ nat kp)) ⩌ env) body)
+  iter₁ (k - 1) newVal t x (kp+1) body env
 
 -- | Empty environment
 emptyEnv ∷ Env
@@ -242,7 +247,7 @@ readDataSet fileName = do
 -- | Place a dataset into the environment
 insertDataSet ∷ Env → (𝕏, 𝕏) → (Matrix 𝔻, Vector 𝔻) → Env
 insertDataSet env (x, y) (xs, ys) =
-  (x ↦ (MatrixV xs) ⩌ (y ↦ (MatrixV $ asRow ys) ⩌ env))
+  ((x ↦ (MatrixV xs)) ⩌ ((y ↦ (MatrixV $ asRow ys)) ⩌ env))
 
 -- | Samples a normal distribution and returns a single value
 gaussianNoise ∷ 𝔻 → 𝔻 → IO 𝔻
@@ -259,8 +264,8 @@ sampleHelper n xs ys x y e env = do
 type Model = Vector 𝔻
 
 -- | Converts an Integral number to a double
-dbl ∷ (Integral a) ⇒ a → 𝔻
-dbl = fromIntegral
+dbl₁ ∷ ℕ → 𝔻
+dbl₁ = fromIntegral
 
 -- | Calculates LR loss
 loss ∷ Model → Matrix 𝔻 → Vector 𝔻 → 𝔻
@@ -268,7 +273,7 @@ loss θ x y =
   let θ'       ∷ Matrix 𝔻 = asColumn θ
       y'       ∷ Matrix 𝔻 = asColumn y
       exponent ∷ Matrix 𝔻 = -((x <> θ') * y')
-  in (sumElements (log (1.0 + (exp exponent)))) / (dbl $ rows x)
+  in (sumElements (log (1.0 + (exp exponent)))) / (dbl₁ $ rows x)
 
 -- | Averages LR gradient over the whole matrix of examples
 ngrad ∷ Model → Matrix 𝔻 → Vector 𝔻 → Vector 𝔻
@@ -296,7 +301,7 @@ readStr s = case (reads s) of
   _ → 0.0
 
 -- | Reads a CSV into a matrix
-parseCSVtoMatrix ∷ FilePath → IO (Either ParseError (Matrix 𝔻))
+parseCSVtoMatrix ∷ FilePath → IO (ParserError ∨ (Matrix 𝔻))
 parseCSVtoMatrix file = do
   Right(csv) ← parseCSVFromFile file
   let csvList ∷ [[𝔻]] = map (map readStr) csv
