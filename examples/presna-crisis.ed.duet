@@ -39,3 +39,12 @@ let main = pλ ε : ℝ⁺,
           }
       }
 in main
+
+-- Γ₁ ⊢ e₁ : 𝔹
+-- Γ₂ ⊢ e₂ : τ
+-- Γ₂ ⊢ e₃ : τ
+-- -------------------------------------------
+-- ∞Γ₁ + Γ₂ ⊢ if e₁ then { e₂ } else { e₃ } : τ
+
+-- We use Γ₂ for both e₂ and e₃; by weakening this means you get the
+-- max privacy cost between the two
