@@ -56,5 +56,3 @@ executable:
     - random
     - mwc-random
     - filepath
-    - csv
-    - cassava

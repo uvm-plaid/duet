@@ -4,7 +4,7 @@ cabal-version: 2.2
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: c60ce26cf803d4e889508018084ec371702550665ca592a384cc02e3180f7a16
+-- hash: 5d2ca18b140942aace9aa5bb5a0bfd85829ceb20b3fd0a310be3aedc374ff802
 
 name:           duet
 version:        0.0.0.0
@@ -30,8 +30,6 @@ executable duet
   ghc-options: -Wall -Wno-orphans -Wno-partial-type-signatures -j -O0
   build-depends:
       base
-    , cassava
-    , csv
     , filepath
     , mwc-random
     , random

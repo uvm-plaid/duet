@@ -12,8 +12,8 @@ import System.Random
 import System.Random.MWC
 import System.FilePath
 
-import Text.CSV
-import Data.Csv
+-- import Text.CSV
+-- import Data.Csv
 -- import Text.Parsec.Error
 -- import System.Environment
 -- import Debug.Trace
@@ -21,7 +21,7 @@ import Data.Csv
 -- import Control.Exception
 -- import Data.Random.Normal
 
-type Env = 𝕏 ⇰ Val
+type Env p = 𝕏 ⇰ Val p
 type Vector v = 𝐿 v
 type Matrix v = (ℕ ⇰ (ℕ ⇰ v))
 
@@ -34,13 +34,13 @@ minElem ::  Ord b => [(a, b)] -> a
 minElem = fst . minimumBy (comparing sndParse)
 
 -- | Defining Val algebraic data type
-data Val =
-  NatV Natural
+data Val (p ∷ PRIV) =
+  NatV ℕ
   | RealV 𝔻
-  | PairV Val Val
-  | SFunV 𝕏 SExp Env
-  | PFunV [𝕏] PExp Env
-  | MatrixV (Matrix Val)
+  | PairV (Val p) (Val p)
+  | SFunV 𝕏 (SExp p) (Env p)
+  | PFunV (𝐿 𝕏) (PExp p) (Env p)
+  | MatrixV (Matrix (Val p))
   deriving (Eq, Show)
 
 -- | Converts and integer to a 𝔻
@@ -48,11 +48,11 @@ intDouble ∷ ℕ → 𝔻
 intDouble = fromIntegral
 
 -- | Converts a natural number to a double
-mkDouble ∷ Natural → 𝔻
+mkDouble ∷ ℕ → 𝔻
 mkDouble = fromIntegral
 
 -- | Evaluates an expression from the sensitivity language
-seval ∷ Env → SExp → Val
+seval ∷ (Env p) → (SExp p) → (Val p)
 
 -- literals
 seval _ (ℕSE n)        = NatV n
@@ -154,7 +154,7 @@ seval env (AppSE e₁ e₂) =
 seval env e = error $ "Unknown expression: " ++ (show e)
 
 -- | Evaluates an expression from the privacy language
-peval ∷ Env → PExp → IO Val
+peval ∷ Env p → PExp p → IO (Val p)
 
 -- bind and application
 peval env (BindPE x e₁ e₂) = do
@@ -225,27 +225,27 @@ peval env e = error $ "Unknown expression: " ++ (show e)
 
 
 -- | Helper function for loop expressions
-iter₁ ∷ Natural → Val → 𝕏 → 𝕏 → ℕ → PExp → Env → IO Val
+iter₁ ∷ ℕ → Val p → 𝕏 → 𝕏 → ℕ → PExp p → Env p → IO (Val p)
 iter₁ 0 v _ _ _ _ _ = return v
 iter₁ k v t x kp body env = do
   newVal ← peval ((x ↦ v) ⩌ ((t ↦ (NatV $ nat kp)) ⩌ env) body)
   iter₁ (k - 1) newVal t x (kp+1) body env
 
 -- | Empty environment
-emptyEnv ∷ Env
+emptyEnv ∷ Env p
 emptyEnv = dø
 
 -- | Read in a dataset and return xs (features) and ys (labels)
 readDataSet ∷ 𝕊 → IO (Matrix 𝔻, Vector 𝔻)
 readDataSet fileName = do
-    Right(mat) ← parseCSVtoMatrix fileName
+    Inr(mat) ← parseCSVtoMatrix fileName
     let dataCols ∷ [Vector 𝔻] = toColumns mat
         xs ∷ Matrix 𝔻 = fromColumns $ tail dataCols
         ys ∷ Vector 𝔻 = head dataCols
     return $ (xs, ys)
 
 -- | Place a dataset into the environment
-insertDataSet ∷ Env → (𝕏, 𝕏) → (Matrix 𝔻, Vector 𝔻) → Env
+insertDataSet ∷ Env p → (𝕏, 𝕏) → (Matrix 𝔻, Vector 𝔻) → Env p
 insertDataSet env (x, y) (xs, ys) =
   ((x ↦ (MatrixV xs)) ⩌ ((y ↦ (MatrixV $ asRow ys)) ⩌ env))
 
@@ -254,7 +254,7 @@ gaussianNoise ∷ 𝔻 → 𝔻 → IO 𝔻
 gaussianNoise c v = normalIO'(c, v)
 
 -- | Helper function for PSampleE
-sampleHelper :: Natural -> Matrix 𝔻 -> Matrix  𝔻 -> 𝕏 -> 𝕏 -> PExp -> Env -> IO Val
+sampleHelper :: ℕ -> Matrix 𝔻 -> Matrix  𝔻 -> 𝕏 -> 𝕏 -> PExp p -> Env p -> IO (Val p)
 sampleHelper n xs ys x y e env = do
   batch <- minibatch (int n) xs (flatten ys)
   peval (insertDataSet env (x, y) ((fst batch), (snd batch))) e
@@ -303,7 +303,7 @@ readStr s = case (reads s) of
 -- | Reads a CSV into a matrix
 parseCSVtoMatrix ∷ FilePath → IO (ParserError ∨ (Matrix 𝔻))
 parseCSVtoMatrix file = do
-  Right(csv) ← parseCSVFromFile file
+  Inr(csv) ← parseCSVFromFile file
   let csvList ∷ [[𝔻]] = map (map readStr) csv
       matrix ∷ Matrix 𝔻 = fromLists csvList
   return $ return matrix
