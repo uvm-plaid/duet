@@ -1,6 +1,3 @@
-{-# LANGUAGE UnicodeSyntax #-}
-{-# LANGUAGE ScopedTypeVariables,Strict,StrictData #-}
-
 module Duet.Interpreter where
 
 import Duet.UVMHS
@@ -11,12 +8,6 @@ import Duet.RNF
 import Duet.Quantity
 
 -- libraries
--- import Prelude hiding ((<>))
--- import Data.Map (Map)
--- import qualified Data.Map as Map
--- import Data.List
--- import Data.Ord
--- import Numeric.LinearAlgebra hiding (LU, normalize) -- to use norm from Syntax.hs
 -- import Text.CSV
 -- import Text.Parsec.Error
 -- import System.Environment
@@ -24,12 +15,6 @@ import Duet.Quantity
 -- import Numeric.Natural
 -- import Control.Exception
 -- import Data.Random.Normal
-
--- our code
--- import CustomPrelude hiding (iter, (<>))
--- import Syntax
-import Gradient hiding (main, runtest)
-import MinibatchGradient hiding (main, runtest, mbSGD)
 
 type Env = Map Var Val
 
@@ -266,3 +251,195 @@ sampleHelper :: Natural -> Matrix Double -> Matrix  Double -> Var -> Var -> PExp
 sampleHelper n xs ys x y e env = do
   batch <- minibatch (int n) xs (flatten ys)
   peval (insertDataSet env (x, y) ((fst batch), (snd batch))) e
+
+
+-- GRADIENT --
+
+
+type Model = Vector Double
+
+-- | Converts an Integral number to a double
+dbl ∷ (Integral a) ⇒ a → Double
+dbl = fromIntegral
+
+-- | Calculates LR loss
+loss ∷ Model → Matrix Double → Vector Double → Double
+loss θ x y =
+  let θ'       ∷ Matrix Double = asColumn θ
+      y'       ∷ Matrix Double = asColumn y
+      exponent ∷ Matrix Double = -((x <> θ') * y')
+  in (sumElements (log (1.0 + (exp exponent)))) / (dbl $ rows x)
+
+-- | Averages LR gradient over the whole matrix of examples
+ngrad ∷ Model → Matrix Double → Vector Double → Vector Double
+ngrad θ x y =
+  let θ'       ∷ Matrix Double = asColumn θ
+      y'       ∷ Matrix Double = asColumn y
+      exponent ∷ Matrix Double = (x <> θ') * y'
+      scaled   ∷ Matrix Double = y' * (1.0/(1.0+exp(exponent)))
+      gradSum  ∷ Matrix Double = (tr x) <> scaled
+      avgGrad  ∷ Vector Double = flatten $ scale (1.0/(dbl $ rows x)) gradSum
+  in (- avgGrad)
+
+-- | Obtains a vector in the same direction with L2-norm=1
+normalize :: Vector Double -> Vector Double
+normalize v
+  | r > 1     =  scale (1/r) v
+  | otherwise =  v
+  where
+    r = norm_2 v
+
+-- | Convert a string into a double
+readStr ∷ 𝕊 → Double
+readStr s = case (reads s) of
+  [(d, _)] → d
+  _ → 0.0
+
+-- | Reads a CSV into a matrix
+parseCSVtoMatrix ∷ FilePath → IO (Either ParseError (Matrix Double))
+parseCSVtoMatrix file = do
+  Right(csv) ← parseCSVFromFile file
+  let csvList ∷ [[Double]] = map (map readStr) csv
+      matrix ∷ Matrix Double = fromLists csvList
+  return $ return matrix
+
+-- | Performs gradient descent with a fixed learning rate
+gradientDescent ∷ ℕ → Model → Matrix Double → Vector Double → Double → Model
+gradientDescent 0 θ x y η = θ
+gradientDescent n θ x y η = let θ' = θ - (scale η $ ngrad θ x y)
+                            in trace ("training iter " ++ (show n) ++
+                                      ", loss : " ++ (show $ loss θ x y))
+                               gradientDescent (n-1) θ' x y η
+
+-- | Makes a single prediction
+predict ∷ Model → (Vector Double, Double) → Double
+predict θ (x, y) = signum $ x <.> θ
+
+isCorrect ∷ (Double, Double) → (ℕ, ℕ)
+isCorrect (prediction, actual) | prediction == actual = (1, 0)
+                               | otherwise = (0, 1)
+
+-- | Converts a matrix to a model (flatten it)
+toModel ∷ Matrix Double → Model
+toModel = flatten
+
+-- | Calculates the accuracy of a model
+accuracy ∷ Matrix Double → Vector Double → Model → (ℕ, ℕ)
+accuracy x y θ = let pairs ∷ [(Vector Double, Double)] = zip (map normalize $ toRows x) (toList y)
+                     labels ∷ [Double] = map (predict θ) pairs
+                     correct ∷ [(ℕ, ℕ)] = map isCorrect $ zip labels (toList y)
+                 in foldl' (\a b → (fst a + fst b, snd a + snd b)) (0, 0) correct
+
+-- | Ensures that labels are either 1 or -1
+fixLabel ∷ Double → Double
+fixLabel x | x == -1.0 = -1.0
+           | x == 1.0 = 1.0
+           | otherwise = trace ("Unexpected label: " ++ (show x)) x
+
+-- END GRADIENT --
+
+-- MINIBATCHGRADIENT --
+
+-- | Generates random indicies for sampling
+randIndices :: Int -> Int -> Int -> GenIO -> IO [Int]
+randIndices n a b gen
+  | n == 0    = return []
+  | otherwise = do
+      x <- uniformR (a, b) gen
+      xs' <- randIndices (n - 1) a b gen
+      return (x : xs')
+
+-- | Outputs a single minibatch of data
+minibatch :: Int -> Matrix Double -> Vector Double -> IO (Matrix Double, Vector Double)
+minibatch batchSize xs ys = do
+  gen <- createSystemRandom
+  idxs <- randIndices batchSize 0 (rows xs - 1) gen
+  let bxs = xs ? idxs
+      bys = head $ toColumns $ (asColumn ys) ? idxs
+  return (bxs, bys)
+
+-- | Generates a list of minibatches
+nminibatch :: Int -> Int -> Matrix Double -> Vector Double -> IO [(Matrix Double, Vector Double)]
+nminibatch n batchSize x y
+  | n == 0    = return []
+  | otherwise = do
+      x' <- minibatch batchSize x y
+      xs <- nminibatch (n - 1) batchSize x y
+      return (x' : xs)
+
+-- | Returns an infinite list of random values sampled from a normal distribution
+noise :: Int -> Int -> Double -> Double -> Double -> IO [Double]
+noise n iters lreg eps delta =
+  let stdDev = 4 * lreg * (sqrt (fromIntegral(iters) * (log (1 / delta)))) / (fromIntegral(n) * eps)
+  in normalsIO' (0, stdDev)
+
+-- | Generates a list of random numbers sampled from a [0, 1) uniform distribution
+randUniform :: Int -> IO[Double]
+randUniform n
+  | n == 0    = return []
+  | otherwise = do
+      x <- randomIO
+      xs <- randUniform (n - 1)
+      return (x : xs)
+
+-- | Initializes model and regularization parameter
+initModel :: Int -> Double -> Double -> Maybe Double ->  IO (Vector Double, Double)
+initModel m l lambda l2 = do
+  rand <- randUniform m
+  case (lambda, l2) of
+    (0, Nothing) -> return (fromList $ replicate m 0.0, l)
+    (lambda, Just l2) | lambda > 0 ->
+      return ((scale (2 * l2) (vector (map (subtract 0.5) rand))), l + lambda*l2)
+    otherwise -> return (fromList $ replicate m 0.0, 0)
+
+-- | Runs gradient descent on an initial model and a set of minibatches
+mbgradientDescent :: Int -> Int  -> Model -> [(Matrix Double, Vector Double)] -> Double ->  [Double] -> Model
+mbgradientDescent 0 m theta batches rate noise = theta
+mbgradientDescent n m theta batches rate noise =
+  let x = (fst (head batches))
+      y = (snd (head batches))
+      grad = ((ngrad theta x y) + (vector (take m noise)))
+      theta' = theta - (scale rate grad)
+  in trace ("training iter " ++ (show n) ++
+               ", loss : " ++ (show $ loss theta x y) ++
+               ", noise :" ++ (show $ take 5 noise))
+     mbgradientDescent (n - 1) m theta' (tail batches) rate noise
+
+{- | Runs differentially private, minibatch gradient descent on input matrices
+     `x` and `y` and a set of input parameters.
+-}
+privateMBSGD :: Matrix Double
+            -> Vector Double
+            -> Double
+            -> Double
+            -> Int
+            -> Double
+            -> Double
+            -> Int
+            -> Double
+            -> Maybe Double
+            -> IO Model
+privateMBSGD x y eps delta iters learningRate l batchSize lambda l2 = do
+  init <- initModel (cols x) l lambda l2
+  normalNoise <- noise (rows x) iters (snd init) eps delta
+  minibatches <- nminibatch iters batchSize x y
+  return (mbgradientDescent iters (cols x) (fst init) minibatches learningRate normalNoise)
+
+-- | Runs noiseless minibatch gradient descent.
+mbSGD :: Matrix Double
+            -> Vector Double
+            -> Double
+            -> Double
+            -> Int
+            -> Double
+            -> Double
+            -> Int
+            -> Double
+            -> Maybe Double
+            -> IO Model
+mbSGD x y eps delta iters learningRate l batchSize lambda l2 = do
+  init <- initModel (cols x) l lambda l2
+  minibatches <- nminibatch iters batchSize x y
+  return (mbgradientDescent iters (cols x) (fst init) minibatches learningRate (iterate (+0.0) 0))
+
+-- END MINIBATCHGRADIENT --
