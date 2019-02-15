@@ -4,7 +4,7 @@ cabal-version: 2.2
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 0e8ba659e501aafecec800f4a7d7175c8c8c88c1dac12ca96d2589a449efc810
+-- hash: 0688b1c7826b15fc0309558a399186b3f2e344dc7b154748535d8641e9f4daee
 
 name:           duet
 version:        0.0.0.0
@@ -15,12 +15,15 @@ executable duet
   other-modules:
       Duet
       Duet.Check
+      Duet.Gradient
+      Duet.Interpreter
       Duet.Parser
       Duet.Pretty
       Duet.Quantity
       Duet.RNF
       Duet.Syntax
       Duet.UVMHS
+      MinibatchGradient
       Paths_duet
   hs-source-dirs:
       src

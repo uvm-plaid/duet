@@ -4,6 +4,7 @@ module Duet
   ,module Duet.RNF
   ,module Duet.Syntax
   ,module Duet.Check
+  ,module Duet.Interpreter
   ,module Duet.UVMHS
   ) where
 
@@ -12,4 +13,5 @@ import Duet.Quantity
 import Duet.RNF
 import Duet.Syntax
 import Duet.Check
+import Duet.Interpreter
 import Duet.UVMHS

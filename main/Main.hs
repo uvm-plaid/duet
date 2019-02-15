@@ -23,7 +23,7 @@ main = do
       do pprint $ ppHeader "TOKENIZING" ; flushOut
       ts ← tokenizeIO tokDuet $ stream $ list $ tokens s
       do pprint $ ppHeader "PARSING" ; flushOut
-      unpack_C (parseMode fn) $ \ mode → 
+      unpack_C (parseMode fn) $ \ mode →
         parseIOMain (pSkip tokSkip $ pFinal $ parSExp mode) $ stream ts
     ["check",fn] → do
       do pprint $ ppHeader "READING" ; flushOut
@@ -37,8 +37,19 @@ main = do
         let r = runSM dø initEnv dø $ inferSens e
         do pprint $ ppHeader "DONE" ; flushOut
         do pprint r ; flushOut
+    ["run",fn] → do
+      do pprint $ ppHeader "READING" ; flushOut
+      s ← read fn
+      do pprint $ ppHeader "TOKENIZING" ; flushOut
+      ts ← tokenizeIO tokDuet $ stream $ list $ tokens s
+      do pprint $ ppHeader "PARSING" ; flushOut
+      unpack_C (parseMode fn) $ \ mode → do
+        e ← parseIO (pSkip tokSkip $ pFinal $ parSExp mode) $ stream ts
+        do pprint $ ppHeader "RUNNING" ; flushOut
+        let r = seval dø e
+        do pprint $ ppHeader "DONE" ; flushOut
+        do pprint r ; flushOut
     _ → do
       pprint $ ppHeader "USAGE"
       out $ "duet parse <file>"
       out $ "duet check <file>"
-
