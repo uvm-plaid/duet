@@ -34,7 +34,7 @@ let main = pλ ε : ℝ⁺,
           } else {
             r ← parallel [pb, blocks] { row ⇒ getXY row }
                   { b, p ⇒ noisyCount ← gauss[ℝ⁺[1.0], ε, δ] <p> { real (rows p) };
-                    return ⟨b, noisyCount⟩ };
+                    return ⟨⟨b, b⟩, noisyCount⟩ };
             return ⟨n, r⟩
           }
       }
