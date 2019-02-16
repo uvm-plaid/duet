@@ -25,13 +25,23 @@ type Env p = 𝕏 ⇰ Val p
 type Vector v = 𝐿 v
 type Matrix v = (ℕ ⇰ (ℕ ⇰ v))
 
+cols :: Matrix v -> ℕ
+cols a =
+  let rws = list𝐼 (uniques (keys a)) in
+    case rws of
+      (x:&xs) → (dsize (a ⋕ x))
+      _ → error "cols: empty matrix"
+
+rows :: Matrix v -> ℕ
+rows = dsize
+
 -- | Returns maximum element
 maxElem ::  Ord b => [(a, b)] -> a
-maxElem = fst . maximumBy (comparing snd)
+maxElem = fst ∘ maximumBy (comparing snd)
 
 -- | Returns minimum elementParse
 minElem ::  Ord b => [(a, b)] -> a
-minElem = fst . minimumBy (comparing sndParse)
+minElem = fst ∘ minimumBy (comparing sndParse)
 
 -- | Defining Val algebraic data type
 data Val (p ∷ PRIV) =
@@ -65,32 +75,32 @@ seval _ (ℕˢSE n)       = NatV n
 
 -- variables
 seval env (VarSE x) | x ∈ env  = env ⋕! x
-                    | otherwise         = error $ "Unknown variable: " ++ (chars x) ++ " in environment with bound vars " ++ (chars $ sho $ keys env)
+                    | otherwise         = error $ "Unknown variable: " ⧺ (chars x) ⧺ " in environment with bound vars " ⧺ (chars $ sho $ keys env)
 
 -- arithmetic
 seval env (PlusSE e₁ e₂) =
   case (seval env e₁, seval env e₂) of
     (MatrixV v₁, MatrixV v₂) → MatrixV (v₁ + v₂)
     (RealV v₁, RealV v₂) → RealV (v₁ + v₂)
-    (a, b) → error $ "No pattern for " ++ (show (a, b))
+    (a, b) → error $ "No pattern for " ⧺ (show (a, b))
 
 seval env (MinusSE e₁ e₂) =
   case (seval env e₁, seval env e₂) of
     (MatrixV v₁, MatrixV v₂) → MatrixV (v₁ - v₂)
     (RealV v₁, RealV v₂) → RealV (v₁ - v₂)
-    (a, b) → error $ "No pattern for " ++ (show (a, b))
+    (a, b) → error $ "No pattern for " ⧺ (show (a, b))
 
 seval env (TimesSE e₁ e₂) =
   case (seval env e₁, seval env e₂) of
     (MatrixV v₁, MatrixV v₂) → MatrixV (v₁ <> v₂)
     (RealV v₁, MatrixV v₂) → MatrixV (scale v₁ v₂)
     (RealV v₁, RealV v₂) → RealV (v₁ * v₂)
-    (a, b) → error $ "No pattern for " ++ (show (a, b))
+    (a, b) → error $ "No pattern for " ⧺ (show (a, b))
 
 seval env (DivSE e₁ e₂) =
   case (seval env e₁, seval env e₂) of
     (RealV v₁, RealV v₂) → RealV (v₁ / v₂)
-    (a, b) → error $ "No pattern for " ++ (show (a, b))
+    (a, b) → error $ "No pattern for " ⧺ (show (a, b))
 
 -- matrix operations
 seval env (MRowsSE e) =
@@ -116,7 +126,7 @@ seval env (MClipSE norm e) =
   case (norm, seval env e) of
     (L2,   MatrixV v) →  MatrixV $ fromRows (map normalize $ toRows v)
     (LInf, MatrixV v) →  MatrixV $ fromRows (map normalize $ toRows v)
-    (l, _) → error $ "Invalid norm for clip: " ++ (show l)
+    (l, _) → error $ "Invalid norm for clip: " ⧺ (show l)
 
 -- gradient
 seval env (MLipGradSE LR _ e₁ e₂ e3) =
@@ -128,8 +138,8 @@ seval env (MLipGradSE LR _ e₁ e₂ e3) =
               ys' ∷ Vector 𝔻 = flatten ys
           in MatrixV $ asRow $ ngrad θ' xs ys'
         False →
-          error $ "Incorrect matrix dimensions for gradient: " ++ (show (rows θ, rows ys))
-    (a, b, c) → error $ "No pattern for " ++ (show (a, b, c))
+          error $ "Incorrect matrix dimensions for gradient: " ⧺ (show (rows θ, rows ys))
+    (a, b, c) → error $ "No pattern for " ⧺ (show (a, b, c))
 
 -- create matrix
 seval env (MCreateSE l e₁ e₂ i j e₃) =
@@ -151,7 +161,7 @@ seval env (AppSE e₁ e₂) =
       in seval env'' body
 
 -- error
-seval env e = error $ "Unknown expression: " ++ (show e)
+seval env e = error $ "Unknown expression: " ⧺ (show e)
 
 -- | Evaluates an expression from the privacy language
 peval ∷ Env p → PExp p → IO (Val p)
@@ -181,7 +191,7 @@ peval env (GaussPE r ε δ vs e) =
     (RealV r', RealV ε', RealV δ', RealV v) → do
       r ← gaussianNoise 0 (r' * (sqrt $ 2 * (log $ 1.25/δ')) / ε')
       return $ RealV $ v + r
-    (a, b, c, d) → error $ "No pattern for: " ++ (show (a,b,c,d))
+    (a, b, c, d) → error $ "No pattern for: " ⧺ (show (a,b,c,d))
 
 -- gaussian mechanism for matrices
 peval env (MGaussPE r ε δ vs e) =
@@ -190,7 +200,7 @@ peval env (MGaussPE r ε δ vs e) =
       let σ = (r' * (sqrt $ 2 * (log $ 1.25/δ')) / ε')
       mat' ← mapM (\row → mapM (\val → gaussianNoise val σ) row) $ toLists mat
       return $ MatrixV $ fromLists mat'
-    (a, b, c, d) → error $ "No pattern for: " ++ (show (a,b,c,d))
+    (a, b, c, d) → error $ "No pattern for: " ⧺ (show (a,b,c,d))
 
 -- evaluate finite iteration
 peval env (LoopPE δ' k init xs x₁ x₂ e) =
@@ -211,17 +221,17 @@ peval env (ExponentialPE s ε xs x body) =
           getScore = \env1 → case seval env1 body of
             (RealV   r) → r
             (MatrixV m) | size m == (1, 1) → head $ head $ toLists m
-            a → error $ "Invalid score: " ++ (chars $ sho a)
+            a → error $ "Invalid score: " ⧺ (chars $ sho a)
           scores   = map getScore envs
           δ'       = 1e-5
           σ        = (s' * (sqrt $ 2 * (log $ 1.25/δ')) / ε')
       in do
         scores' ← mapM (\score → gaussianNoise score σ) scores
-        --putStrLn $ "picked: " ++ (show $ maxElem (zip xs'' scores))
+        --putStrLn $ "picked: " ⧺ (show $ maxElem (zip xs'' scores))
         return $ MatrixV $ minElem (zip xs'' scores')
 
 -- error
-peval env e = error $ "Unknown expression: " ++ (show e)
+peval env e = error $ "Unknown expression: " ⧺ (show e)
 
 
 -- | Helper function for loop expressions
@@ -312,8 +322,8 @@ parseCSVtoMatrix file = do
 gradientDescent ∷ ℕ → Model → Matrix 𝔻 → Vector 𝔻 → 𝔻 → Model
 gradientDescent 0 θ x y η = θ
 gradientDescent n θ x y η = let θ' = θ - (scale η $ ngrad θ x y)
-                            in trace ("training iter " ++ (show n) ++
-                                      ", loss : " ++ (show $ loss θ x y))
+                            in trace ("training iter " ⧺ (show n) ⧺
+                                      ", loss : " ⧺ (show $ loss θ x y))
                                gradientDescent (n-1) θ' x y η
 
 -- | Makes a single prediction
@@ -339,7 +349,7 @@ accuracy x y θ = let pairs ∷ [(Vector 𝔻, 𝔻)] = zip (map normalize $ toR
 fixLabel ∷ 𝔻 → 𝔻
 fixLabel x | x == -1.0 = -1.0
            | x == 1.0 = 1.0
-           | otherwise = trace ("Unexpected label: " ++ (show x)) x
+           | otherwise = trace ("Unexpected label: " ⧺ (show x)) x
 
 -- END GRADIENT --
 
@@ -405,9 +415,9 @@ mbgradientDescent n m theta batches rate noise =
       y = (snd (head batches))
       grad = ((ngrad theta x y) + (vector (take m noise)))
       theta' = theta - (scale rate grad)
-  in trace ("training iter " ++ (show n) ++
-               ", loss : " ++ (show $ loss theta x y) ++
-               ", noise :" ++ (show $ take 5 noise))
+  in trace ("training iter " ⧺ (show n) ⧺
+               ", loss : " ⧺ (show $ loss theta x y) ⧺
+               ", noise :" ⧺ (show $ take 5 noise))
      mbgradientDescent (n - 1) m theta' (tail batches) rate noise
 
 {- | Runs differentially private, minibatch gradient descent on input matrices
