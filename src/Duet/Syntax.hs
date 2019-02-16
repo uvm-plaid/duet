@@ -87,11 +87,6 @@ deriving instance (Eq r) ⇒ Eq (Pr p r)
 deriving instance (Ord r) ⇒ Ord (Pr p r)
 deriving instance (Show r) ⇒ Show (Pr p r)
 
-fun :: Sens (Quantity a) -> Quantity a
-
-fun (Sens (Quantity k)) = k
-fun _ = undefined
-
 instance (Append r,Meet r) ⇒ Append (Pr p r) where
   EpsPriv ε₁ ⧺ EpsPriv ε₂ = EpsPriv $ ε₁ ⧺ ε₂
   EDPriv ε₁ δ₁ ⧺ EDPriv ε₂ δ₂ = EDPriv (ε₁ ⧺ ε₂) (δ₁ ⧺ δ₂)
@@ -298,7 +293,6 @@ data SExp (p ∷ PRIV) where
   -- | MMapRow2SE (SExpSource p) 𝕏 (SExpSource p)
   -- | MFoldRowSE (SExpSource p) (SExpSource p) 𝕏 𝕏 (SExpSource p)
   -- connectives
-  -- | IfSE (SExpSource p) (SExpSource p) (SExpSource p)
   -- | SLoopSE (SExpSource p) (SExpSource p) 𝕏 (SExpSource p)
   -- | LoopSE (SExpSource p) (SExpSource p) 𝕏 (SExpSource p)
   VarSE ∷ 𝕏 → SExp p
@@ -312,6 +306,7 @@ data SExp (p ∷ PRIV) where
   TupSE ∷ SExpSource p → SExpSource p → SExp p
   UntupSE ∷ 𝕏 → 𝕏 → SExpSource p → SExpSource p → SExp p
   SetSE ∷ 𝐿 (SExpSource p) → SExp p
+  UnionAllSE ∷ SExpSource p → SExp p
   MemberSE ∷ SExpSource p → SExpSource p → SExp p
   PairSE ∷ SExpSource p → SExpSource p → SExp p
   FstSE ∷ SExpSource p → SExp p
@@ -353,6 +348,7 @@ data PExp (p ∷ PRIV) where
   EDLoopPE ∷ SExpSource 'ED → SExpSource 'ED → SExpSource 'ED → 𝐿 𝕏 → 𝕏 → 𝕏 → PExpSource 'ED → PExp 'ED
   LoopPE ∷ SExpSource p → SExpSource p → 𝐿 𝕏 → 𝕏 → 𝕏 → PExpSource p → PExp p
   GaussPE ∷ SExpSource p → GaussParams p → 𝐿 𝕏 → SExpSource p → PExp p
+  IfPE ∷ (SExpSource p) → (PExpSource p) → (PExpSource p) → PExp p
   ParallelPE ∷ SExpSource p → SExpSource p → 𝕏 → SExpSource p → 𝕏 → 𝕏 → PExpSource p → PExp p
   MGaussPE ∷ SExpSource p → GaussParams p → 𝐿 𝕏 → SExpSource p → PExp p
   BGaussPE ∷ SExpSource p → GaussParams p → 𝐿 𝕏 → SExpSource p → PExp p
