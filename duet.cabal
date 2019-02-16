@@ -4,7 +4,7 @@ cabal-version: 2.2
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 5d2ca18b140942aace9aa5bb5a0bfd85829ceb20b3fd0a310be3aedc374ff802
+-- hash: 0aaa14a72f53d755785f38db1fe855722f166deb67f957108ec54222e776570c
 
 name:           duet
 version:        0.0.0.0
@@ -32,6 +32,7 @@ executable duet
       base
     , filepath
     , mwc-random
+    , normaldistribution >=1.1.0.3
     , random
     , uvmhs
   default-language: Haskell2010
