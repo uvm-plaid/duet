@@ -14,6 +14,9 @@ let main = pλ ε : ℝ⁺,
   let getXY = sλ row : 𝕄 [L∞ , U | 1 , 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 𝕊 ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 𝕊 ∷ [] ] ⇒
     ⟨ row#[ℕ[0],ℕ[2]], row#[ℕ[0],ℕ[3]] ⟩
   in
+  let getXYsnd = sλ row : 𝕄 [L∞ , U | 1 , 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 𝕊 ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 𝕊 ∷ [] ] ⇒
+    ⟨ row#[ℕ[0],ℕ[7]], row#[ℕ[0],ℕ[8]] ⟩
+  in
   -- CRISIS mode
   -- result of the join is a ℕ ∷ ℕ ∷ ℕ ∷ ℕ ∷ 𝕊 ∷ ℕ ∷ ℕ ∷ ℕ ∷ ℕ ∷ 𝕊 ∷ []
   --                        |    INCOMING      |      OUTGOING     |
@@ -22,9 +25,26 @@ let main = pλ ε : ℝ⁺,
   -- parallel <> [ join₁[outgoing, embed x + embed y, incoming, 4] , ℘ { true, false } ] { row ⇒ (getXY row) ∈ crisis }
   parallel [ join₁[outgoing, ℕ[4], incoming, ℕ[4]] , ℘ { true, false } ] { row ⇒ (getXY row) ∈ crisis }
       { n, pb ⇒
-          r ← parallel [pb, blocks] { row ⇒ getXY row }
-                { b, p ⇒ noisyCount ← gauss[ℝ⁺[1.0], ε, δ] <p> { real (rows p) };
-                         return ⟨b, noisyCount⟩ };
-          return ⟨n, r⟩
+          if n then {
+            r ← parallel [pb, blocks] { row ⇒ getXY row }
+                  { b₁, p₁ ⇒ parallel [p₁, blocks] { row ⇒ getXYsnd row }
+                               { b₂, p₂ ⇒ noisyCount ← gauss[ℝ⁺[1.0], ε, δ] <p₂> { real (rows p₂) };
+                                 return ⟨⟨b₁, b₂⟩, noisyCount⟩ } };
+            return ⟨n, unionAll r⟩
+          } else {
+            r ← parallel [pb, blocks] { row ⇒ getXY row }
+                  { b, p ⇒ noisyCount ← gauss[ℝ⁺[1.0], ε, δ] <p> { real (rows p) };
+                    return ⟨⟨b, b⟩, noisyCount⟩ };
+            return ⟨n, r⟩
+          }
       }
 in main
+
+-- Γ₁ ⊢ e₁ : 𝔹
+-- Γ₂ ⊢ e₂ : τ
+-- Γ₂ ⊢ e₃ : τ
+-- -------------------------------------------
+-- ∞Γ₁ + Γ₂ ⊢ if e₁ then { e₂ } else { e₃ } : τ
+
+-- We use Γ₂ for both e₂ and e₃; by weakening this means you get the
+-- max privacy cost between the two

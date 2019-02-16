@@ -614,6 +614,11 @@ inferSens eA = case extract eA of
             τ ← inferSens x
             return $ SetT τ
           _ → error $ "typing error in SetSE"
+  UnionAllSE e → do
+    τ ← inferSens e
+    case τ of
+      (SetT (SetT τ')) → return (SetT τ')
+      _ → error $ "UnionAllSE expected a set of sets as its argument" ⧺ pprender τ
   MemberSE e₁ e₂ → do
     τ₁ ← inferSens e₁
     τ₂ ← inferSens e₂
@@ -777,6 +782,17 @@ inferPriv eA = case extract eA of
     σ₂ :* τ₂ ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ₁) ⩌ γ) $ inferPriv e₂
     tell $ delete x σ₂
     return τ₂
+  IfPE e₁ e₂ e₃ → do
+    τ₁ ← pmFromSM $ inferSens e₁
+    σ₂ :* τ₂ ← hijack $ inferPriv e₂
+    σ₃ :* τ₃ ← hijack $ inferPriv e₃
+    case (τ₂ ≡ τ₃) of
+      False → error $ "IfPE type mismatch" ⧺ (pprender (τ₂,τ₃))
+      True → case τ₁ of
+        𝔹T → do
+          tell (σ₃ ⊔ σ₂)
+          return τ₂
+        _ → error $ "IfPE expected a boolean in the test position" ⧺ pprender τ₁
   EDLoopPE e₁ e₂ e₃ xs x₁ x₂ e₄ → do
     let xs' = pow xs
     τ₁ ← pmFromSM $ inferSens e₁
