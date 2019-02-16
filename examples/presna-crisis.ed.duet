@@ -26,11 +26,13 @@ let main = pλ ε : ℝ⁺,
   parallel [ join₁[outgoing, ℕ[4], incoming, ℕ[4]] , ℘ { true, false } ] { row ⇒ (getXY row) ∈ crisis }
       { n, pb ⇒
           if n then {
-            r ← parallel [pb, blocks] { row ⇒ getXY row }
-                  { b₁, p₁ ⇒ parallel [p, blocks] { row ⇒ getXYsnd row }
-                               { b₂, p₂ ⇒ noisyCount ← gauss[ℝ⁺[1.0], ε, δ] <p> { real (rows p₂) };
-                                 return ⟨⟨b₁, b₂⟩, noisyCount⟩ } };
-            return ⟨n, r⟩
+            r₁ ← parallel [pb, blocks] { row ⇒ getXY row }
+                   { b₁, p₁ ⇒ 
+                       r₂ ← parallel [p₁, blocks] { row ⇒ getXYsnd row }
+                              { b₂, p₂ ⇒ noisyCount ← gauss[ℝ⁺[1.0], ε, δ] <p> { real (rows p₂) };
+                                return ⟨⟨b₁, b₂⟩, noisyCount⟩ };
+                       return (unionAll r₂) };
+            return ⟨n, r₁⟩
           } else {
             r ← parallel [pb, blocks] { row ⇒ getXY row }
                   { b, p ⇒ noisyCount ← gauss[ℝ⁺[1.0], ε, δ] <p> { real (rows p) };
