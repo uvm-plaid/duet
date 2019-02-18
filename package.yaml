@@ -57,3 +57,4 @@ executable:
     - mwc-random
     - filepath
     - normaldistribution >= 1.1.0.3
+    - csv
