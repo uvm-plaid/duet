@@ -82,6 +82,24 @@ transpose:: 𝐿 (𝐿 a) → 𝐿 (𝐿 a)
 transpose (Nil:&_) = Nil
 transpose m = (map head m) :& transpose (map tail m)
 
+(===) :: Matrix a → Matrix a → Matrix a
+(===) a b =
+  let a₁ = toRows a
+      b₁ = toRows b
+      c = a₁ ⧺ b₁
+  in fromRows c
+
+normalize :: Vector 𝔻 -> 𝐿 𝔻
+normalize vec = map (/ (root $ sum (map (^2.0) vec))) vec
+
+ident :: ℕ -> Matrix 𝔻
+ident n = let m = [ [boolCheck $ i ≡ j | i <- list $ upTo n] | j <- list $ upTo n] in
+  fromRows m
+
+boolCheck :: 𝔹 -> 𝔻
+boolCheck True = 1.0
+boolCheck False = 0.0
+
 flatten :: Matrix 𝔻 → Vector 𝔻
 flatten m = fold Nil (⧺) (list (values (map (list ∘ values) m)))
 
@@ -165,7 +183,7 @@ toList :: Vector 𝔻 → 𝐿 𝔻
 toList x = x
 
 -- extracts the rows of a matrix as a list of vectors
-toRows :: Matrix 𝔻 → 𝐿 (Vector 𝔻)
+toRows :: Matrix a → 𝐿 (Vector a)
 toRows m =  list $ values $ map (list ∘ values) m
 
 toLists = toRows
@@ -176,6 +194,22 @@ size m = (dsize m, (dsize (head (list (values m)))))
 -- creates a 1-row matrix from a vector
 asRow :: Vector a -> Matrix a
 asRow vec = 0 ↦ (fold dø (⩌) (buildCol (iota (count vec)) vec))
+
+(+++) :: (Plus a) => Matrix a -> Matrix a -> Matrix a
+(+++) a b =
+  let a₁ = toRows a
+      b₁ = toRows b
+      add = zipWith (zipWith (+))
+      c = add a₁ b₁
+  in fromRows c
+
+(-/) :: (Minus a) => Matrix a -> Matrix a -> Matrix a
+(-/) a b =
+  let a₁ = toRows a
+      b₁ = toRows b
+      sub = zipWith (zipWith (-))
+      c = sub a₁ b₁
+  in fromRows c
 
 urv :: Val -> 𝔻
 urv x = case x of
@@ -202,6 +236,15 @@ data Val where
 deriving instance Show Val
 -- deriving instance Eq Val
 
+instance Pretty Val where
+  pretty = \case
+    NatV n → pretty n
+    RealV d → pretty d
+    PairV a b → pretty (a :* b)
+    SFunV x se e → ppKeyPun "sλ"
+    PFunV xs pe e → ppKeyPun "pλ"
+    MatrixV m → ppKeyPun "𝕄T"
+
 -- | Converts and integer to a 𝔻
 intDouble ∷ ℕ → 𝔻
 intDouble = dbl
@@ -223,94 +266,101 @@ seval _ (ℕˢSE n)       = NatV n
 --     (NatV n) → RealV $ mkDouble n
 
 -- variables
-seval env (VarSE x) | x ∈ env  = env ⋕! x
-                    | otherwise         = error $ "Unknown variable: " ⧺ (chars x) ⧺ " in environment with bound vars " ⧺ (chars $ show $ keys env)
+seval env (VarSE x) = env ⋕! x
+-- | x ∈ env
+                    -- | otherwise = error $ "Unknown variable: " ⧺ (show𝕊 x) ⧺ " in environment with bound vars " ⧺ (show𝕊 $ keys env)
 
 -- arithmetic
 seval env (PlusSE e₁ e₂) =
-  case (seval env e₁, seval env e₂) of
-    (MatrixV v₁, MatrixV v₂) → MatrixV (v₁ + v₂)
+  case (seval env (extract e₁), seval env (extract e₂)) of
+    (MatrixV v₁, MatrixV v₂) → MatrixV $ mapp RealV ( (mapp urv v₁) +++ (mapp urv v₂) )
     (RealV v₁, RealV v₂) → RealV (v₁ + v₂)
-    (a, b) → error $ "No pattern for " ⧺ (show (a, b))
+    (a, b) → error $ "No pattern for " ⧺ (show𝕊 (a, b))
 
 seval env (MinusSE e₁ e₂) =
-  case (seval env e₁, seval env e₂) of
-    (MatrixV v₁, MatrixV v₂) → MatrixV (v₁ - v₂)
+  case (seval env (extract e₁), seval env (extract e₂)) of
+    (MatrixV v₁, MatrixV v₂) → MatrixV $ mapp RealV ( (mapp urv v₁) -/ (mapp urv v₂) )
     (RealV v₁, RealV v₂) → RealV (v₁ - v₂)
-    (a, b) → error $ "No pattern for " ⧺ (show (a, b))
+    (a, b) → error $ "No pattern for " ⧺ (show𝕊 (a, b))
 
 seval env (TimesSE e₁ e₂) =
-  case (seval env e₁, seval env e₂) of
-    (MatrixV v₁, MatrixV v₂) → MatrixV (v₁ <> v₂)
-    (RealV v₁, MatrixV v₂) → MatrixV (scale v₁ v₂)
+  case (seval env (extract e₁), seval env (extract e₂)) of
+    (MatrixV v₁, MatrixV v₂) → MatrixV $ mapp RealV ((mapp urv v₁) <> (mapp urv v₂))
+    (RealV v₁, MatrixV v₂) → MatrixV $ mapp RealV (mscale v₁ (mapp urv v₂))
     (RealV v₁, RealV v₂) → RealV (v₁ × v₂)
-    (a, b) → error $ "No pattern for " ⧺ (show (a, b))
+    (a, b) → error $ "No pattern for " ⧺ (show𝕊 (a, b))
 
 seval env (DivSE e₁ e₂) =
-  case (seval env e₁, seval env e₂) of
+  case (seval env (extract e₁), seval env (extract e₂)) of
     (RealV v₁, RealV v₂) → RealV (v₁ / v₂)
-    (a, b) → error $ "No pattern for " ⧺ (show (a, b))
+    (a, b) → error $ "No pattern for " ⧺ (show𝕊 (a, b))
 
 -- matrix operations
 seval env (MRowsSE e) =
-  case (seval env e) of (MatrixV v) →
-                         NatV $ nat $ rows v
+  case (seval env (extract e)) of
+    (MatrixV v) →
+      NatV $ nat $ rows v
 
 seval env (MColsSE e) =
-  case (seval env e) of (MatrixV v) →
-                         NatV $ nat $ cols v
+  case (seval env (extract e)) of
+    (MatrixV v) →
+      NatV $ nat $ cols v
 
 seval env (IdxSE e) =
-  case seval env e of
+  case (seval env (extract e)) of
     (NatV d) →
       let posMat ∷ Matrix 𝔻 = ident d
-          negMat ∷ Matrix 𝔻 = scale (-1.0) posMat
-      in MatrixV (posMat === negMat)
+          negMat ∷ Matrix 𝔻 = mscale (neg one) posMat
+      in MatrixV (mapp RealV (posMat === negMat))
 
 -- seval env (SMTrE e) =
 --   case seval env e of (MatrixV m) → MatrixV $ tr m
 
 -- clip operation for only L2 norm
 seval env (MClipSE norm e) =
-  case (norm, seval env e) of
-    (L2,   MatrixV v) →  MatrixV $ fromRows (map normalize $ toRows v)
-    (LInf, MatrixV v) →  MatrixV $ fromRows (map normalize $ toRows v)
-    (l, _) → error $ "Invalid norm for clip: " ⧺ (show l)
+  case (norm, seval env (extract e)) of
+    (L2,   MatrixV v) →  MatrixV $ mapp RealV $ fromRows (map normalize $ toRows $ mapp urv v)
+    (LInf, MatrixV v) →  MatrixV $ mapp RealV $ fromRows (map normalize $ toRows $ mapp urv v)
+    (l, _) → error $ "Invalid norm for clip: " ⧺ (show𝕊 l)
 
 -- gradient
 seval env (MLipGradSE LR e₁ e₂ e₃) =
-  case (seval env e₁, seval env e₂, seval env e₃) of
+  case (seval env (extract e₁), seval env (extract e₂), seval env (extract e₃)) of
     (MatrixV θ, MatrixV xs, MatrixV ys) →
       case ((rows θ ≡ 1) ⩓ (rows ys ≡ 1)) of
         True →
-          let θ'  ∷ Vector 𝔻 = flatten θ
-              ys' ∷ Vector 𝔻 = flatten ys
-          in MatrixV $ asRow $ ngrad θ' xs ys'
+          let θ'  ∷ Vector 𝔻 = flatten (mapp urv θ)
+              ys' ∷ Vector 𝔻 = flatten (mapp urv ys)
+          in MatrixV $ mapp RealV $ asRow $ ngrad θ' (mapp urv xs) ys'
         False →
-          error $ "Incorrect matrix dimensions for gradient: " ⧺ (show (rows θ, rows ys))
-    (a, b, c) → error $ "No pattern for " ⧺ (show (a, b, c))
+          error $ "Incorrect matrix dimensions for gradient: " ⧺ (show𝕊 (rows θ, rows ys))
+    (a, b, c) → error $ "No pattern for " ⧺ (show𝕊 (a, b, c))
 
 -- create matrix
 seval env (MCreateSE l e₁ e₂ i j e₃) =
-  case (seval env e₁, seval env e₂) of
+  case (seval env (extract e₁), seval env (extract e₂)) of
     (NatV v₁, NatV v₂) →
-      MatrixV $ (><) (int v₁) (int v₂) $ replicate (int $ v₁ × v₂) 0.0
+      let row = replicate v₂ 0.0
+          m = replicate v₁ row
+          m₁ = fromRows m
+      in MatrixV (mapp RealV m₁)
+      -- MatrixV $ (><) (int v₁) (int v₂) $ replicate (int $ v₁ × v₂) 0.0
 
 -- functions and application
 seval env (PFunSE _ args body) =
-  PFunV (map fst args) body env
+  PFunV (map fst args) (extract body) env
 
 seval env (SFunSE x _ body) =
-  SFunV x body env
+  SFunV x (extract body) env
 
 seval env (AppSE e₁ e₂) =
-  case seval env e₁ of
+  case seval env (extract e₁) of
     (SFunV x body env') →
       let env'' = (x ↦ (seval env (extract e₂))) ⩌ env'
       in seval env'' body
 
 -- error
-seval env e = error $ "Unknown expression: " ⧺ (show e)
+seval env e = error $ "Unknown expression: " ⧺ (show𝕊 e)
 
 -- | Evaluates an expression from the privacy language
 peval ∷ Env → PExp p → IO (Val)
