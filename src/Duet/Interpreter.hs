@@ -36,7 +36,7 @@ minElemPairs = minElem snd
 -- helpers
 
 iota :: ℕ → 𝐿 ℕ
-iota n = 0 ⧺ (upTo n-1)
+iota n = (single𝐿 0) ⧺ list (upTo (n-1))
 
 replicate :: ℕ → a → 𝐿 a
 replicate len v = list $ build len v (\ x → x)
@@ -54,7 +54,7 @@ take n (x:&xs) = x :& take (n-1) xs
 iterate :: (a -> a) -> a -> [a]
 iterate f a = a : iterate f (f a)
 
-norm_2 :: Vector 𝔻 -> ℕ
+norm_2 :: Vector 𝔻 -> 𝔻
 norm_2 = root ∘ sum ∘ map (\x -> x×x)
 
 fst1 :: (a,b) -> a
@@ -69,7 +69,7 @@ cols :: Matrix v → ℕ
 cols a =
   let rws = list𝐼 (uniques (keys a)) in
     case rws of
-      (x:&xs) → (dsize (a ⋕ x))
+      (x:&xs) → (dsize (a ⋕! x))
       _ → error "cols: empty matrix"
 
 rows :: Matrix v → ℕ
@@ -83,13 +83,20 @@ transpose (Nil:&_) = Nil
 transpose m = (map head m) :& transpose (map tail m)
 
 flatten :: Matrix 𝔻 → Vector 𝔻
-flatten = concat
+flatten m = fold Nil (⧺) (list (values (map (list ∘ values) m)))
 
 (<>) :: Matrix 𝔻 → Matrix 𝔻 → Matrix 𝔻
-(<>) a b = [ [ sum $ zipWith (×) ar bc | bc <- (tr b) ] | ar <- a ]
+(<>) a b =
+  let a₁ = toRows a
+      b₁ = toRows (tr b)
+      c = [ [ sum $ zipWith (×) ar bc | bc <- b₁ ] | ar <- a₁ ]
+  in fromRows c
 
 scale :: 𝔻 → Vector 𝔻 → Model
 scale r v = map (× r) v
+
+mscale :: 𝔻 → Matrix 𝔻 → Matrix 𝔻
+mscale r v = mapp (× r) v
 
 vector :: 𝐿 𝔻 → Vector 𝔻
 vector x = x
@@ -119,8 +126,14 @@ buildCols vecs = case (fold Nil (⧺) vecs) of
   Nil → empty𝐿
 
 fromLists :: 𝐿 (𝐿 a) → Matrix a
-fromLists (x:&xs) = (buildCol (iota (count x)) x) ⧺ fromLists xs
-fromLists Nil = Nil
+fromLists ls =
+  let cols = fromLists1 ls in buildRows (iota (count cols)) cols
+
+fromLists1 :: 𝐿 (𝐿 a) → 𝐿 (ℕ ⇰ a)
+fromLists1 (x:&xs) = (buildCol (iota (count x)) x) ⧺ fromLists1 xs
+fromLists1 Nil = Nil
+
+fromRows = fromLists
 
 -- build col map (really a row)
 buildCol :: 𝐿 ℕ → 𝐿 a → 𝐿 (ℕ ⇰ a)
@@ -137,16 +150,15 @@ buildRows rows cols = fold dø (⩌) (zipWith (↦) rows cols)
 -- Creates a list of vectors from the columns of a matrix
 toColumns :: Matrix t → 𝐿 (Vector t)
 toColumns m = let colLists = (values m) in
-  (mapLookup (iota (count colLists)) colLists)
+  (mapLookup (iota (count colLists)) (list colLists))
 
--- TODO: question
 mapLookup :: 𝐿 ℕ →  𝐿 (ℕ ⇰ a) → 𝐿 (𝐿 a)
-mapLookup (i:&idxs) cols = (map ((⋕!) i) cols) ⧺ mapLookup idxs cols
+mapLookup (i:&idxs) cols = single𝐿 (map (\x -> x ⋕! i) cols) ⧺ mapLookup idxs cols
 mapLookup Nil cols = Nil
 
 -- extract rows in N
-(?) :: Matrix 𝔻 → [ℕ] → Matrix 𝔻
-(?) m (n:&ns) = (m ⋕? n) ⩌ (m ? ns)
+(?) :: Matrix 𝔻 → 𝐿 ℕ → Matrix 𝔻
+(?) m (n:&ns) = (n ↦ (m ⋕! n)) ⩌ (m ? ns)
 (?) m Nil = dø
 
 toList :: Vector 𝔻 → 𝐿 𝔻
@@ -154,31 +166,41 @@ toList x = x
 
 -- extracts the rows of a matrix as a list of vectors
 toRows :: Matrix 𝔻 → 𝐿 (Vector 𝔻)
-toRows m = (map values (values m))
+toRows m =  list $ values $ map (list ∘ values) m
+
+toLists = toRows
+
+size :: Matrix Val -> (ℕ, ℕ)
+size m = (dsize m, (dsize (head (list (values m)))))
 
 -- creates a 1-row matrix from a vector
 asRow :: Vector a -> Matrix a
-asRow vec = 0 ↦ (buildCol (iota (count vec)) vec)
+asRow vec = 0 ↦ (fold dø (⩌) (buildCol (iota (count vec)) vec))
+
+urv :: Val -> 𝔻
+urv x = case x of
+  RealV d -> d
+  _ -> error "unpack real val failed"
 
 -- | Defining Val algebraic data type
-data Val =
-  NatV ℕ
-  | RealV 𝔻
-  | PairV Val Val
-  | SFunV 𝕏 (Ex SExp) Env  -- See UVMHS.Core.Init for definition of Ex
-  | PFunV (𝐿 𝕏) (Ex PExp) Env
-  | MatrixV (Matrix Val)
+-- data Val =
+--   NatV ℕ
+--   | RealV 𝔻
+--   | PairV Val Val
+--   | SFunV 𝕏 (Ex SExp) Env  -- See UVMHS.Core.Init for definition of Ex
+--   | PFunV (𝐿 𝕏) (Ex PExp) Env
+--   | MatrixV (Matrix Val)
 
-deriving instance Eq Val
+
+data Val where
+  NatV ∷ ℕ → Val
+  RealV ∷ 𝔻 → Val
+  PairV ∷ Val → Val → Val
+  SFunV ∷ 𝕏 → SExp p → Env → Val
+  PFunV ∷ 𝐿 𝕏 → PExp p → Env → Val
+  MatrixV ∷ Matrix Val → Val
 deriving instance Show Val
-
--- data Val where
---   NatV ∷ ℕ → Val
---   RealV ∷ 𝔻 → Val
---   PairV ∷ Val → Val → Val
---   SFunV ∷ 𝕏 → SExp p → Env → Val
---   PFunV ∷ 𝐿 𝕏 → PExp p → Env → Val
---   MatrixV ∷ Matrix Val → Val
+-- deriving instance Eq Val
 
 -- | Converts and integer to a 𝔻
 intDouble ∷ ℕ → 𝔻
@@ -189,7 +211,7 @@ mkDouble ∷ ℕ → 𝔻
 mkDouble = dbl
 
 -- | Evaluates an expression from the sensitivity language
-seval ∷ (Env p) → (SExp p) → (Val p)
+seval ∷ (Env) → (SExp p) → (Val)
 
 -- literals
 seval _ (ℕSE n)        = NatV n
@@ -284,105 +306,104 @@ seval env (SFunSE x _ body) =
 seval env (AppSE e₁ e₂) =
   case seval env e₁ of
     (SFunV x body env') →
-      let env'' = (x ↦ (seval env e₂)) ⩌ env'
+      let env'' = (x ↦ (seval env (extract e₂))) ⩌ env'
       in seval env'' body
 
 -- error
 seval env e = error $ "Unknown expression: " ⧺ (show e)
 
 -- | Evaluates an expression from the privacy language
-peval ∷ Env p → PExp p → IO (Val p)
+peval ∷ Env → PExp p → IO (Val)
 
 -- bind and application
 peval env (BindPE x e₁ e₂) = do
-  v₁ ← peval env e₁
-  v₂ ← peval (x ↦ v₁ ⩌ env) e₂
+  v₁ ← peval env (extract e₁)
+  v₂ ← peval ((x ↦ v₁) ⩌ env) (extract e₂)
   return v₂
 
 peval env (AppPE _ f vars) =
-  case seval env f of
+  case seval env (extract f) of
     (PFunV args body env') →
-      let vs    ∷ [Val] = map ((⋕!) env) vars
-          --TODO: question
-          env'' ∷ Env p = foldr (\(var, val) → (⩌ (var ↦ val))) env' (zip args vs)
+      let vs    ∷ 𝐿 Val = map ((⋕!) env) vars
+          env'' ∷ Env = fold env' (\(var :* val) → (⩌ (var ↦ val))) (zip args vs)
       in peval env'' body
 
 -- sample on two matrices and compute on sample
-peval env (SamplePE size xs ys x y e) =
-  case (seval env size, env ⋕! xs, env ⋕! ys) of
-    (NatV n, MatrixV v1, MatrixV v2) →
-      sampleHelper n v1 v2 x y e env
+-- peval env (SamplePE size xs ys x y e) =
+--   case (seval env (extract size), env ⋕! (extract xs), env ⋕! ys) of
+--     (NatV n, MatrixV v1, MatrixV v2) →
+--       sampleHelper n v1 v2 x y e env
 
 -- gaussian mechanism for real numbers
 peval env (GaussPE r (EDGaussParams ε δ) vs e) =
-  case (seval env r, seval env ε, seval env  δ, seval env e) of
+  case (seval env (extract r), seval env (extract ε), seval env (extract δ), seval env (extract e)) of
     (RealV r', RealV ε', RealV δ', RealV v) → do
-      r ← gaussianNoise 0 (r' × (root $ 2 × (log $ 1.25/δ')) / ε')
+      r ← gaussianNoise zero (r' × (root $ 2.0 × (log $ 1.25/δ')) / ε')
       return $ RealV $ v + r
-    (a, b, c, d) → error $ "No pattern for: " ⧺ (show (a,b,c,d))
+    (a, b, c, d) → error $ "No pattern for: " ⧺ (show𝕊 (a,b,c,d))
 
 -- gaussian mechanism for matrices
 peval env (MGaussPE r (EDGaussParams ε δ) vs e) =
-  case (seval env r, seval env ε, seval env  δ, seval env e) of
+  case (seval env (extract r), seval env (extract ε), seval env (extract δ), seval env (extract e)) of
     (RealV r', RealV ε', RealV δ', MatrixV mat) → do
-      let σ = (r' × (root $ 2 × (log $ 1.25/δ')) / ε')
-      mat' ← mapM (\row → mapM (\val → gaussianNoise val σ) row) $ toLists mat
-      return $ MatrixV $ fromLists mat'
-    (a, b, c, d) → error $ "No pattern for: " ⧺ (show (a,b,c,d))
+      let σ = (r' × (root $ 2.0 × (log $ 1.25/δ')) / ε')
+      mat' ← mapM (\row → mapM (\val → gaussianNoise val σ) row) $ toLists (mapp urv mat)
+      return $ MatrixV $ (mapp RealV (fromLists mat'))
+    (a, b, c, d) → error $ "No pattern for: " ⧺ (show𝕊 (a,b,c,d))
 
 -- evaluate finite iteration
 peval env (LoopPE k init xs x₁ x₂ e) =
-  case (seval env k, seval env init) of
+  case (seval env (extract k), seval env (extract init)) of
     (NatV k', initV) →
-      iter₁ k' initV x₁ x₂ 0 e env
+      iter₁ k' initV x₁ x₂ 0 (extract e) env
 
 -- evaluate sensitivity expression and return in the context of the privacy language
 peval env (ReturnPE e) =
-  return $ seval env e
+  return $ seval env (extract e)
 
 -- exponential mechanism
-peval env (ExponentialPE s ε xs _ x body) =
-  case (seval env s, seval env ε, seval env xs) of
-    (RealV s', RealV ε', MatrixV xs') →
-      let xs''     = map (\row' → fromLists [row']) $ toLists xs'
-          envs     = map (\m → (x ↦ (MatrixV m)) ⩌ env) xs''
-          getScore = \env1 → case seval env1 body of
-            (RealV   r) → r
-            (MatrixV m) | size m == (1, 1) → head $ head $ toLists m
-            a → error $ "Invalid score: " ⧺ (chars $ sho a)
-          scores   = map getScore envs
-          δ'       = 1e-5
-          σ        = (s' × (root $ 2 × (log $ 1.25/δ')) / ε')
-      in do
-        scores' ← mapM (\score → gaussianNoise score σ) scores
-        return $ MatrixV $ minElem (zip xs'' scores')
+-- peval env (ExponentialPE s ε xs _ x body) =
+--   case (seval env s, seval env ε, seval env xs) of
+--     (RealV s', RealV ε', MatrixV xs') →
+--       let xs''     = map (\row' → fromLists [row']) $ toLists xs'
+--           envs     = map (\m → (x ↦ (MatrixV m)) ⩌ env) xs''
+--           getScore = \env1 → case seval env1 (extract body) of
+--             (RealV   r) → r
+--             (MatrixV m) | size m == (1, 1) → head $ head $ toLists m
+--             a → error $ "Invalid score: " ⧺ (chars $ show𝕊 a)
+--           scores   = map getScore envs
+--           δ'       = 1e-5
+--           σ        = (s' × (root $ 2.0 × (log $ 1.25/δ')) / ε')
+--       in do
+--         scores' ← mapM (\score → gaussianNoise score σ) scores
+--         return $ MatrixV $ minElem (zip xs'' scores')
 
 -- error
-peval env e = error $ "Unknown expression: " ⧺ (show e)
+peval env e = error $ "Unknown expression: " ⧺ (show𝕊 e)
 
 
 -- | Helper function for loop expressions
-iter₁ ∷ ℕ → Val p → 𝕏 → 𝕏 → ℕ → PExp p → Env p → IO (Val p)
+iter₁ ∷ ℕ → Val → 𝕏 → 𝕏 → ℕ → PExp p → Env → IO (Val)
 iter₁ 0 v _ _ _ _ _ = return v
 iter₁ k v t x kp body env = do
   newVal ← peval ((x ↦ v) ⩌ ((t ↦ (NatV $ nat kp)) ⩌ env)) body
   iter₁ (k - 1) newVal t x (kp+1) body env
 
 -- | Empty environment
-emptyEnv ∷ Env p
+emptyEnv ∷ Env
 emptyEnv = dø
 
 -- | Read in a dataset and return xs (features) and ys (labels)
-readDataSet ∷ 𝕊 → IO (Matrix 𝔻, Vector 𝔻)
-readDataSet fileName = do
-    Inr(mat) ← parseCSVtoMatrix fileName
-    let dataCols ∷ 𝐿 (Vector 𝔻) = toColumns mat
-        xs ∷ Matrix 𝔻 = fromColumns $ tail dataCols
-        ys ∷ Vector 𝔻 = head dataCols
-    return $ (xs, ys)
+-- readDataSet ∷ FilePath → IO (Matrix 𝔻, Vector 𝔻)
+-- readDataSet fileName = do
+--     Inr(mat) ← parseCSVtoMatrix fileName
+--     let dataCols ∷ 𝐿 (Vector 𝔻) = toColumns mat
+--         xs ∷ Matrix 𝔻 = fromColumns $ tail dataCols
+--         ys ∷ Vector 𝔻 = head dataCols
+--     return $ (xs, ys)
 
 -- | Place a dataset into the environment
-insertDataSet ∷ Env p → (𝕏, 𝕏) → (Matrix 𝔻, Vector 𝔻) → Env p
+insertDataSet ∷ Env → (𝕏, 𝕏) → (Matrix 𝔻, Vector 𝔻) → Env
 insertDataSet env (x, y) (xs, ys) =
   ((x ↦ (MatrixV (mapp RealV xs))) ⩌ ((y ↦ (MatrixV $ asRow (map RealV ys))) ⩌ env))
 
@@ -391,204 +412,206 @@ gaussianNoise ∷ 𝔻 → 𝔻 → IO 𝔻
 gaussianNoise c v = normalIO'(c, v)
 
 -- | Helper function for PSampleE
-sampleHelper :: ℕ → Matrix 𝔻 → Matrix  𝔻 → 𝕏 → 𝕏 → PExp p → Env p → IO (Val p)
-sampleHelper n xs ys x y e env = do
-  batch <- minibatch (int n) xs (flatten ys)
-  peval (insertDataSet env (x, y) ((fst1 batch), (snd1 batch))) e
+-- sampleHelper :: ℕ → Matrix 𝔻 → Matrix  𝔻 → 𝕏 → 𝕏 → PExp p → Env → IO Val
+-- sampleHelper n xs ys x y e env = do
+--   batch <- minibatch (int n) xs (flatten ys)
+--   peval (insertDataSet env (x, y) ((fst1 batch), (snd1 batch))) e
 
 -- GRADIENT --
 
 type Model = Vector 𝔻
 
 -- | Converts an Integral number to a double
-dbl₁ ∷ ℕ → 𝔻
-dbl₁ = dbl
+-- dbl₁ ∷ ℕ → 𝔻
+-- dbl₁ = dbl
 
 -- | Calculates LR loss
-loss ∷ Model → Matrix 𝔻 → Vector 𝔻 → 𝔻
-loss θ x y =
-  let θ'       ∷ Matrix 𝔻 = asColumn θ
-      y'       ∷ Matrix 𝔻 = asColumn y
-      exponent ∷ Matrix 𝔻 = -((x <> θ') × y')
-      -- TODO: what are sumElements and exp?
-  in {-(sumElements -} (log (1.0 + (exp exponent))) / (dbl₁ $ rows x)
+-- loss ∷ Model → Matrix 𝔻 → Vector 𝔻 → 𝔻
+-- loss θ x y =
+--   let θ'       ∷ Matrix 𝔻 = asColumn θ
+--       y'       ∷ Matrix 𝔻 = asColumn y
+--       exponent ∷ Matrix 𝔻 = -((x <> θ') × y')
+--   in (sumElements (mapp (\x -> (log (exp(x)+1.0))) exponent)) / (dbl $ rows x)
+--
+-- sumElements :: Matrix 𝔻 -> 𝔻
+-- sumElements m = mapp sum m
 
 -- | Averages LR gradient over the whole matrix of examples
 ngrad ∷ Model → Matrix 𝔻 → Vector 𝔻 → Vector 𝔻
 ngrad θ x y =
   let θ'       ∷ Matrix 𝔻 = asColumn θ
       y'       ∷ Matrix 𝔻 = asColumn y
-      exponent ∷ Matrix 𝔻 = (x <> θ') × y' --TODO: question
-      scaled   ∷ Matrix 𝔻 = y' × (1.0/(1.0+exp(exponent)))
+      exponent ∷ Matrix 𝔻 = (x <> θ') × y'
+      scaled   ∷ Matrix 𝔻 = y' × (mapp (\x -> 1.0/(exp(x)+1.0) ) exponent)
       gradSum  ∷ Matrix 𝔻 = (tr x) <> scaled
-      avgGrad  ∷ Vector 𝔻 = flatten $ scale (1.0/(dbl $ rows x)) gradSum
-  in (- avgGrad)
+      avgGrad  ∷ Vector 𝔻 = flatten $ mscale (1.0/(dbl $ rows x)) gradSum
+  in (scale (neg one) avgGrad)
 
 -- | Obtains a vector in the same direction with L2-norm=1
-normalize :: Vector 𝔻 → Vector 𝔻
-normalize v
-  | r > 1     =  scale (1/r) v
-  | otherwise =  v
-  where
-    r = norm_2 v
+-- normalize :: Vector 𝔻 → Vector 𝔻
+-- normalize v
+--   | r > 1     =  scale (1/r) v
+--   | otherwise =  v
+--   where
+--     r = norm_2 v
 
 -- | Convert a string into a double
-readStr ∷ 𝕊 → 𝔻
-readStr s = case (read𝕊 s) of
-  [(d, _)] → d
-  _ → 0.0
+-- readStr ∷ 𝕊 → 𝔻
+-- readStr s = case (read𝕊 s) of
+--   [(d, _)] → d
+--   _ → 0.0
 
 -- | Reads a CSV into a matrix
-parseCSVtoMatrix ∷ FilePath → IO (ParseError ∨ (Matrix 𝔻))
-parseCSVtoMatrix file = do
-  Inr(csv) ← parseCSVFromFile file
-  let csvList ∷ 𝐿 (𝐿 𝔻) = map (map readStr) csv
-      matrix ∷ Matrix 𝔻 = fromLists csvList
-  return $ return matrix
+-- parseCSVtoMatrix ∷ FilePath → IO (ParseError ∨ (Matrix 𝔻))
+-- parseCSVtoMatrix file = do
+--   Inr(csv) ← parseCSVFromFile file
+--   let csvList ∷ 𝐿 (𝐿 𝔻) = map (map readStr) csv
+--       matrix ∷ Matrix 𝔻 = fromLists csvList
+--   return $ return matrix
 
 -- | Performs gradient descent with a fixed learning rate
-gradientDescent ∷ ℕ → Model → Matrix 𝔻 → Vector 𝔻 → 𝔻 → Model
-gradientDescent 0 θ x y η = θ
-gradientDescent n θ x y η = let θ' = θ - (scale η $ ngrad θ x y)
-                            in trace ("training iter " ⧺ (show n) ⧺
-                                      ", loss : " ⧺ (show $ loss θ x y))
-                               gradientDescent (n-1) θ' x y η
+-- gradientDescent ∷ ℕ → Model → Matrix 𝔻 → Vector 𝔻 → 𝔻 → Model
+-- gradientDescent 0 θ x y η = θ
+-- gradientDescent n θ x y η = let θ' = θ - (scale η $ ngrad θ x y)
+--                             in trace ("training iter " ⧺ (show n) ⧺
+--                                       ", loss : " ⧺ (show $ loss θ x y))
+--                                gradientDescent (n-1) θ' x y η
 
 -- | Makes a single prediction
-predict ∷ Model → (Vector 𝔻, 𝔻) → 𝔻
-predict θ (x, y) = signum $ x <.> θ
+-- predict ∷ Model → (Vector 𝔻, 𝔻) → 𝔻
+-- predict θ (x, y) = signum $ x <.> θ
 
-signum ∷ (Ord a,Plus a,Minus a) ⇒ a → a
-signum x = case compare x zero of
-  LT → neg one
-  EQ → zero
-  GT → one
+-- signum ∷ (Ord a,Plus a,Minus a) ⇒ a → a
+-- signum x = case compare x zero of
+--   LT → neg one
+--   EQ → zero
+--   GT → one
 
-isCorrect ∷ (𝔻, 𝔻) → (ℕ, ℕ)
-isCorrect (prediction, actual) | prediction == actual = (1, 0)
-                               | otherwise = (0, 1)
+-- isCorrect ∷ (𝔻, 𝔻) → (ℕ, ℕ)
+-- isCorrect (prediction, actual) | prediction == actual = (1, 0)
+--                                | otherwise = (0, 1)
 
 -- | Converts a matrix to a model (flatten it)
-toModel ∷ Matrix 𝔻 → Model
-toModel = flatten
+-- toModel ∷ Matrix 𝔻 → Model
+-- toModel = flatten
 
 -- | Calculates the accuracy of a model
-accuracy ∷ Matrix 𝔻 → Vector 𝔻 → Model → (ℕ, ℕ)
-accuracy x y θ = let pairs ∷ 𝐿 (Vector 𝔻, 𝔻) = zip (map normalize $ toRows x) (toList y)
-                     labels ∷ 𝐿 𝔻 = map (predict θ) pairs
-                     correct ∷ 𝐿 (ℕ, ℕ) = map isCorrect $ zip labels (toList y)
-                 in fold (0, 0) (\a b → (fst a + fst b, snd a + snd b)) correct
+-- accuracy ∷ Matrix 𝔻 → Vector 𝔻 → Model → (ℕ, ℕ)
+-- accuracy x y θ = let pairs ∷ 𝐿 (Vector 𝔻, 𝔻) = zip (map normalize $ toRows x) (toList y)
+--                      labels ∷ 𝐿 𝔻 = map (predict θ) pairs
+--                      correct ∷ 𝐿 (ℕ, ℕ) = map isCorrect $ zip labels (toList y)
+--                  in fold (0, 0) (\a b → (fst a + fst b, snd a + snd b)) correct
 
 -- | Ensures that labels are either 1 or -1
-fixLabel ∷ 𝔻 → 𝔻
-fixLabel x | x ≡ -1.0 = -1.0
-           | x ≡ 1.0 = 1.0
-           | otherwise = trace ("Unexpected label: " ⧺ (show x)) x
+-- fixLabel ∷ 𝔻 → 𝔻
+-- fixLabel x | x ≡ -1.0 = -1.0
+--            | x ≡ 1.0 = 1.0
+--            | otherwise = trace ("Unexpected label: " ⧺ (show x)) x
 
 -- END GRADIENT --
 
 -- MINIBATCHGRADIENT --
 
 -- | Generates random indicies for sampling
-randIndices :: ℕ → ℕ → ℕ → GenIO → IO [ℕ]
-randIndices n a b gen
-  | n == 0    = return []
-  | otherwise = do
-      x <- uniformR (a, b) gen
-      xs' <- randIndices (n - 1) a b gen
-      return (x : xs')
+-- randIndices :: ℕ → ℕ → ℕ → GenIO → IO [ℕ]
+-- randIndices n a b gen
+--   | n == 0    = return []
+--   | otherwise = do
+--       x <- uniformR (a, b) gen
+--       xs' <- randIndices (n - 1) a b gen
+--       return (x : xs')
 
 -- | Outputs a single minibatch of data
-minibatch :: ℤ → Matrix 𝔻 → Vector 𝔻 → IO (Matrix 𝔻, Vector 𝔻)
-minibatch batchSize xs ys = do
-  gen <- createSystemRandom
-  idxs <- randIndices batchSize 0 (rows xs - 1) gen
-  let bxs = xs ? idxs
-      bys = head $ toColumns $ (asColumn ys) ? idxs
-  return (bxs, bys)
+-- minibatch :: ℤ → Matrix 𝔻 → Vector 𝔻 → IO (Matrix 𝔻, Vector 𝔻)
+-- minibatch batchSize xs ys = do
+--   gen <- createSystemRandom
+--   idxs <- randIndices batchSize 0 (rows xs - 1) gen
+--   let bxs = xs ? idxs
+--       bys = head $ toColumns $ (asColumn ys) ? idxs
+--   return (bxs, bys)
 
 -- | Generates a list of minibatches
-nminibatch :: ℕ → ℕ → Matrix 𝔻 → Vector 𝔻 → IO [(Matrix 𝔻, Vector 𝔻)]
-nminibatch n batchSize x y
-  | n == 0    = return []
-  | otherwise = do
-      x' <- minibatch batchSize x y
-      xs <- nminibatch (n - 1) batchSize x y
-      return (x' : xs)
+-- nminibatch :: ℕ → ℕ → Matrix 𝔻 → Vector 𝔻 → IO [(Matrix 𝔻, Vector 𝔻)]
+-- nminibatch n batchSize x y
+--   | n == 0    = return []
+--   | otherwise = do
+--       x' <- minibatch batchSize x y
+--       xs <- nminibatch (n - 1) batchSize x y
+--       return (x' : xs)
 
 -- | Returns an infinite list of random values sampled from a normal distribution
-noise :: ℕ → ℕ → 𝔻 → 𝔻 → 𝔻 → IO [𝔻]
-noise n iters lreg eps delta =
-  let stdDev = 4 × lreg × (root (dbl(iters) × (log (1 / delta)))) / (dbl(n) × eps)
-  in normalsIO' (0, stdDev)
+-- noise :: ℕ → ℕ → 𝔻 → 𝔻 → 𝔻 → IO (𝐿 𝔻)
+-- noise n iters lreg eps delta =
+--   let stdDev = 4 × lreg × (root (dbl(iters) × (log (1 / delta)))) / (dbl(n) × eps)
+--   in normalsIO' (0.0, stdDev)
 
 -- | Generates a list of random numbers sampled from a [0, 1) uniform distribution
-randUniform :: ℕ → IO[𝔻]
-randUniform n
-  | n ≡ 0    = return []
-  | otherwise = do
-      x <- randomIO
-      xs <- randUniform (n - 1)
-      return (x : xs)
+-- randUniform :: ℕ → IO[𝔻]
+-- randUniform n
+--   | n ≡ 0    = return Nil
+--   | otherwise = do
+--       x <- randomIO
+--       xs <- randUniform (n - 1)
+--       return (x : xs)
 
 -- | Initializes model and regularization parameter
-initModel :: ℕ → 𝔻 → 𝔻 → 𝑂 𝔻 →  IO (Vector 𝔻, 𝔻)
-initModel m l lambda l2 = do
-  rand <- randUniform m
-  case (lambda, l2) of
-    (0, None) → return (fromList $ replicate m 0.0, l)
-    (lambda, Some l2) | lambda > 0 →
-      return ((scale (2 × l2) (vector (map (- 0.5) rand))), l + lambda×l2)
-    otherwise → return (fromList $ replicate m 0.0, 0)
+-- initModel :: ℕ → 𝔻 → 𝔻 → 𝑂 𝔻 →  IO (Vector 𝔻, 𝔻)
+-- initModel m l lambda l2 = do
+--   rand <- randUniform m
+--   case (lambda, l2) of
+--     (0, None) → return (fromList $ replicate m 0.0, l)
+--     (lambda, Some l2) | lambda > 0 →
+--       return ((scale (2.0 × l2) (vector (map (- 0.5) rand))), l + lambda×l2)
+--     otherwise → return (fromList $ replicate m 0.0, zero)
 
 -- | Runs gradient descent on an initial model and a set of minibatches
-mbgradientDescent :: ℕ → ℕ  → Model → [(Matrix 𝔻, Vector 𝔻)] → 𝔻 →  [𝔻] → Model
-mbgradientDescent 0 m theta batches rate noise = theta
-mbgradientDescent n m theta batches rate noise =
-  let x = (fst (head batches))
-      y = (snd (head batches))
-      grad = ((ngrad theta x y) + (vector (take m noise)))
-      theta' = theta - (scale rate grad)
-  in trace ("training iter " ⧺ (show n) ⧺
-               ", loss : " ⧺ (show $ loss theta x y) ⧺
-               ", noise :" ⧺ (show $ take 5 noise))
-     mbgradientDescent (n - 1) m theta' (tail batches) rate noise
+-- mbgradientDescent :: ℕ → ℕ  → Model → [(Matrix 𝔻, Vector 𝔻)] → 𝔻 →  [𝔻] → Model
+-- mbgradientDescent 0 m theta batches rate noise = theta
+-- mbgradientDescent n m theta batches rate noise =
+--   let x = (fst (head batches))
+--       y = (snd (head batches))
+--       grad = ((ngrad theta x y) + (vector (take m noise)))
+--       theta' = theta - (scale rate grad)
+--   in trace ("training iter " ⧺ (show n) ⧺
+--                ", loss : " ⧺ (show $ loss theta x y) ⧺
+--                ", noise :" ⧺ (show $ take 5 noise))
+--      mbgradientDescent (n - 1) m theta' (tail batches) rate noise
 
 {- | Runs differentially private, minibatch gradient descent on input matrices
      `x` and `y` and a set of input parameters.
 -}
-privateMBSGD :: Matrix 𝔻
-            → Vector 𝔻
-            → 𝔻
-            → 𝔻
-            → ℕ
-            → 𝔻
-            → 𝔻
-            → ℕ
-            → 𝔻
-            → 𝑂 𝔻
-            → IO Model
-privateMBSGD x y eps delta iters learningRate l batchSize lambda l2 = do
-  init <- initModel (cols x) l lambda l2
-  normalNoise <- noise (rows x) iters (snd init) eps delta
-  minibatches <- nminibatch iters batchSize x y
-  return (mbgradientDescent iters (cols x) (fst init) minibatches learningRate normalNoise)
+-- privateMBSGD :: Matrix 𝔻
+--             → Vector 𝔻
+--             → 𝔻
+--             → 𝔻
+--             → ℕ
+--             → 𝔻
+--             → 𝔻
+--             → ℕ
+--             → 𝔻
+--             → 𝑂 𝔻
+--             → IO Model
+-- privateMBSGD x y eps delta iters learningRate l batchSize lambda l2 = do
+--   init <- initModel (cols x) l lambda l2
+--   normalNoise <- noise (rows x) iters (snd init) eps delta
+--   minibatches <- nminibatch iters batchSize x y
+--   return (mbgradientDescent iters (cols x) (fst init) minibatches learningRate normalNoise)
 
 -- | Runs noiseless minibatch gradient descent.
-mbSGD :: Matrix 𝔻
-            → Vector 𝔻
-            → 𝔻
-            → 𝔻
-            → ℕ
-            → 𝔻
-            → 𝔻
-            → ℕ
-            → 𝔻
-            → 𝑂 𝔻
-            → IO Model
-mbSGD x y eps delta iters learningRate l batchSize lambda l2 = do
-  init <- initModel (cols x) l lambda l2
-  minibatches <- nminibatch iters batchSize x y
-  return (mbgradientDescent iters (cols x) (fst init) minibatches learningRate (iterate (+0.0) 0))
+-- mbSGD :: Matrix 𝔻
+--             → Vector 𝔻
+--             → 𝔻
+--             → 𝔻
+--             → ℕ
+--             → 𝔻
+--             → 𝔻
+--             → ℕ
+--             → 𝔻
+--             → 𝑂 𝔻
+--             → IO Model
+-- mbSGD x y eps delta iters learningRate l batchSize lambda l2 = do
+--   init <- initModel (cols x) l lambda l2
+--   minibatches <- nminibatch iters batchSize x y
+--   return (mbgradientDescent iters (cols x) (fst init) minibatches learningRate (iterate (+0.0) 0))
 
 -- END MINIBATCHGRADIENT --
