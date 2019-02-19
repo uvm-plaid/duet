@@ -13,9 +13,9 @@ import System.Random.MWC
 import System.FilePath
 import Data.Random.Normal
 import Text.CSV
+import Text.Parsec.Error
 
 -- import Data.Csv
--- import Text.Parsec.Error
 -- import System.Environment
 -- import Debug.Trace
 -- import Numeric.Natural
@@ -46,6 +46,23 @@ take n (x:&xs) = x :& take (n-1) xs
 iterate :: (a -> a) -> a -> [a]
 iterate f a = a : iterate f (f a)
 
+--TODO:question
+signum :: a -> a
+signum x = case (x ⊑ zero) of
+  False -> one
+  True -> case (x ≡ zero) of
+    False -> -1 × one
+    True -> zero
+
+norm_2 :: Vector 𝔻 -> ℕ
+norm_2 = root ∘ sum ∘ map (\x -> x×x)
+
+fst1 :: (a,b) -> a
+fst1 (x,_) = x
+
+snd1 :: (a,b) -> b
+snd1 (_,x) = x
+
 -- matrix ops
 
 cols :: Matrix v → ℕ
@@ -74,6 +91,7 @@ flatten = concat
 scale :: 𝔻 → Vector 𝔻 → Model
 scale r v = map (× r) v
 
+--TODO: question
 -- minimumBy :: ??
 --
 -- maximumBy :: ??
@@ -87,13 +105,13 @@ scale r v = map (× r) v
 vector :: 𝐿 𝔻 → Vector 𝔻
 vector x = x
 
-head :: 𝐿 (Vector 𝔻) → Vector 𝔻
+head :: 𝐿 a → a
 head (x:&xs) = x
-head _ = "error matrix head failed"
+head _ = error "head failed"
 
-tail :: 𝐿 (Vector 𝔻) → 𝐿 (Vector 𝔻)
+tail :: 𝐿 a → 𝐿 a
 tail (x:&xs) = xs
-tail _ = "error matrix tail failed"
+tail _ = error "tail failed"
 
 -- sumElements :: 𝔻 → 𝔻
 
@@ -108,34 +126,35 @@ fromColumns vecs =
 
 -- given list of vecs build list of colmaps, so really building rows
 buildCols :: 𝐿 (Vector t) → 𝐿 (ℕ ⇰ t)
-buildCols vecs = case (fold Nil ⧺ vecs) of
+buildCols vecs = case (fold Nil (⧺) vecs) of
   (x:&xs) → let row = (map head vecs) in
     (buildCol (iota (count row)) row) ⧺ buildCols (map tail vecs)
   Nil → empty𝐿
 
-fromLists :: 𝐿 (𝐿 𝔻) → Matrix 𝔻
+fromLists :: 𝐿 (𝐿 a) → Matrix a
 fromLists (x:&xs) = (buildCol (iota (count x)) x) ⧺ fromLists xs
 fromLists Nil = Nil
 
 -- build col map (really a row)
-buildCol :: 𝐿 ℕ → 𝐿 a → ℕ ⇰ a
-buildCol idxs vals = fold dø (⩌) (zipWith (↦) idxs vals)
+buildCol :: 𝐿 ℕ → 𝐿 a → 𝐿 (ℕ ⇰ a)
+buildCol idxs vals = single𝐿 $ fold dø (⩌) (zipWith (↦) idxs vals)
 
 -- creates a 1-column matrix from a vector
 asColumn :: Vector a → Matrix a
-asColumn vec = buildRows (iota (count vec)) (map (↦ 0) vec)
+asColumn vec = buildRows (iota (count vec)) (map ((↦) 0) vec)
 
 -- given a list of column dicts and its iota, really a matrix
 buildRows :: 𝐿 ℕ → 𝐿 (ℕ ⇰ a) → Matrix a
 buildRows rows cols = fold dø (⩌) (zipWith (↦) rows cols)
 
 -- Creates a list of vectors from the columns of a matrix
-toColumns :: Matrix t → [Vector t]
+toColumns :: Matrix t → 𝐿 (Vector t)
 toColumns m = let colLists = (values m) in
   (mapLookup (iota (count colLists)) colLists)
 
+-- TODO: question
 mapLookup :: 𝐿 ℕ →  𝐿 (ℕ ⇰ a) → 𝐿 (𝐿 a)
-mapLookup (i:&idxs) cols = (map (⋕? i) cols) ⧺ mapLookup idxs cols
+mapLookup (i:&idxs) cols = (map ((⋕?) i) cols) ⧺ mapLookup idxs cols
 mapLookup Nil cols = Nil
 
 -- extract rows in N
@@ -149,6 +168,10 @@ toList x = x
 -- extracts the rows of a matrix as a list of vectors
 toRows :: Matrix 𝔻 → 𝐿 (Vector 𝔻)
 toRows m = (map values (values m))
+
+-- creates a 1-row matrix from a vector
+asRow :: Vector a -> Matrix a
+asRow vec = 0 ↦ (buildCol (iota (count vec)) vec)
 
 -- | Returns minimum elementParse
 minElem ::  Ord b => [(a, b)] → a
@@ -187,7 +210,7 @@ seval _ (ℕˢSE n)       = NatV n
 
 -- variables
 seval env (VarSE x) | x ∈ env  = env ⋕! x
-                    | otherwise         = error $ "Unknown variable: " ⧺ (chars x) ⧺ " in environment with bound vars " ⧺ (chars $ sho $ keys env)
+                    | otherwise         = error $ "Unknown variable: " ⧺ (chars x) ⧺ " in environment with bound vars " ⧺ (chars $ show $ keys env)
 
 -- arithmetic
 seval env (PlusSE e₁ e₂) =
@@ -226,7 +249,7 @@ seval env (MColsSE e) =
 seval env (IdxSE e) =
   case seval env e of
     (NatV d) →
-      let posMat ∷ Matrix 𝔻 = ident $ int d
+      let posMat ∷ Matrix 𝔻 = ident d
           negMat ∷ Matrix 𝔻 = scale (-1.0) posMat
       in MatrixV (posMat === negMat)
 
@@ -241,10 +264,10 @@ seval env (MClipSE norm e) =
     (l, _) → error $ "Invalid norm for clip: " ⧺ (show l)
 
 -- gradient
-seval env (MLipGradSE LR _ e₁ e₂ e3) =
-  case (seval env e₁, seval env e₂, seval env e3) of
+seval env (MLipGradSE LR e₁ e₂ e₃) =
+  case (seval env e₁, seval env e₂, seval env e₃) of
     (MatrixV θ, MatrixV xs, MatrixV ys) →
-      case (rows θ == 1 && rows ys == 1) of
+      case ((rows θ ≡ 1) ⩓ (rows ys ≡ 1)) of
         True →
           let θ'  ∷ Vector 𝔻 = flatten θ
               ys' ∷ Vector 𝔻 = flatten ys
@@ -288,6 +311,7 @@ peval env (AppPE _ f vars) =
   case seval env f of
     (PFunV args body env') →
       let vs    ∷ [Val] = map ((⋕!) env) vars
+          --TODO: question
           env'' ∷ Env p = foldr (\(var, val) → (⩌ (var ↦ val))) env' (zip args vs)
       in peval env'' body
 
@@ -298,7 +322,7 @@ peval env (SamplePE size xs ys x y e) =
       sampleHelper n v1 v2 x y e env
 
 -- gaussian mechanism for real numbers
-peval env (GaussPE r ε δ vs e) =
+peval env (GaussPE r (EDGaussParams ε δ) vs e) =
   case (seval env r, seval env ε, seval env  δ, seval env e) of
     (RealV r', RealV ε', RealV δ', RealV v) → do
       r ← gaussianNoise 0 (r' × (root $ 2 × (log $ 1.25/δ')) / ε')
@@ -306,7 +330,7 @@ peval env (GaussPE r ε δ vs e) =
     (a, b, c, d) → error $ "No pattern for: " ⧺ (show (a,b,c,d))
 
 -- gaussian mechanism for matrices
-peval env (MGaussPE r ε δ vs e) =
+peval env (MGaussPE r (EDGaussParams ε δ) vs e) =
   case (seval env r, seval env ε, seval env  δ, seval env e) of
     (RealV r', RealV ε', RealV δ', MatrixV mat) → do
       let σ = (r' × (root $ 2 × (log $ 1.25/δ')) / ε')
@@ -315,7 +339,7 @@ peval env (MGaussPE r ε δ vs e) =
     (a, b, c, d) → error $ "No pattern for: " ⧺ (show (a,b,c,d))
 
 -- evaluate finite iteration
-peval env (LoopPE δ' k init xs x₁ x₂ e) =
+peval env (LoopPE k init xs x₁ x₂ e) =
   case (seval env k, seval env init) of
     (NatV k', initV) →
       iter₁ k' initV x₁ x₂ 0 e env
@@ -325,6 +349,7 @@ peval env (ReturnPE e) =
   return $ seval env e
 
 -- exponential mechanism
+-- TODO: question
 peval env (ExponentialPE s ε xs x body) =
   case (seval env s, seval env ε, seval env xs) of
     (RealV s', RealV ε', MatrixV xs') →
@@ -360,7 +385,7 @@ emptyEnv = dø
 readDataSet ∷ 𝕊 → IO (Matrix 𝔻, Vector 𝔻)
 readDataSet fileName = do
     Inr(mat) ← parseCSVtoMatrix fileName
-    let dataCols ∷ [Vector 𝔻] = toColumns mat
+    let dataCols ∷ 𝐿 (Vector 𝔻) = toColumns mat
         xs ∷ Matrix 𝔻 = fromColumns $ tail dataCols
         ys ∷ Vector 𝔻 = head dataCols
     return $ (xs, ys)
@@ -368,7 +393,7 @@ readDataSet fileName = do
 -- | Place a dataset into the environment
 insertDataSet ∷ Env p → (𝕏, 𝕏) → (Matrix 𝔻, Vector 𝔻) → Env p
 insertDataSet env (x, y) (xs, ys) =
-  ((x ↦ (MatrixV xs)) ⩌ ((y ↦ (MatrixV $ asRow ys)) ⩌ env))
+  ((x ↦ (MatrixV (mapp RealV xs))) ⩌ ((y ↦ (MatrixV $ asRow (map RealV ys))) ⩌ env))
 
 -- | Samples a normal distribution and returns a single value
 gaussianNoise ∷ 𝔻 → 𝔻 → IO 𝔻
@@ -378,7 +403,7 @@ gaussianNoise c v = normalIO'(c, v)
 sampleHelper :: ℕ → Matrix 𝔻 → Matrix  𝔻 → 𝕏 → 𝕏 → PExp p → Env p → IO (Val p)
 sampleHelper n xs ys x y e env = do
   batch <- minibatch (int n) xs (flatten ys)
-  peval (insertDataSet env (x, y) ((fst batch), (snd batch))) e
+  peval (insertDataSet env (x, y) ((fst1 batch), (snd1 batch))) e
 
 -- GRADIENT --
 
@@ -394,6 +419,7 @@ loss θ x y =
   let θ'       ∷ Matrix 𝔻 = asColumn θ
       y'       ∷ Matrix 𝔻 = asColumn y
       exponent ∷ Matrix 𝔻 = -((x <> θ') × y')
+      -- TODO: what are sumElements and exp?
   in {-(sumElements -} (log (1.0 + (exp exponent))) / (dbl₁ $ rows x)
 
 -- | Averages LR gradient over the whole matrix of examples
@@ -401,7 +427,7 @@ ngrad ∷ Model → Matrix 𝔻 → Vector 𝔻 → Vector 𝔻
 ngrad θ x y =
   let θ'       ∷ Matrix 𝔻 = asColumn θ
       y'       ∷ Matrix 𝔻 = asColumn y
-      exponent ∷ Matrix 𝔻 = (x <> θ') × y'
+      exponent ∷ Matrix 𝔻 = (x <> θ') × y' --TODO: question
       scaled   ∷ Matrix 𝔻 = y' × (1.0/(1.0+exp(exponent)))
       gradSum  ∷ Matrix 𝔻 = (tr x) <> scaled
       avgGrad  ∷ Vector 𝔻 = flatten $ scale (1.0/(dbl $ rows x)) gradSum
@@ -422,7 +448,7 @@ readStr s = case (read𝕊 s) of
   _ → 0.0
 
 -- | Reads a CSV into a matrix
-parseCSVtoMatrix ∷ FilePath → IO (ParserError ∨ (Matrix 𝔻))
+parseCSVtoMatrix ∷ FilePath → IO (ParseError ∨ (Matrix 𝔻))
 parseCSVtoMatrix file = do
   Inr(csv) ← parseCSVFromFile file
   let csvList ∷ 𝐿 (𝐿 𝔻) = map (map readStr) csv
