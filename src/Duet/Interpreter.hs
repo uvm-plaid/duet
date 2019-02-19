@@ -21,9 +21,17 @@ import Text.CSV
 -- import Numeric.Natural
 -- import Control.Exception
 
-type Env p = 𝕏 ⇰ Val p
+type Env = 𝕏 ⇰ Val
 type Vector v = 𝐿 v
 type Matrix v = (ℕ ⇰ (ℕ ⇰ v))
+
+-- TODO: eventually add this to UVMHS
+minElem ::  Ord b => (a → b) → 𝐿 a → a
+minElem f Nil = error "minElem on empty list"
+minElem f (x:&xs) = fold x (\ x₁ x₂ → case f x₁ < f x₂ of { True → x₁ ; False → x₂ }) xs
+
+minElemPairs :: Ord b => 𝐿 (a ∧ b) → a ∧ b
+minElemPairs = minElem snd
 
 -- helpers
 
@@ -135,7 +143,7 @@ toColumns m = let colLists = (values m) in
   (mapLookup (iota (count colLists)) colLists)
 
 mapLookup :: 𝐿 ℕ →  𝐿 (ℕ ⇰ a) → 𝐿 (𝐿 a)
-mapLookup (i:&idxs) cols = (map (⋕? i) cols) ⧺ mapLookup idxs cols
+mapLookup (i:&idxs) cols = (map (⋕! i) cols) ⧺ mapLookup idxs cols
 mapLookup Nil cols = Nil
 
 -- extract rows in N
@@ -150,20 +158,25 @@ toList x = x
 toRows :: Matrix 𝔻 → 𝐿 (Vector 𝔻)
 toRows m = (map values (values m))
 
--- | Returns minimum elementParse
-minElem ::  Ord b => [(a, b)] → a
--- TODO: ?
-minElem = fst ∘ minimumBy (comparing snd {-sndParse-})
-
 -- | Defining Val algebraic data type
-data Val (p ∷ PRIV) =
+data Val =
   NatV ℕ
   | RealV 𝔻
-  | PairV (Val p) (Val p)
-  | SFunV 𝕏 (SExp p) (Env p)
-  | PFunV (𝐿 𝕏) (PExp p) (Env p)
-  | MatrixV (Matrix (Val p))
-  deriving (Eq, Show)
+  | PairV Val Val
+  | SFunV 𝕏 (Ex SExp) Env  -- See UVMHS.Core.Init for definition of Ex
+  | PFunV (𝐿 𝕏) (Ex PExp) Env
+  | MatrixV (Matrix Val)
+
+deriving instance Eq Val
+deriving instance Show Val
+
+-- data Val where
+--   NatV ∷ ℕ → Val
+--   RealV ∷ 𝔻 → Val
+--   PairV ∷ Val → Val → Val
+--   SFunV ∷ 𝕏 → SExp p → Env → Val
+--   PFunV ∷ 𝐿 𝕏 → PExp p → Env → Val
+--   MatrixV ∷ Matrix Val → Val
 
 -- | Converts and integer to a 𝔻
 intDouble ∷ ℕ → 𝔻
@@ -325,7 +338,7 @@ peval env (ReturnPE e) =
   return $ seval env e
 
 -- exponential mechanism
-peval env (ExponentialPE s ε xs x body) =
+peval env (ExponentialPE s ε xs _ x body) =
   case (seval env s, seval env ε, seval env xs) of
     (RealV s', RealV ε', MatrixV xs') →
       let xs''     = map (\row' → fromLists [row']) $ toLists xs'
@@ -440,6 +453,12 @@ gradientDescent n θ x y η = let θ' = θ - (scale η $ ngrad θ x y)
 -- | Makes a single prediction
 predict ∷ Model → (Vector 𝔻, 𝔻) → 𝔻
 predict θ (x, y) = signum $ x <.> θ
+
+signum ∷ (Ord a,Plus a,Minus a) ⇒ a → a
+signum x = case compare x zero of
+  LT → neg one
+  EQ → zero
+  GT → one
 
 isCorrect ∷ (𝔻, 𝔻) → (ℕ, ℕ)
 isCorrect (prediction, actual) | prediction == actual = (1, 0)
