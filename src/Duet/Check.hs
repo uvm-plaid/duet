@@ -480,7 +480,6 @@ inferSens eA = case extract eA of
         σ₂ :* τ₂ ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ₁') ⩌ γ) $ inferSens e₂
         let (ς :* σ₂') = ifNone (zero :* σ₂) $ dview x σ₂
         tell $ ς ⨵ σ₁
-        -- TODO: what is ι?
         tell $ ι (ηₘ × r) ⨵ σ₂'
         return $ 𝕄T ℓ UClip (RexpRT ηₘ) (RexpME r τ₂)
       _  → undefined -- TypeSource Error

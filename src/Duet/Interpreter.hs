@@ -268,7 +268,11 @@ seval _ (ℕˢSE n)       = NatV n
 -- variables
 seval env (VarSE x) = env ⋕! x
 -- | x ∈ env
-                    -- | otherwise = error $ "Unknown variable: " ⧺ (show𝕊 x) ⧺ " in environment with bound vars " ⧺ (show𝕊 $ keys env)
+-- | otherwise = error $ "Unknown variable: " ⧺ (show𝕊 x) ⧺ " in environment with bound vars " ⧺ (show𝕊 $ keys env)
+
+seval env (LetSE x e₁ e₂) = do
+  let v₁ = seval env (extract e₁) in
+    seval ((x ↦ v₁) ⩌ env) (extract e₂)
 
 -- arithmetic
 seval env (PlusSE e₁ e₂) =
@@ -345,6 +349,21 @@ seval env (MCreateSE l e₁ e₂ i j e₃) =
           m₁ = fromRows m
       in MatrixV (mapp RealV m₁)
       -- MatrixV $ (><) (int v₁) (int v₂) $ replicate (int $ v₁ × v₂) 0.0
+
+-- matrix maps
+seval env (MMapSE e₁ x e₂) =
+  case (seval env (extract e₁)) of
+    (MatrixV v₁) →
+      MatrixV $ mapp (\a -> (seval ((x ↦ a) ⩌ env) (extract e₂))) v₁
+
+seval env (MMap2SE e₁ e₂ x₁ x₂ e₃) =
+  case (seval env (extract e₁),seval env (extract e₂)) of
+    (MatrixV v₁, MatrixV v₂) →
+      let fn = zipWith (zipWith (\a b -> (seval ((x₂ ↦ b) ⩌ ((x₁ ↦ a) ⩌ env)) (extract e₂))))
+          v₁' = toRows v₁
+          v₂' = toRows v₂
+          c = fn v₁' v₂'
+      in MatrixV $ fromRows c
 
 -- functions and application
 seval env (PFunSE _ args body) =
