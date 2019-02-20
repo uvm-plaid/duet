@@ -364,7 +364,7 @@ inferSens eA = case extract eA of
   LogSE e → do
     σ :* τ ← hijack $ inferSens e
     case τ of
-      ℝˢT η → do tell σ ; return $ ℝˢT $ rootRNF η
+      ℝˢT η → do tell σ ; return $ ℝˢT $ logRNF η
       ℝT → do tell $ top ⨵ σ ; return ℝT
       𝔻T ℝT → return $ 𝔻T ℝT
       _ → undefined -- TypeError
@@ -417,7 +417,7 @@ inferSens eA = case extract eA of
     τ₂ ← inferSens e₂
     τ₃ ← inferSens e₃
     case (τ₁,τ₂,τ₃) of
-      (𝕄T _ℓ _c (RexpRT ηₘ) (RexpME r τ),𝕀T ηₘ',𝕀T ηₙ') | {- (ηₘ' ≤ ηₘ) ⩓ -} (ηₙ' ≤ r) → return τ
+      (𝕄T _ℓ _c (RexpRT ηₘ) (RexpME r τ),𝕀T ηₘ',𝕀T ηₙ') | (ηₘ' ≤ ηₘ) ⩓ (ηₙ' ≤ r) → return τ
       -- dataframe etc.
       (𝕄T _ℓ _c (RexpRT _ηₘ) (ConsME τ m), _ηₘ', ℕˢT (NatRNF ηₙ')) → return $ getConsMAt (ConsME τ m) ηₙ'
       (𝕄T _ℓ _c StarRT (RexpME r τ),𝕀T _ηₘ',𝕀T ηₙ') | (ηₙ' ≤ r) → return τ
@@ -646,7 +646,7 @@ inferSens eA = case extract eA of
   IdxSE e → do
     σ :* τ ← hijack $ inferSens e
     case τ of
-      ℕˢT η → do tell σ ; return $ 𝕀T $ rootRNF η
+      ℕˢT η → do tell σ ; return $ 𝕀T η
       _ → undefined -- TypeError
   BagCountSE e → do
     τ ← inferSens e
