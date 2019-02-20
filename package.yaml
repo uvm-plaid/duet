@@ -59,3 +59,4 @@ executable:
     - normaldistribution >= 1.1.0.3
     - csv
     - parsec
+    - MissingH

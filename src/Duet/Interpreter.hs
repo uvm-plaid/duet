@@ -14,8 +14,10 @@ import System.FilePath
 import Data.Random.Normal
 import Text.CSV
 import Text.Parsec.Error
+import Text.ParserCombinators.Parsec
+import Data.Either
+import Data.CSV
 
--- import Data.Csv
 -- import System.Environment
 -- import Debug.Trace
 -- import Numeric.Natural
@@ -463,13 +465,27 @@ emptyEnv ∷ Env
 emptyEnv = dø
 
 -- | Read in a dataset and return xs (features) and ys (labels)
--- readDataSet ∷ FilePath → IO (Matrix 𝔻, Vector 𝔻)
--- readDataSet fileName = do
---     Inr(mat) ← parseCSVtoMatrix fileName
---     let dataCols ∷ 𝐿 (Vector 𝔻) = toColumns mat
---         xs ∷ Matrix 𝔻 = fromColumns $ tail dataCols
---         ys ∷ Vector 𝔻 = head dataCols
---     return $ (xs, ys)
+readDataSet ∷ FilePath → IO (Matrix 𝔻, Vector 𝔻)
+readDataSet fileName = do
+    Inr(mat) ← parseCSVtoMatrix fileName
+    let dataCols ∷ 𝐿 (Vector 𝔻) = toColumns mat
+        xs ∷ Matrix 𝔻 = fromColumns $ tail dataCols
+        ys ∷ Vector 𝔻 = head dataCols
+    return $ (xs, ys)
+
+-- | Convert a string into a double
+readStr ∷ 𝕊 → 𝔻
+readStr s = case (read𝕊 s) of
+  [(d, _)] → d
+  _ → 0.0
+
+-- | Reads a CSV into a matrix
+parseCSVtoMatrix ∷ FilePath → IO (ParseError ∨ (Matrix 𝔻))
+parseCSVtoMatrix file = do
+  Right csv ← parseFromFile csvFile file
+  let csvList ∷ 𝐿 (𝐿 𝔻) = (mapp readStr ∘ show𝕊) csv
+      matrix ∷ Matrix 𝔻 = fromLists csvList
+  return $ return matrix
 
 -- | Place a dataset into the environment
 insertDataSet ∷ Env → (𝕏, 𝕏) → (Matrix 𝔻, Vector 𝔻) → Env
@@ -523,20 +539,6 @@ ngrad θ x y =
 --   | otherwise =  v
 --   where
 --     r = norm_2 v
-
--- | Convert a string into a double
--- readStr ∷ 𝕊 → 𝔻
--- readStr s = case (read𝕊 s) of
---   [(d, _)] → d
---   _ → 0.0
-
--- | Reads a CSV into a matrix
--- parseCSVtoMatrix ∷ FilePath → IO (ParseError ∨ (Matrix 𝔻))
--- parseCSVtoMatrix file = do
---   Inr(csv) ← parseCSVFromFile file
---   let csvList ∷ 𝐿 (𝐿 𝔻) = map (map readStr) csv
---       matrix ∷ Matrix 𝔻 = fromLists csvList
---   return $ return matrix
 
 -- | Performs gradient descent with a fixed learning rate
 -- gradientDescent ∷ ℕ → Model → Matrix 𝔻 → Vector 𝔻 → 𝔻 → Model
