@@ -33,6 +33,7 @@ tokKeywords = list
   ,"box","unbox","boxed"
   ,"if","then","else"
   ,"true","false"
+  ,"CSVtoMatrix"
   ]
 
 tokPunctuation ∷ 𝐿 𝕊
@@ -414,6 +415,14 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
       e₃ ← parSExp p
       parLit "}"
       return $ MCreateSE ℓ e₁ e₂ x₁ x₂ e₃
+  , mixF $ MixFTerminal $ do
+    parLit "CSVtoMatrix"
+    parLit "("
+    f ← parName
+    parLit ","
+    τ ← parTypeSource p
+    parLit ")"
+    return $ CSVtoMatrixSE f τ
   , mixF $ MixFPostfix 10 $ do
       parLit "#"
       parLit "["
@@ -569,6 +578,14 @@ parPExp p = pWithContext "pexp" $ tries
   , do parLit "return"
        e ← parSExp p
        return $ ReturnPE e
+  , do e ← parSExp p
+       parLit "@"
+       parLit "["
+       ks ← pManySepBy (parLit ",") $ parRExp
+       parLit "."
+       xs ← pManySepBy (parLit ",") $ parSExp p
+       parLit "]"
+       return $ AppPE e ks xs
   , do x ← parVar
        parLit "←"
        e₁ ← parPExp p

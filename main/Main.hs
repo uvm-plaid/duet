@@ -44,9 +44,9 @@ main = do
       ts ← tokenizeIO tokDuet $ stream $ list $ tokens s
       do pprint $ ppHeader "PARSING" ; flushOut
       unpack_C (parseMode fn) $ \ mode → do
-        e ← parseIO (pSkip tokSkip $ pFinal $ parSExp mode) $ stream ts
+        e ← parseIO (pSkip tokSkip $ pFinal $ parPExp mode) $ stream ts
         do pprint $ ppHeader "RUNNING" ; flushOut
-        let r = seval dø (extract e)
+        r ← peval dø (extract e)
         do pprint $ ppHeader "DONE" ; flushOut
         do pprint r ; flushOut
     _ → do

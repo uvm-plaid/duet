@@ -408,6 +408,10 @@ inferSens eA = case extract eA of
         tell $ ι (ηₘ × ηₙ) ⨵ σ₃'
         return $ 𝕄T ℓ UClip (RexpRT ηₘ) (RexpME ηₙ τ₃)
       _ → undefined -- TypeError
+  CSVtoMatrixSE f τ → do
+    case map normalizeRExp (extract τ) of
+      (𝕄T _ℓ _c StarRT (RexpME r τ₁')) → return (𝕄T _ℓ _c StarRT (RexpME r τ₁'))
+      _ → error $ "CSVtoMatrixSE error: " ⧺ (pprender $ (f :* τ)) -- TypeError
   MIndexSE e₁ e₂ e₃ → do
     τ₁ ← inferSens e₁
     τ₂ ← inferSens e₂
@@ -781,6 +785,20 @@ inferPriv eA = case extract eA of
     σ₂ :* τ₂ ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ₁) ⩌ γ) $ inferPriv e₂
     tell $ delete x σ₂
     return τ₂
+  AppPE e ηs as → do
+    τ ← pmFromSM $ inferSens e
+    ηks ← pmFromSM $ mapM (inferKind ∘ extract) ηs
+    aστs ← pmFromSM $ mapM (hijack ∘ inferSens) as
+    let aσs = map fst aστs
+    let aτs = map snd aστs
+    case τ of
+      ((ακs :* (PArgs xτs)) :⊸⋆: τ₁) | joins (values (joins aσs)) ⊑ ι 1 → do
+        let τs = map fst xτs
+        let ks = map snd ακs
+        case (ηks ≡ ks, aτs ≡ τs) of
+          (True,True) → return τ₁
+          _ → error $ "AppPE argument kind/type error" ⧺ pprender (ηks :* ks, aτs :* τs)
+      _ → error $ "AppPE expected a function instead of" ⧺ pprender τ
   IfPE e₁ e₂ e₃ → do
     τ₁ ← pmFromSM $ inferSens e₁
     σ₂ :* τ₂ ← hijack $ inferPriv e₂

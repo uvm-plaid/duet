@@ -14,7 +14,7 @@ import System.FilePath
 import Data.Random.Normal
 import Text.CSV
 import Text.Parsec.Error
-import Text.ParserCombinators.Parsec
+import Text.ParserCombinators.Parsec hiding (count)
 import Data.Either
 import Data.CSV
 
@@ -48,21 +48,21 @@ zipWith _ Nil _ = Nil
 zipWith _ _ Nil = Nil
 zipWith f (x:&xs) (y:&ys) = f x y :& zipWith f xs ys
 
-take :: ℕ -> 𝐿 𝔻 -> 𝐿 𝔻
+take :: ℕ → 𝐿 𝔻 → 𝐿 𝔻
 take 0 _ = Nil
 take _ Nil= Nil
 take n (x:&xs) = x :& take (n-1) xs
 
-iterate :: (a -> a) -> a -> [a]
+iterate :: (a → a) → a → [a]
 iterate f a = a : iterate f (f a)
 
-norm_2 :: Vector 𝔻 -> 𝔻
-norm_2 = root ∘ sum ∘ map (\x -> x×x)
+norm_2 :: Vector 𝔻 → 𝔻
+norm_2 = root ∘ sum ∘ map (\x → x×x)
 
-fst1 :: (a,b) -> a
+fst1 :: (a,b) → a
 fst1 (x,_) = x
 
-snd1 :: (a,b) -> b
+snd1 :: (a,b) → b
 snd1 (_,x) = x
 
 -- matrix ops
@@ -91,14 +91,14 @@ transpose m = (map head m) :& transpose (map tail m)
       c = a₁ ⧺ b₁
   in fromRows c
 
-normalize :: Vector 𝔻 -> 𝐿 𝔻
+normalize :: Vector 𝔻 → 𝐿 𝔻
 normalize vec = map (/ (root $ sum (map (^2.0) vec))) vec
 
-ident :: ℕ -> Matrix 𝔻
+ident :: ℕ → Matrix 𝔻
 ident n = let m = [ [boolCheck $ i ≡ j | i <- list $ upTo n] | j <- list $ upTo n] in
   fromRows m
 
-boolCheck :: 𝔹 -> 𝔻
+boolCheck :: 𝔹 → 𝔻
 boolCheck True = 1.0
 boolCheck False = 0.0
 
@@ -173,7 +173,7 @@ toColumns m = let colLists = (values m) in
   (mapLookup (iota (count colLists)) (list colLists))
 
 mapLookup :: 𝐿 ℕ →  𝐿 (ℕ ⇰ a) → 𝐿 (𝐿 a)
-mapLookup (i:&idxs) cols = single𝐿 (map (\x -> x ⋕! i) cols) ⧺ mapLookup idxs cols
+mapLookup (i:&idxs) cols = single𝐿 (map (\x → x ⋕! i) cols) ⧺ mapLookup idxs cols
 mapLookup Nil cols = Nil
 
 -- extract rows in N
@@ -190,14 +190,14 @@ toRows m =  list $ values $ map (list ∘ values) m
 
 toLists = toRows
 
-size :: Matrix Val -> (ℕ, ℕ)
+size :: Matrix Val → (ℕ, ℕ)
 size m = (dsize m, (dsize (head (list (values m)))))
 
 -- creates a 1-row matrix from a vector
-asRow :: Vector a -> Matrix a
+asRow :: Vector a → Matrix a
 asRow vec = 0 ↦ (fold dø (⩌) (buildCol (iota (count vec)) vec))
 
-(+++) :: (Plus a) => Matrix a -> Matrix a -> Matrix a
+(+++) :: (Plus a) => Matrix a → Matrix a → Matrix a
 (+++) a b =
   let a₁ = toRows a
       b₁ = toRows b
@@ -205,7 +205,7 @@ asRow vec = 0 ↦ (fold dø (⩌) (buildCol (iota (count vec)) vec))
       c = add a₁ b₁
   in fromRows c
 
-(-/) :: (Minus a) => Matrix a -> Matrix a -> Matrix a
+(-/) :: (Minus a) => Matrix a → Matrix a → Matrix a
 (-/) a b =
   let a₁ = toRows a
       b₁ = toRows b
@@ -213,10 +213,10 @@ asRow vec = 0 ↦ (fold dø (⩌) (buildCol (iota (count vec)) vec))
       c = sub a₁ b₁
   in fromRows c
 
-urv :: Val -> 𝔻
+urv :: Val → 𝔻
 urv x = case x of
-  RealV d -> d
-  _ -> error "unpack real val failed"
+  RealV d → d
+  _ → error "unpack real val failed"
 
 -- | Defining Val algebraic data type
 -- data Val =
@@ -356,12 +356,12 @@ seval env (MCreateSE l e₁ e₂ i j e₃) =
 seval env (MMapSE e₁ x e₂) =
   case (seval env (extract e₁)) of
     (MatrixV v₁) →
-      MatrixV $ mapp (\a -> (seval ((x ↦ a) ⩌ env) (extract e₂))) v₁
+      MatrixV $ mapp (\a → (seval ((x ↦ a) ⩌ env) (extract e₂))) v₁
 
 seval env (MMap2SE e₁ e₂ x₁ x₂ e₃) =
   case (seval env (extract e₁),seval env (extract e₂)) of
     (MatrixV v₁, MatrixV v₂) →
-      let fn = zipWith (zipWith (\a b -> (seval ((x₂ ↦ b) ⩌ ((x₁ ↦ a) ⩌ env)) (extract e₂))))
+      let fn = zipWith (zipWith (\a b → (seval ((x₂ ↦ b) ⩌ ((x₁ ↦ a) ⩌ env)) (extract e₂))))
           v₁' = toRows v₁
           v₂' = toRows v₂
           c = fn v₁' v₂'
@@ -392,10 +392,10 @@ peval env (BindPE x e₁ e₂) = do
   v₂ ← peval ((x ↦ v₁) ⩌ env) (extract e₂)
   return v₂
 
-peval env (AppPE _ f vars) =
+peval env (AppPE f _ as) =
   case seval env (extract f) of
     (PFunV args body env') →
-      let vs    ∷ 𝐿 Val = map ((⋕!) env) vars
+      let vs    ∷ 𝐿 Val = map ((seval env) ∘ extract) as
           env'' ∷ Env = fold env' (\(var :* val) → (⩌ (var ↦ val))) (zip args vs)
       in peval env'' body
 
@@ -473,17 +473,11 @@ readDataSet fileName = do
         ys ∷ Vector 𝔻 = head dataCols
     return $ (xs, ys)
 
--- | Convert a string into a double
-readStr ∷ 𝕊 → 𝔻
-readStr s = case (read𝕊 s) of
-  [(d, _)] → d
-  _ → 0.0
-
 -- | Reads a CSV into a matrix
 parseCSVtoMatrix ∷ FilePath → IO (ParseError ∨ (Matrix 𝔻))
 parseCSVtoMatrix file = do
   Right csv ← parseFromFile csvFile file
-  let csvList ∷ 𝐿 (𝐿 𝔻) = (mapp readStr ∘ show𝕊) csv
+  let csvList ∷ 𝐿 (𝐿 𝔻) = list $ map list $ mapp (read𝕊 ∘ show𝕊) csv
       matrix ∷ Matrix 𝔻 = fromLists csvList
   return $ return matrix
 
@@ -516,9 +510,9 @@ type Model = Vector 𝔻
 --   let θ'       ∷ Matrix 𝔻 = asColumn θ
 --       y'       ∷ Matrix 𝔻 = asColumn y
 --       exponent ∷ Matrix 𝔻 = -((x <> θ') × y')
---   in (sumElements (mapp (\x -> (log (exp(x)+1.0))) exponent)) / (dbl $ rows x)
+--   in (sumElements (mapp (\x → (log (exp(x)+1.0))) exponent)) / (dbl $ rows x)
 --
--- sumElements :: Matrix 𝔻 -> 𝔻
+-- sumElements :: Matrix 𝔻 → 𝔻
 -- sumElements m = mapp sum m
 
 -- | Averages LR gradient over the whole matrix of examples
@@ -527,7 +521,7 @@ ngrad θ x y =
   let θ'       ∷ Matrix 𝔻 = asColumn θ
       y'       ∷ Matrix 𝔻 = asColumn y
       exponent ∷ Matrix 𝔻 = (x <> θ') × y'
-      scaled   ∷ Matrix 𝔻 = y' × (mapp (\x -> 1.0/(exp(x)+1.0) ) exponent)
+      scaled   ∷ Matrix 𝔻 = y' × (mapp (\x → 1.0/(exp(x)+1.0) ) exponent)
       gradSum  ∷ Matrix 𝔻 = (tr x) <> scaled
       avgGrad  ∷ Vector 𝔻 = flatten $ mscale (1.0/(dbl $ rows x)) gradSum
   in (scale (neg one) avgGrad)
