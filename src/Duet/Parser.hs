@@ -415,14 +415,14 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
       e₃ ← parSExp p
       parLit "}"
       return $ MCreateSE ℓ e₁ e₂ x₁ x₂ e₃
-  , mixF $ MixFTerminal $ do
-    parLit "CSVtoMatrix"
-    parLit "("
-    f ← parName
-    parLit ","
-    τ ← parTypeSource p
-    parLit ")"
-    return $ CSVtoMatrixSE f τ
+  -- , mixF $ MixFTerminal $ do
+  --   parLit "CSVtoMatrix"
+  --   parLit "("
+  --   f ← parName
+  --   parLit ","
+  --   τ ← parTypeSource p
+  --   parLit ")"
+  --   return $ CSVtoMatrixSE f τ
   , mixF $ MixFPostfix 10 $ do
       parLit "#"
       parLit "["

@@ -380,6 +380,11 @@ seval env (AppSE e₁ e₂) =
       let env'' = (x ↦ (seval env (extract e₂))) ⩌ env'
       in seval env'' body
 
+seval env (CSVtoMatrixSE s _) =
+  let csvList ∷ 𝐿 (𝐿 𝔻) = mapp read𝕊 s
+      m ∷ Matrix 𝔻 = fromLists csvList
+  in MatrixV $ mapp RealV m
+
 -- error
 seval env e = error $ "Unknown expression: " ⧺ (show𝕊 e)
 

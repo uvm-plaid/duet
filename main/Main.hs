@@ -48,7 +48,22 @@ main = do
         do pprint $ ppHeader "RUNNING" ; flushOut
         r ← peval dø (extract e)
         do pprint $ ppHeader "DONE" ; flushOut
+        ys ← read "/Users/chike/duet-hs/data_short/ffys.csv"
+        xs ← read "/Users/chike/duet-hs/data_short/ffxs.csv"
+
+        let ysms = map (splitOn𝕊 ",") $ filter (\x → not (isEmpty𝕊 x)) $ splitOn𝕊 "\r\n" ys
+        let xsms = map (splitOn𝕊 ",") $ filter (\x → not (isEmpty𝕊 x)) $ splitOn𝕊 "\r\n" xs
+        let ks = (50 :* 50 :* 0.1 :* 10 :* 1.0 :* 1.0 :* Nil)
+        let xsm = CSVtoMatrixSE (list xsms) ()
+        let ysm = CSVtoMatrixSE (list ysms) ()
+        let as = (xsm :* ysm :* 0.1 :* 10 :* 1.0 :* 1.0 :* 2.0 :* Nil)
+
+        -- r' ← peval dø AppPE $ e ks as
+
         do pprint r ; flushOut
+
+        -- do pprint r' ; flushOut
+
     _ → do
       pprint $ ppHeader "USAGE"
       out $ "duet parse <file>"

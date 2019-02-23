@@ -287,7 +287,7 @@ data SExp (p ∷ PRIV) where
   MMapSE ∷ SExpSource p → 𝕏  → SExpSource p → SExp p
   MMap2SE ∷ SExpSource p → SExpSource p → 𝕏 → 𝕏 → SExpSource p → SExp p
   JoinSE ∷ SExpSource p → SExpSource p → SExpSource p → SExpSource p → SExp p
-  CSVtoMatrixSE :: 𝕊 → TypeSource RExp → SExp p
+  CSVtoMatrixSE :: 𝐿 (𝐿 𝕊) → TypeSource RExp → SExp p
   BMapSE ∷ SExpSource p → 𝕏  → SExpSource p → SExp p
   BMap2SE ∷ SExpSource p → SExpSource p → 𝕏 → 𝕏 → SExpSource p → SExp p
   -- | MMapRowSE (SExpSource p) 𝕏 (SExpSource p)
