@@ -361,7 +361,7 @@ seval env (MMapSE e₁ x e₂) =
 seval env (MMap2SE e₁ e₂ x₁ x₂ e₃) =
   case (seval env (extract e₁),seval env (extract e₂)) of
     (MatrixV v₁, MatrixV v₂) →
-      let fn = zipWith (zipWith (\a b → (seval ((x₂ ↦ b) ⩌ ((x₁ ↦ a) ⩌ env)) (extract e₂))))
+      let fn = zipWith (zipWith (\a b → (seval ((x₂ ↦ b) ⩌ ((x₁ ↦ a) ⩌ env)) (extract e₃))))
           v₁' = toRows v₁
           v₂' = toRows v₂
           c = fn v₁' v₂'
