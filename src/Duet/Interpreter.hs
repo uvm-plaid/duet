@@ -216,7 +216,7 @@ asRow vec = 0 ↦ (fold dø (⩌) (buildCol (iota (count vec)) vec))
 urv :: Val → 𝔻
 urv x = case x of
   RealV d → d
-  _ → error "unpack real val failed"
+  _ → error $ "unpack real val failed" ⧺ pprender x
 
 -- | Defining Val algebraic data type
 -- data Val =
@@ -333,7 +333,7 @@ seval env (MClipSE norm e) =
 seval env (MLipGradSE LR e₁ e₂ e₃) =
   case (seval env (extract e₁), seval env (extract e₂), seval env (extract e₃)) of
     (MatrixV θ, MatrixV xs, MatrixV ys) →
-      case ((rows θ ≡ 1) ⩓ (rows ys ≡ 1)) of
+      case ((rows θ ≡ 1) ⩓ (cols ys ≡ 1)) of
         True →
           let θ'  ∷ Vector 𝔻 = flatten (mapp urv θ)
               ys' ∷ Vector 𝔻 = flatten (mapp urv ys)
