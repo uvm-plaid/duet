@@ -263,9 +263,9 @@ seval _ (ℕSE n)        = NatV n
 seval _ (ℝSE n)        = RealV n
 seval _ (ℝˢSE n)       = RealV n
 seval _ (ℕˢSE n)       = NatV n
--- seval env (SRealNatE e) =
---   case (seval env e) of
---     (NatV n) → RealV $ mkDouble n
+seval env (RealSE e) =
+  case (seval env $ extract e) of
+    (NatV n) → RealV $ mkDouble n
 
 -- variables
 seval env (VarSE x) = env ⋕! x
@@ -380,13 +380,19 @@ seval env (AppSE e₁ e₂) =
       let env'' = (x ↦ (seval env (extract e₂))) ⩌ env'
       in seval env'' body
 
-seval env (CSVtoMatrixSE s _) =
-  let csvList ∷ 𝐿 (𝐿 𝔻) = mapp read𝕊 s
-      m ∷ Matrix 𝔻 = fromLists csvList
-  in MatrixV $ mapp RealV m
+-- seval env (CSVtoMatrixSE s _) =
+--   let csvList ∷ 𝐿 (𝐿 𝔻) = mapp read𝕊 s
+--       m ∷ Matrix 𝔻 = fromLists csvList
+--   in MatrixV $ mapp RealV m
 
 -- error
 seval env e = error $ "Unknown expression: " ⧺ (show𝕊 e)
+
+csvToMatrix ∷ 𝐿 (𝐿 𝕊) → Val
+csvToMatrix sss =
+  let csvList ∷ 𝐿 (𝐿 𝔻) = mapp read𝕊 sss
+      m ∷ Matrix 𝔻 = fromLists csvList
+  in MatrixV $ mapp RealV m
 
 -- | Evaluates an expression from the privacy language
 peval ∷ Env → PExp p → IO (Val)
@@ -432,6 +438,12 @@ peval env (LoopPE k init xs x₁ x₂ e) =
   case (seval env (extract k), seval env (extract init)) of
     (NatV k', initV) →
       iter₁ k' initV x₁ x₂ 0 (extract e) env
+
+peval env (EDLoopPE _ k init xs x₁ x₂ e) =
+  case (seval env (extract k), seval env (extract init)) of
+    (NatV k', initV) →
+      iter₁ k' initV x₁ x₂ 0 (extract e) env
+
 
 -- evaluate sensitivity expression and return in the context of the privacy language
 peval env (ReturnPE e) =

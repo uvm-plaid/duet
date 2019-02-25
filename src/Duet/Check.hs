@@ -408,10 +408,10 @@ inferSens eA = case extract eA of
         tell $ ι (ηₘ × ηₙ) ⨵ σ₃'
         return $ 𝕄T ℓ UClip (RexpRT ηₘ) (RexpME ηₙ τ₃)
       _ → undefined -- TypeError
-  CSVtoMatrixSE f τ → do
-    case map normalizeRExp (extract τ) of
-      (𝕄T _ℓ _c StarRT (RexpME r τ₁')) → return (𝕄T _ℓ _c StarRT (RexpME r τ₁'))
-      _ → error $ "CSVtoMatrixSE error: " ⧺ (pprender $ (f :* τ)) -- TypeError
+  -- CSVtoMatrixSE f τ → do
+  --   case map normalizeRExp (extract τ) of
+  --     (𝕄T _ℓ _c StarRT (RexpME r τ₁')) → return (𝕄T _ℓ _c StarRT (RexpME r τ₁'))
+  --     _ → error $ "CSVtoMatrixSE error: " ⧺ (pprender $ (f :* τ)) -- TypeError
   MIndexSE e₁ e₂ e₃ → do
     τ₁ ← inferSens e₁
     τ₂ ← inferSens e₂

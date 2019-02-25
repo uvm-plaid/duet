@@ -45,18 +45,24 @@ main = do
       do pprint $ ppHeader "PARSING" ; flushOut
       unpack_C (parseMode fn) $ \ mode → do
         e ← parseIO (pSkip tokSkip $ pFinal $ parPExp mode) $ stream ts
+        do pprint $ ppHeader "TYPE CHECKING" ; flushOut
+        let τ = runPM dø initEnv dø $ inferPriv e
         do pprint $ ppHeader "RUNNING" ; flushOut
         r ← peval dø (extract e)
         do pprint $ ppHeader "DONE" ; flushOut
-        ys ← read "/Users/chike/duet-hs/data_short/ffys.csv"
-        xs ← read "/Users/chike/duet-hs/data_short/ffxs.csv"
+        ys ← read "data_short/ffys.csv"
+        xs ← read "data_short/ffxs.csv"
 
         let ysms = map (splitOn𝕊 ",") $ filter (\x → not (isEmpty𝕊 x)) $ splitOn𝕊 "\r\n" ys
         let xsms = map (splitOn𝕊 ",") $ filter (\x → not (isEmpty𝕊 x)) $ splitOn𝕊 "\r\n" xs
         let ks = (50 :* 50 :* 0.1 :* 10 :* 1.0 :* 1.0 :* Nil)
-        let xsm = CSVtoMatrixSE (list xsms) ()
-        let ysm = CSVtoMatrixSE (list ysms) ()
-        let as = (xsm :* ysm :* 0.1 :* 10 :* 1.0 :* 1.0 :* 2.0 :* Nil)
+        let xsm = csvToMatrix (list xsms)
+        let ysm = csvToMatrix (list ysms)
+        let as = list [xsm, ysm, RealV 0.1, NatV 10, RealV 1.0, RealV 1.0, RealV 2.0]
+        case r of
+          PFunV xs e γ → do
+            r' ← peval (assoc (zip xs as) ⩌ γ) e
+            pprint r'
 
         -- r' ← peval dø AppPE $ e ks as
 
