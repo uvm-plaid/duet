@@ -1,5 +1,5 @@
 NAME := duet
-ARGS := check examples/parallel-simple.ed.duet
+ARGS := run examples/gd-pb.ed.duet data_short/ffxs.csv data_short/ffys.csv 0.05 100 0.0001 0.0001 1
 
 # stack ghci
 # :set args check "examples/gd-pb.ed.duet"

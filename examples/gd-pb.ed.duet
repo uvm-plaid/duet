@@ -1,3 +1,7 @@
+-- the command line interface we want
+--
+--     `duet run <this-file> "data.csv" "labels.csv" 0.05 100 0.0001 0.0001 1`
+--
 -- gradient descent
 -- per-iteration bound
 let main = pλ m  : ℕ,
@@ -21,4 +25,5 @@ let main = pλ m  : ℕ,
     g ← mgauss[ s , ε , δ ] <xs,ys> { ∇[ LR | θ ; mclip[L2] xs, ys ] } ;
     return mmap θ , mmap g { x ⇒ η ⋅ x } { x , y ⇒ x - y }
   }
-in main
+-- in main
+in return main
