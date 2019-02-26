@@ -10,18 +10,7 @@ import Duet.Quantity
 -- libraries
 import System.Random
 import System.Random.MWC
-import System.FilePath
 import Data.Random.Normal
-import Text.CSV
-import Text.Parsec.Error
-import Text.ParserCombinators.Parsec hiding (count)
-import Data.Either
-import Data.CSV
-
--- import System.Environment
--- import Debug.Trace
--- import Numeric.Natural
--- import Control.Exception
 
 type Env = 𝕏 ⇰ Val
 type Vector v = 𝐿 v
@@ -481,28 +470,6 @@ iter₁ k v t x kp body env = do
 emptyEnv ∷ Env
 emptyEnv = dø
 
--- | Read in a dataset and return xs (features) and ys (labels)
-readDataSet ∷ FilePath → IO (Matrix 𝔻, Vector 𝔻)
-readDataSet fileName = do
-    Inr(mat) ← parseCSVtoMatrix fileName
-    let dataCols ∷ 𝐿 (Vector 𝔻) = toColumns mat
-        xs ∷ Matrix 𝔻 = fromColumns $ tail dataCols
-        ys ∷ Vector 𝔻 = head dataCols
-    return $ (xs, ys)
-
--- | Reads a CSV into a matrix
-parseCSVtoMatrix ∷ FilePath → IO (ParseError ∨ (Matrix 𝔻))
-parseCSVtoMatrix file = do
-  Right csv ← parseFromFile csvFile file
-  let csvList ∷ 𝐿 (𝐿 𝔻) = list $ map list $ mapp (read𝕊 ∘ show𝕊) csv
-      matrix ∷ Matrix 𝔻 = fromLists csvList
-  return $ return matrix
-
--- | Place a dataset into the environment
-insertDataSet ∷ Env → (𝕏, 𝕏) → (Matrix 𝔻, Vector 𝔻) → Env
-insertDataSet env (x, y) (xs, ys) =
-  ((x ↦ (MatrixV (mapp RealV xs))) ⩌ ((y ↦ (MatrixV $ asRow (map RealV ys))) ⩌ env))
-
 -- | Samples a normal distribution and returns a single value
 gaussianNoise ∷ 𝔻 → 𝔻 → IO 𝔻
 gaussianNoise c v = normalIO'(c, v)
@@ -517,9 +484,6 @@ gaussianNoise c v = normalIO'(c, v)
 
 type Model = Vector 𝔻
 
--- | Converts an Integral number to a double
--- dbl₁ ∷ ℕ → 𝔻
--- dbl₁ = dbl
 
 -- | Calculates LR loss
 -- loss ∷ Model → Matrix 𝔻 → Vector 𝔻 → 𝔻

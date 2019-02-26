@@ -14,6 +14,41 @@ parseMode s = case splitOn𝕊 "." s of
   _ :& "zcdp" :& "duet" :& Nil → Ex_C ZC_W
   _ → error "BAD FILE NAME"
 
+buildArgs ∷ 𝐿 (Type r) → 𝐿 𝕊 → IO (𝐿 Val)
+buildArgs Nil Nil = return Nil
+buildArgs (τ:&τs) (a:&as) = case τ of
+  (𝕄T _ _ _ _) → do
+    csvs ← read a
+    let csvss = map (splitOn𝕊 ",") $ filter (\x → not (isEmpty𝕊 x)) $ splitOn𝕊 "\r\n" csvs
+    let csvm = csvToMatrix (list csvss)
+    r ← buildArgs τs as
+    return $ csvm :& r
+  ℕT → do
+    r ← buildArgs τs as
+    return $ NatV (read𝕊 a) :& r
+  ℕˢT _ → do
+    r ← buildArgs τs as
+    return $ NatV (read𝕊 a) :& r
+  ℝT → do
+    r ← buildArgs τs as
+    return $ RealV (read𝕊 a) :& r
+  ℝˢT _ → do
+    r ← buildArgs τs as
+    return $ RealV (read𝕊 a) :& r
+  _ → error $ "unexpected arg type in main"
+buildArgs _ _ = error "number of args provided does not match function signature"
+
+
+drop :: ℕ -> IO (𝐼 𝕊) -> IO (𝐼 𝕊)
+drop x as = do
+  as' ← as
+  case list as' of
+    Nil → return empty𝐼
+    (_ :& ys) → do
+      case x ≡ 1 of
+        True → return $ iter ys
+        False → drop (x-1) (return (iter ys))
+
 main ∷ IO ()
 main = do
   (tohs ∘ list) ^⋅ args ≫= \case
@@ -37,7 +72,7 @@ main = do
         let r = runSM dø initEnv dø $ inferSens e
         do pprint $ ppHeader "DONE" ; flushOut
         do pprint r ; flushOut
-    ["run",fn] → do
+    "run":fn:_ → do
       do pprint $ ppHeader "READING" ; flushOut
       s ← read fn
       do pprint $ ppHeader "TOKENIZING" ; flushOut
@@ -49,27 +84,22 @@ main = do
         let τ = runPM dø initEnv dø $ inferPriv e
         do pprint $ ppHeader "RUNNING" ; flushOut
         r ← peval dø (extract e)
-        do pprint $ ppHeader "DONE" ; flushOut
-        ys ← read "data_short/ffys.csv"
-        xs ← read "data_short/ffxs.csv"
-
-        let ysms = map (splitOn𝕊 ",") $ filter (\x → not (isEmpty𝕊 x)) $ splitOn𝕊 "\r\n" ys
-        let xsms = map (splitOn𝕊 ",") $ filter (\x → not (isEmpty𝕊 x)) $ splitOn𝕊 "\r\n" xs
-        let ks = (50 :* 50 :* 0.1 :* 10 :* 1.0 :* 1.0 :* Nil)
-        let xsm = csvToMatrix (list xsms)
-        let ysm = csvToMatrix (list ysms)
-        let as = list [xsm, ysm, RealV 0.1, NatV 10, RealV 1.0, RealV 1.0, RealV 2.0]
-        case r of
-          PFunV xs e γ → do
-            r' ← peval (assoc (zip xs as) ⩌ γ) e
-            pprint r'
-
-        -- r' ← peval dø AppPE $ e ks as
-
         do pprint r ; flushOut
-
-        -- do pprint r' ; flushOut
-
+        fnargs ← drop 2 args
+        case τ of
+          Inr rv → do
+            case rv of
+              _ :* (_ :* PArgs pargs) :⊸⋆: _ → do
+                let τs = map fst pargs
+                as ← buildArgs τs (list fnargs)
+                case r of
+                  PFunV xs e₁ γ → do
+                    r' ← peval (assoc (zip xs as) ⩌ γ) e₁
+                    pprint r'
+                    pprint $ ppHeader "DONE" ; flushOut
+                  _ → error "expected pλ at top level"
+              _ → error "expected pλ at top level"
+          _ → error "typechecking phase encountered an error"
     _ → do
       pprint $ ppHeader "USAGE"
       out $ "duet parse <file>"
