@@ -38,7 +38,6 @@ buildArgs (τ:&τs) (a:&as) = case τ of
   _ → error $ "unexpected arg type in main"
 buildArgs _ _ = error "number of args provided does not match function signature"
 
-
 drop :: ℕ -> IO (𝐼 𝕊) -> IO (𝐼 𝕊)
 drop x as = do
   as' ← as
@@ -48,6 +47,12 @@ drop x as = do
       case x ≡ 1 of
         True → return $ iter ys
         False → drop (x-1) (return (iter ys))
+
+intercalate ∷ 𝕊 → 𝐿 𝕊 → 𝕊
+intercalate sep arr = case arr of
+  Nil -> ""
+  (x :& Nil) -> x
+  (x :& xs) -> x ⧺ sep ⧺ intercalate sep xs
 
 main ∷ IO ()
 main = do
@@ -95,7 +100,11 @@ main = do
                 case r of
                   PFunV xs e₁ γ → do
                     r' ← peval (assoc (zip xs as) ⩌ γ) e₁
-                    pprint r'
+                    case r' of
+                      MatrixV m → do
+                        pprint r'
+                        write "out/out.csv" (intercalate "\r\n" (map (intercalate ",") (mapp (show𝕊 ∘ urv) (toLists m))))
+                      _ → do pprint r'
                     pprint $ ppHeader "DONE" ; flushOut
                   _ → error "expected pλ at top level"
               _ → error "expected pλ at top level"
