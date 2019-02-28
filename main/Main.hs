@@ -14,12 +14,13 @@ parseMode s = case splitOn𝕊 "." s of
   _ :& "zcdp" :& "duet" :& Nil → Ex_C ZC_W
   _ → error "BAD FILE NAME"
 
+-- TODO: detect line endings or make an arg
 buildArgs ∷ 𝐿 (Type r) → 𝐿 𝕊 → IO (𝐿 Val)
 buildArgs Nil Nil = return Nil
 buildArgs (τ:&τs) (a:&as) = case τ of
   (𝕄T _ _ _ _) → do
     csvs ← read a
-    let csvss = map (splitOn𝕊 ",") $ filter (\x → not (isEmpty𝕊 x)) $ splitOn𝕊 "\r\n" csvs
+    let csvss = map (splitOn𝕊 ",") $ filter (\x → not (isEmpty𝕊 x)) $ splitOn𝕊 "\n" csvs
     let csvm = csvToMatrix (list csvss)
     r ← buildArgs τs as
     return $ csvm :& r
@@ -77,6 +78,19 @@ main = do
         let r = runSM dø initEnv dø $ inferSens e
         do pprint $ ppHeader "DONE" ; flushOut
         do pprint r ; flushOut
+    "lr-accuracy":xsfn:ysfn:mdfn:[] → do
+      do pprint $ ppHeader "ACCURACY TEST" ; flushOut
+      csvs₁ ← read mdfn
+      let csvss₁ = map (splitOn𝕊 ",") $ filter (\x → not (isEmpty𝕊 x)) $ splitOn𝕊 "\n" csvs₁
+      let csvmd :: Model = flatten $ csvToMatrix𝔻 $ list csvss₁
+      csvs₂ ← read xsfn
+      let csvss₂ = map (splitOn𝕊 ",") $ filter (\x → not (isEmpty𝕊 x)) $ splitOn𝕊 "\n" csvs₂
+      let csvxs :: Matrix 𝔻 = csvToMatrix𝔻 $ list csvss₂
+      csvs₃ ← read ysfn
+      let csvss₃ = map (splitOn𝕊 ",") $ filter (\x → not (isEmpty𝕊 x)) $ splitOn𝕊 "\n" csvs₃
+      let csvys :: Model = flatten $ csvToMatrix𝔻 $ list csvss₃
+      let r = accuracy csvxs csvys csvmd
+      pprint r
     "run":fn:_ → do
       do pprint $ ppHeader "READING" ; flushOut
       s ← read fn
@@ -103,7 +117,7 @@ main = do
                     case r' of
                       MatrixV m → do
                         pprint r'
-                        write "out/out.csv" (intercalate "\r\n" (map (intercalate ",") (mapp (show𝕊 ∘ urv) (toLists m))))
+                        write "out/out.csv" (intercalate "\n" (map (intercalate ",") (mapp (show𝕊 ∘ urv) (toLists m))))
                       _ → do pprint r'
                     pprint $ ppHeader "DONE" ; flushOut
                   _ → error "expected pλ at top level"

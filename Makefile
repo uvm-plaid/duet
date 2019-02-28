@@ -1,5 +1,7 @@
 NAME := duet
-ARGS := run examples/gd-pb.ed.duet data_short/ffxs.csv data_short/ffys.csv 0.05 100 0.0001 0.0001 1
+ARGS := lr-accuracy data_long/adp1kxs.csv data_long/adp1kys.csv out/out.csv
+
+# run examples/gd-pb.ed.duet data_long/adp1kxs.csv data_long/adp1kys.csv 0.05 100 0.0001 0.0001 1
 
 # stack ghci
 # :set args check "examples/gd-pb.ed.duet"

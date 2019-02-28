@@ -383,6 +383,11 @@ csvToMatrix sss =
       m ∷ Matrix 𝔻 = fromLists csvList
   in MatrixV $ mapp RealV m
 
+csvToMatrix𝔻 ∷ 𝐿 (𝐿 𝕊) → Matrix 𝔻
+csvToMatrix𝔻 sss =
+  let csvList ∷ 𝐿 (𝐿 𝔻) = mapp read𝕊 sss
+  in fromLists csvList
+
 -- | Evaluates an expression from the privacy language
 peval ∷ Env → PExp p → IO (Val)
 
@@ -524,29 +529,33 @@ ngrad θ x y =
 --                                gradientDescent (n-1) θ' x y η
 
 -- | Makes a single prediction
--- predict ∷ Model → (Vector 𝔻, 𝔻) → 𝔻
--- predict θ (x, y) = signum $ x <.> θ
+predict ∷ Model → (Vector 𝔻 ∧ 𝔻) → 𝔻
+predict θ (x :* y) = signum $ x <.> θ
+
+-- dot product
+(<.>) :: Vector 𝔻 → Vector 𝔻 → 𝔻
+(<.>) a b = sum $ zipWith (×) a b
 
 -- signum ∷ (Ord a,Plus a,Minus a) ⇒ a → a
--- signum x = case compare x zero of
---   LT → neg one
---   EQ → zero
---   GT → one
+signum x = case compare x zero of
+  LT → neg one
+  EQ → zero
+  GT → one
 
--- isCorrect ∷ (𝔻, 𝔻) → (ℕ, ℕ)
--- isCorrect (prediction, actual) | prediction == actual = (1, 0)
---                                | otherwise = (0, 1)
+isCorrect ∷ (𝔻 ∧ 𝔻) → (ℕ ∧ ℕ)
+isCorrect (prediction :* actual) | prediction ≡ actual = (1 :* 0)
+                                 | otherwise = (0 :* 1)
 
 -- | Converts a matrix to a model (flatten it)
 -- toModel ∷ Matrix 𝔻 → Model
 -- toModel = flatten
 
 -- | Calculates the accuracy of a model
--- accuracy ∷ Matrix 𝔻 → Vector 𝔻 → Model → (ℕ, ℕ)
--- accuracy x y θ = let pairs ∷ 𝐿 (Vector 𝔻, 𝔻) = zip (map normalize $ toRows x) (toList y)
---                      labels ∷ 𝐿 𝔻 = map (predict θ) pairs
---                      correct ∷ 𝐿 (ℕ, ℕ) = map isCorrect $ zip labels (toList y)
---                  in fold (0, 0) (\a b → (fst a + fst b, snd a + snd b)) correct
+accuracy ∷ Matrix 𝔻 → Vector 𝔻 → Model → (ℕ ∧ ℕ)
+accuracy x y θ = let pairs ∷ 𝐿 (Vector 𝔻 ∧ 𝔻) = list $ zip (map normalize $ toRows x) (toList y)
+                     labels ∷ 𝐿 𝔻 = map (predict θ) pairs
+                     correct ∷ 𝐿 (ℕ ∧ ℕ) = map isCorrect $ list $ zip labels (toList y)
+                 in fold (0 :* 0) (\a b → ((fst a + fst b) :* (snd a + snd b))) correct
 
 -- | Ensures that labels are either 1 or -1
 -- fixLabel ∷ 𝔻 → 𝔻
