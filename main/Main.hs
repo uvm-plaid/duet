@@ -15,7 +15,7 @@ parseMode s = case splitOn𝕊 "." s of
   _ → error "BAD FILE NAME"
 
 -- TODO: detect line endings or make an arg
-buildArgs ∷ 𝐿 (Type r) → 𝐿 𝕊 → IO (𝐿 Val)
+buildArgs ∷ (Pretty r) ⇒ 𝐿 (Type r) → 𝐿 𝕊 → IO (𝐿 Val)
 buildArgs Nil Nil = return Nil
 buildArgs (τ:&τs) (a:&as) = case τ of
   -- TODO: currently the assumption is to read in RealVs

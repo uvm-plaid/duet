@@ -396,7 +396,7 @@ schemaToTypes₁ me = case me of
   EmptyME → Nil
   _ → error "schemaToTypes: unexpected MExp within ConsME"
 
-rowToDFRow :: 𝐿 (Type r) → 𝐿 𝕊 → 𝐿 Val
+rowToDFRow :: (Pretty r) ⇒ 𝐿 (Type r) → 𝐿 𝕊 → 𝐿 Val
 rowToDFRow Nil Nil = Nil
 rowToDFRow (τ:&τs) (s:&ss) = case τ of
   ℕT → NatV (read𝕊 s) :& rowToDFRow τs ss
@@ -408,9 +408,9 @@ rowToDFRow (τ:&τs) (s:&ss) = case τ of
   --TODO: QUESTION: why can't i print τ here?
   _ → error $ "rowToDFRow: type is currently not supported" {- ⧺ pprender τ -}
   -- TODO: QUESTION: why can't i print this tuple here?
-rowToDFRow y z = error $ "rowToDFRow: arguments length mismatch" {- ⧺ (pprender (y :* z)) -}
+rowToDFRow y z = error $ "rowToDFRow: arguments length mismatch" ⧺ (pprender (y :* z))
 
-csvToDF ∷ 𝐿 (𝐿 𝕊) → 𝐿 (Type r) → Val
+csvToDF ∷ (Pretty r) ⇒ 𝐿 (𝐿 𝕊) → 𝐿 (Type r) → Val
 csvToDF sss τs =
   let csvList ∷ 𝐿 (𝐿 Val) = map (rowToDFRow τs) sss
   in MatrixV $ fromLists csvList
