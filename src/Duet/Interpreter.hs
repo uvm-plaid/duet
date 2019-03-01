@@ -387,7 +387,7 @@ csvToMatrix sss =
 
 schemaToTypes :: MExp r → 𝐿 (Type r)
 schemaToTypes me = case me of
-  (ConsME τ me) → schemaToTypes₁ me
+  (ConsME τ me') → schemaToTypes₁ me
   _ → error "schemaToTypes expects a ConsME"
 
 schemaToTypes₁ :: MExp r → 𝐿 (Type r)
@@ -405,9 +405,7 @@ rowToDFRow (τ:&τs) (s:&ss) = case τ of
   ℝˢT _ → RealV (read𝕊 s) :& rowToDFRow τs ss
   𝕊T → StrV (read𝕊 s) :& rowToDFRow τs ss
   𝔻T τ' → rowToDFRow (τ':&τs) (s:&ss)
-  --TODO: QUESTION: why can't i print τ here?
-  _ → error $ "rowToDFRow: type is currently not supported" {- ⧺ pprender τ -}
-  -- TODO: QUESTION: why can't i print this tuple here?
+  _ → error $ "rowToDFRow: type is currently not supported" ⧺ pprender τ
 rowToDFRow y z = error $ "rowToDFRow: arguments length mismatch" ⧺ (pprender (y :* z))
 
 csvToDF ∷ (Pretty r) ⇒ 𝐿 (𝐿 𝕊) → 𝐿 (Type r) → Val
