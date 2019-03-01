@@ -18,10 +18,20 @@ parseMode s = case splitOn𝕊 "." s of
 buildArgs ∷ 𝐿 (Type r) → 𝐿 𝕊 → IO (𝐿 Val)
 buildArgs Nil Nil = return Nil
 buildArgs (τ:&τs) (a:&as) = case τ of
-  (𝕄T _ _ _ _) → do
+  -- TODO: currently the assumption is to read in RealVs
+  (𝕄T _ _ _ (RexpME r τ)) → do
     csvs ← read a
     let csvss = map (splitOn𝕊 ",") $ filter (\x → not (isEmpty𝕊 x)) $ splitOn𝕊 "\n" csvs
     let csvm = csvToMatrix (list csvss)
+    r ← buildArgs τs as
+    return $ csvm :& r
+  (𝕄T _ _ _ (ConsME τ m)) → do
+    csvs ← read a
+    let csvss = map (splitOn𝕊 ",") $ filter (\x → not (isEmpty𝕊 x)) $ splitOn𝕊 "\n" csvs
+    --TODO:QUESTION: printing issues
+    do pprint "HELLO????" ; flushOut
+    do pprint $ count $ (schemaToTypes (ConsME τ m)); flushOut
+    let csvm = csvToDF (list csvss) (schemaToTypes (ConsME τ m))
     r ← buildArgs τs as
     return $ csvm :& r
   ℕT → do

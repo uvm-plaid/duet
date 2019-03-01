@@ -1,5 +1,7 @@
 NAME := duet
-ARGS := lr-accuracy data_long/adp1kxs.csv data_long/adp1kys.csv out/out.csv
+ARGS := run examples/baby.ed.duet 0.05 0.0001 data_short/made_up.csv
+
+# lr-accuracy data_long/adp1kxs.csv data_long/adp1kys.csv out/out.csv
 
 # run examples/gd-pb.ed.duet data_long/adp1kxs.csv data_long/adp1kys.csv 0.05 100 0.0001 0.0001 1
 

@@ -220,6 +220,7 @@ urv x = case x of
 data Val where
   NatV ∷ ℕ → Val
   RealV ∷ 𝔻 → Val
+  StrV ∷ 𝕊 → Val
   PairV ∷ Val → Val → Val
   SFunV ∷ 𝕏 → SExp p → Env → Val
   PFunV ∷ 𝐿 𝕏 → PExp p → Env → Val
@@ -231,6 +232,7 @@ instance Pretty Val where
   pretty = \case
     NatV n → pretty n
     RealV d → pretty d
+    StrV s → pretty s
     PairV a b → pretty (a :* b)
     SFunV x se e → ppKeyPun "sλ"
     PFunV xs pe e → ppKeyPun "pλ"
@@ -382,6 +384,36 @@ csvToMatrix sss =
   let csvList ∷ 𝐿 (𝐿 𝔻) = mapp read𝕊 sss
       m ∷ Matrix 𝔻 = fromLists csvList
   in MatrixV $ mapp RealV m
+
+schemaToTypes :: MExp r → 𝐿 (Type r)
+schemaToTypes me = case me of
+  (ConsME τ me) → schemaToTypes₁ me
+  _ → error "schemaToTypes expects a ConsME"
+
+schemaToTypes₁ :: MExp r → 𝐿 (Type r)
+schemaToTypes₁ me = case me of
+  (ConsME τ me') → τ :& schemaToTypes₁ me'
+  EmptyME → Nil
+  _ → error "schemaToTypes: unexpected MExp within ConsME"
+
+rowToDFRow :: 𝐿 (Type r) → 𝐿 𝕊 → 𝐿 Val
+rowToDFRow Nil Nil = Nil
+rowToDFRow (τ:&τs) (s:&ss) = case τ of
+  ℕT → NatV (read𝕊 s) :& rowToDFRow τs ss
+  ℕˢT _ → NatV (read𝕊 s) :& rowToDFRow τs ss
+  ℝT → RealV (read𝕊 s) :& rowToDFRow τs ss
+  ℝˢT _ → RealV (read𝕊 s) :& rowToDFRow τs ss
+  𝕊T → StrV (read𝕊 s) :& rowToDFRow τs ss
+  𝔻T τ' → rowToDFRow (τ':&τs) (s:&ss)
+  --TODO: QUESTION: why can't i print τ here?
+  _ → error $ "rowToDFRow: type is currently not supported" {- ⧺ pprender τ -}
+  -- TODO: QUESTION: why can't i print this tuple here?
+rowToDFRow y z = error $ "rowToDFRow: arguments length mismatch" {- ⧺ (pprender (y :* z)) -}
+
+csvToDF ∷ 𝐿 (𝐿 𝕊) → 𝐿 (Type r) → Val
+csvToDF sss τs =
+  let csvList ∷ 𝐿 (𝐿 Val) = map (rowToDFRow τs) sss
+  in MatrixV $ fromLists csvList
 
 csvToMatrix𝔻 ∷ 𝐿 (𝐿 𝕊) → Matrix 𝔻
 csvToMatrix𝔻 sss =
