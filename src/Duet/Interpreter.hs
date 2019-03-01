@@ -166,7 +166,7 @@ mapLookup (i:&idxs) cols = single𝐿 (map (\x → x ⋕! i) cols) ⧺ mapLookup
 mapLookup Nil cols = Nil
 
 -- extract rows in N
-(?) :: Matrix 𝔻 → 𝐿 ℕ → Matrix 𝔻
+(?) :: Matrix 𝔻 → 𝐿 ℤ → Matrix 𝔻
 (?) m (n:&ns) = (n ↦ (m ⋕! n)) ⩌ (m ? ns)
 (?) m Nil = dø
 
@@ -405,10 +405,11 @@ peval env (AppPE f _ as) =
       in peval env'' body
 
 -- sample on two matrices and compute on sample
--- peval env (SamplePE size xs ys x y e) =
---   case (seval env (extract size), env ⋕! (extract xs), env ⋕! ys) of
---     (NatV n, MatrixV v1, MatrixV v2) →
---       sampleHelper n v1 v2 x y e env
+peval env (SamplePE size xs ys x y e) =
+  -- TODO: QUESTION
+  case (seval env (extract size), env ⋕! (extract xs), env ⋕! (extract ys)) of
+    (NatV n, MatrixV v1, MatrixV v2) →
+      sampleHelper n (mapp urv v1) (mapp urv v2) x y (extract e) env
 
 -- gaussian mechanism for real numbers
 peval env (GaussPE r (EDGaussParams ε δ) vs e) =
@@ -480,10 +481,14 @@ gaussianNoise ∷ 𝔻 → 𝔻 → IO 𝔻
 gaussianNoise c v = normalIO'(c, v)
 
 -- | Helper function for PSampleE
--- sampleHelper :: ℕ → Matrix 𝔻 → Matrix  𝔻 → 𝕏 → 𝕏 → PExp p → Env → IO Val
--- sampleHelper n xs ys x y e env = do
---   batch <- minibatch (int n) xs (flatten ys)
---   peval (insertDataSet env (x, y) ((fst1 batch), (snd1 batch))) e
+sampleHelper :: ℕ → Matrix 𝔻 → Matrix  𝔻 → 𝕏 → 𝕏 → PExp p → Env → IO Val
+sampleHelper n xs ys x y e env = do
+  batch <- minibatch (int n) xs (flatten ys)
+  peval (insertDataSet env (x :* y) ((fst batch) :* (snd batch))) e
+
+insertDataSet ∷ Env → (𝕏 ∧ 𝕏) → (Matrix 𝔻 ∧ Vector 𝔻) → Env
+insertDataSet env (x :* y) (xs :* ys) =
+  (x ↦ (MatrixV $ mapp RealV $ xs)) ⩌ (y ↦ (MatrixV $ mapp RealV $ asRow ys)) ⩌ env
 
 -- GRADIENT --
 
@@ -568,22 +573,22 @@ accuracy x y θ = let pairs ∷ 𝐿 (Vector 𝔻 ∧ 𝔻) = list $ zip (map no
 -- MINIBATCHGRADIENT --
 
 -- | Generates random indicies for sampling
--- randIndices :: ℕ → ℕ → ℕ → GenIO → IO [ℕ]
--- randIndices n a b gen
---   | n == 0    = return []
---   | otherwise = do
---       x <- uniformR (a, b) gen
---       xs' <- randIndices (n - 1) a b gen
---       return (x : xs')
+randIndices :: ℤ → ℤ → ℤ → GenIO → IO (𝐿 ℤ)
+randIndices n a b gen
+  | n ≡ zero    = return Nil
+  | otherwise = do
+      x <- uniformR (a, b) gen
+      xs' <- randIndices (n - one) a b gen
+      return (x :& xs')
 
 -- | Outputs a single minibatch of data
--- minibatch :: ℤ → Matrix 𝔻 → Vector 𝔻 → IO (Matrix 𝔻, Vector 𝔻)
--- minibatch batchSize xs ys = do
---   gen <- createSystemRandom
---   idxs <- randIndices batchSize 0 (rows xs - 1) gen
---   let bxs = xs ? idxs
---       bys = head $ toColumns $ (asColumn ys) ? idxs
---   return (bxs, bys)
+minibatch :: ℤ → Matrix 𝔻 → Vector 𝔻 → IO (Matrix 𝔻 ∧ Vector 𝔻)
+minibatch batchSize xs ys = do
+  gen <- createSystemRandom
+  idxs <- randIndices batchSize zero (𝕫 (rows xs) - one) gen
+  let bxs = xs ? idxs
+      bys = head $ toColumns $ (asColumn ys) ? idxs
+  return (bxs :* bys)
 
 -- | Generates a list of minibatches
 -- nminibatch :: ℕ → ℕ → Matrix 𝔻 → Vector 𝔻 → IO [(Matrix 𝔻, Vector 𝔻)]
