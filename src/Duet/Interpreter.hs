@@ -208,27 +208,31 @@ urv x = case x of
   _ → error $ "unpack real val failed" ⧺ pprender x
 
 -- | Defining Val algebraic data type
--- data Val =
---   NatV ℕ
---   | RealV 𝔻
---   | PairV Val Val
---   | SFunV 𝕏 (Ex SExp) Env  -- See UVMHS.Core.Init for definition of Ex
---   | PFunV (𝐿 𝕏) (Ex PExp) Env
---   | MatrixV (Matrix Val)
-
-data Val where
-  NatV ∷ ℕ → Val
-  RealV ∷ 𝔻 → Val
-  StrV ∷ 𝕊 → Val
-  BoolV ∷ 𝔹 → Val
-  ListV ∷ 𝐿 Val → Val
-  --QUESTION
+data Val =
+  NatV ℕ
+  | RealV 𝔻
+  | PairV (Val ∧ Val)
+  | StrV 𝕊
+  | BoolV 𝔹
+  | ListV (𝐿 Val)
   -- BSetV ∷ 𝑃 𝔹 → Val
-  PairV ∷ Val ∧ Val → Val
-  SFunV ∷ 𝕏 → SExp p → Env → Val
-  PFunV ∷ 𝐿 𝕏 → PExp p → Env → Val
-  MatrixV ∷ Matrix Val → Val
-deriving instance Show Val
+  | SFunV 𝕏 (Ex SExp) Env  -- See UVMHS.Core.Init for definition of Ex
+  | PFunV (𝐿 𝕏) (Ex PExp) Env
+  | MatrixV (Matrix Val)
+
+-- data Val where
+--   NatV ∷ ℕ → Val
+--   RealV ∷ 𝔻 → Val
+--   StrV ∷ 𝕊 → Val
+--   BoolV ∷ 𝔹 → Val
+--   ListV ∷ 𝐿 Val → Val
+--   --QUESTION
+--   -- SetV ∷ 𝑃 Val → Val
+--   PairV ∷ Val ∧ Val → Val
+--   SFunV ∷ 𝕏 → SExp p → Env → Val
+--   PFunV ∷ 𝐿 𝕏 → PExp p → Env → Val
+--   MatrixV ∷ Matrix Val → Val
+-- deriving instance Show Val
 
 instance Pretty Val where
   pretty = \case
@@ -237,7 +241,7 @@ instance Pretty Val where
     StrV s → pretty s
     BoolV b → pretty b
     ListV l → ppKeyPun "𝐿"
-    -- BSetV s → ppKeyPun "𝑃"
+    -- SetV s → ppKeyPun "𝑃"
     PairV a → pretty a
     SFunV x se e → ppKeyPun "sλ"
     PFunV xs pe e → ppKeyPun "pλ"
@@ -373,10 +377,10 @@ seval env (MMap2SE e₁ e₂ x₁ x₂ e₃) =
 
 -- functions and application
 seval env (PFunSE _ args body) =
-  PFunV (map fst args) (extract body) env
+  PFunV (map fst args) (Ex (extract body)) env
 
 seval env (SFunSE x _ body) =
-  SFunV x (extract body) env
+  unpack (extract body) (\y → (SFunV x y env))
 
 seval env (BoxSE e) = seval env (extract e)
 
@@ -400,7 +404,7 @@ seval env (AppSE e₁ e₂) =
       in seval env'' body
 
 --TODO
-seval env (SetSE es) = ListV $ pow $ map ((seval env) ∘ extract) es
+seval env (SetSE es) = SetV $ pow $ map ((seval env) ∘ extract) es
 
 seval env (TupSE e₁ e₂) = PairV (seval env (extract e₁)) :* (seval env (extract e₂))
 
@@ -511,11 +515,6 @@ peval env (EDLoopPE _ k init xs x₁ x₂ e) =
   case (seval env (extract k), seval env (extract init)) of
     (NatV k', initV) →
       iter₁ k' initV x₁ x₂ 0 (extract e) env
-
--- (1) eval partitioning function for every row of matrix
--- (1.5) check that it's in the set
--- (2) based on result create dict of matrices where key is matching set val
--- (3) parallel computation can then be a map over this dict?
 
 peval env (ParallelPE e₀ e₁ x₂ e₂ x₃ x₄ e₃) =
   case (seval env (extract e₀), seval env (extract e₁)) of
