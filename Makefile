@@ -1,5 +1,10 @@
 NAME := duet
-ARGS := run examples/baby.ed.duet 0.05 0.0001 data_short/made_up.csv
+ARGS := run examples/parallel-simple.ed.duet data_short/made_up.csv 0.05 0.0001 0 0 0 1
+
+
+# run examples/basic-boxing.ed.duet 1
+
+# run examples/baby.ed.duet 0.05 0.0001 data_short/made_up.csv
 
 # lr-accuracy data_long/adp1kxs.csv data_long/adp1kys.csv out/out.csv
 

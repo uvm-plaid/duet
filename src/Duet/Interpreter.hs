@@ -216,24 +216,29 @@ urv x = case x of
 --   | PFunV (𝐿 𝕏) (Ex PExp) Env
 --   | MatrixV (Matrix Val)
 
-
 data Val where
   NatV ∷ ℕ → Val
   RealV ∷ 𝔻 → Val
   StrV ∷ 𝕊 → Val
-  PairV ∷ Val → Val → Val
+  BoolV ∷ 𝔹 → Val
+  ListV ∷ 𝐿 Val → Val
+  --QUESTION
+  -- BSetV ∷ 𝑃 𝔹 → Val
+  PairV ∷ Val ∧ Val → Val
   SFunV ∷ 𝕏 → SExp p → Env → Val
   PFunV ∷ 𝐿 𝕏 → PExp p → Env → Val
   MatrixV ∷ Matrix Val → Val
 deriving instance Show Val
--- deriving instance Eq Val
 
 instance Pretty Val where
   pretty = \case
     NatV n → pretty n
     RealV d → pretty d
     StrV s → pretty s
-    PairV a b → pretty (a :* b)
+    BoolV b → pretty b
+    ListV l → ppKeyPun "𝐿"
+    -- BSetV s → ppKeyPun "𝑃"
+    PairV a → pretty a
     SFunV x se e → ppKeyPun "sλ"
     PFunV xs pe e → ppKeyPun "pλ"
     MatrixV m → ppKeyPun "𝕄T"
@@ -272,12 +277,14 @@ seval env (PlusSE e₁ e₂) =
   case (seval env (extract e₁), seval env (extract e₂)) of
     (MatrixV v₁, MatrixV v₂) → MatrixV $ mapp RealV ( (mapp urv v₁) +++ (mapp urv v₂) )
     (RealV v₁, RealV v₂) → RealV (v₁ + v₂)
+    (NatV v₁, NatV v₂) → NatV (v₁ + v₂)
     (a, b) → error $ "No pattern for " ⧺ (show𝕊 (a, b))
 
 seval env (MinusSE e₁ e₂) =
   case (seval env (extract e₁), seval env (extract e₂)) of
     (MatrixV v₁, MatrixV v₂) → MatrixV $ mapp RealV ( (mapp urv v₁) -/ (mapp urv v₂) )
     (RealV v₁, RealV v₂) → RealV (v₁ - v₂)
+    (NatV v₁, NatV v₂) → NatV (v₁ - v₂)
     (a, b) → error $ "No pattern for " ⧺ (show𝕊 (a, b))
 
 seval env (TimesSE e₁ e₂) =
@@ -285,6 +292,7 @@ seval env (TimesSE e₁ e₂) =
     (MatrixV v₁, MatrixV v₂) → MatrixV $ mapp RealV ((mapp urv v₁) <> (mapp urv v₂))
     (RealV v₁, MatrixV v₂) → MatrixV $ mapp RealV (mscale v₁ (mapp urv v₂))
     (RealV v₁, RealV v₂) → RealV (v₁ × v₂)
+    (NatV v₁, NatV v₂) → NatV (v₁ × v₂)
     (a, b) → error $ "No pattern for " ⧺ (show𝕊 (a, b))
 
 seval env (DivSE e₁ e₂) =
@@ -302,6 +310,11 @@ seval env (MColsSE e) =
   case (seval env (extract e)) of
     (MatrixV v) →
       NatV $ nat $ cols v
+
+seval env (MIndexSE e₁ e₂ e₃) =
+  case (seval env (extract e₁),seval env (extract e₂),seval env (extract e₃)) of
+    (MatrixV v, NatV n₁, NatV n₂) →
+      (v ⋕! n₁) ⋕! n₂
 
 seval env (IdxSE e) =
   case (seval env (extract e)) of
@@ -365,11 +378,31 @@ seval env (PFunSE _ args body) =
 seval env (SFunSE x _ body) =
   SFunV x (extract body) env
 
+seval env (BoxSE e) = seval env (extract e)
+
+seval env (UnboxSE e) = seval env (extract e)
+
+seval env TrueSE = BoolV True
+
+seval env FalseSE = BoolV False
+
+--TODO:QUESTION: what are these meant to do again?
+seval env (ClipSE e) = seval env (extract e)
+
+seval env (ConvSE e) = seval env (extract e)
+
+seval env (DiscSE e) = seval env (extract e)
+
 seval env (AppSE e₁ e₂) =
   case seval env (extract e₁) of
     (SFunV x body env') →
       let env'' = (x ↦ (seval env (extract e₂))) ⩌ env'
       in seval env'' body
+
+--TODO
+seval env (SetSE es) = ListV $ pow $ map ((seval env) ∘ extract) es
+
+seval env (TupSE e₁ e₂) = PairV (seval env (extract e₁)) :* (seval env (extract e₂))
 
 -- seval env (CSVtoMatrixSE s _) =
 --   let csvList ∷ 𝐿 (𝐿 𝔻) = mapp read𝕊 s
@@ -417,6 +450,17 @@ csvToMatrix𝔻 ∷ 𝐿 (𝐿 𝕊) → Matrix 𝔻
 csvToMatrix𝔻 sss =
   let csvList ∷ 𝐿 (𝐿 𝔻) = mapp read𝕊 sss
   in fromLists csvList
+
+partition ∷ 𝐿 Val → 𝐿 (Val ∧ 𝐿 (𝐿 Val)) → 𝐿 (Val ∧ 𝐿 (𝐿 Val))
+partition _ Nil = Nil
+partition Nil _ = Nil
+partition (k:&ks) (v:&vs) = (k :* partition₁ k (v:&vs)) :& partition ks (v:&vs)
+
+partition₁ ∷ Val → 𝐿 (Val ∧ 𝐿 (𝐿 Val)) → 𝐿 (𝐿 Val)
+partition₁ k Nil = Nil
+partition₁ k ((val:*llvals):&vs) = case k ≡ val of
+  True → llvals ⧺ partition₁ k vs
+  False → partition₁ k vs
 
 -- | Evaluates an expression from the privacy language
 peval ∷ Env → PExp p → IO (Val)
@@ -468,6 +512,18 @@ peval env (EDLoopPE _ k init xs x₁ x₂ e) =
     (NatV k', initV) →
       iter₁ k' initV x₁ x₂ 0 (extract e) env
 
+-- (1) eval partitioning function for every row of matrix
+-- (1.5) check that it's in the set
+-- (2) based on result create dict of matrices where key is matching set val
+-- (3) parallel computation can then be a map over this dict?
+
+peval env (ParallelPE e₀ e₁ x₂ e₂ x₃ x₄ e₃) =
+  case (seval env (extract e₀), seval env (extract e₁)) of
+    (MatrixV m, ListV p) → do
+      let candidates ∷ 𝐿 (Val ∧ 𝐿 (𝐿 Val)) = map (\row → (seval ((x₂ ↦ MatrixV (fromRows (list [row]))) ⩌ env) (extract e₂)) :* (list [row])) (toLists m)
+      let parts ∷ 𝐿 (Val ∧ 𝐿 (𝐿 Val)) = partition (list (uniques p)) $ list $ filter (\x → (fst x) ∈ p) candidates
+      r ← mapM (\(v :* llvals) → (peval ((x₃ ↦ v) ⩌ (x₄ ↦ MatrixV (fromRows llvals)) ⩌ env) (extract e₃))) parts
+      return $ ListV $ r
 
 -- evaluate sensitivity expression and return in the context of the privacy language
 peval env (ReturnPE e) =
