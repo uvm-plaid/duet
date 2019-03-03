@@ -220,7 +220,7 @@ data Val =
   | PFunV (𝐿 𝕏) (Ex PExp) Env
   | MatrixV (Matrix Val)
   --TODO:QUESTION
-  deriving(Eq,Show,Ord)
+  -- deriving(Eq,Show,Ord)
 
 -- data Val where
 --   NatV ∷ ℕ → Val
@@ -402,9 +402,9 @@ seval env (AppSE e₁ e₂) =
   case seval env (extract e₁) of
     (SFunV x body env') →
       let env'' = (x ↦ (seval env (extract e₂))) ⩌ env'
-      in seval env'' body
+      --TODO:QUESTION
+      in seval env'' (unpack body _)
 
---TODO
 seval env (SetSE es) = SetV $ pow $ map ((seval env) ∘ extract) es
 
 seval env (TupSE e₁ e₂) = PairV (seval env (extract e₁)) :* (seval env (extract e₂))
