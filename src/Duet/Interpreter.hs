@@ -215,10 +215,12 @@ data Val =
   | StrV 𝕊
   | BoolV 𝔹
   | ListV (𝐿 Val)
-  -- BSetV ∷ 𝑃 𝔹 → Val
+  | SetV (𝑃 Val)
   | SFunV 𝕏 (Ex SExp) Env  -- See UVMHS.Core.Init for definition of Ex
   | PFunV (𝐿 𝕏) (Ex PExp) Env
   | MatrixV (Matrix Val)
+  --TODO:QUESTION
+  deriving(Eq,Show,Ord)
 
 -- data Val where
 --   NatV ∷ ℕ → Val
@@ -226,8 +228,7 @@ data Val =
 --   StrV ∷ 𝕊 → Val
 --   BoolV ∷ 𝔹 → Val
 --   ListV ∷ 𝐿 Val → Val
---   --QUESTION
---   -- SetV ∷ 𝑃 Val → Val
+--   SetV ∷ 𝑃 Val → Val
 --   PairV ∷ Val ∧ Val → Val
 --   SFunV ∷ 𝕏 → SExp p → Env → Val
 --   PFunV ∷ 𝐿 𝕏 → PExp p → Env → Val
@@ -380,7 +381,7 @@ seval env (PFunSE _ args body) =
   PFunV (map fst args) (Ex (extract body)) env
 
 seval env (SFunSE x _ body) =
-  unpack (extract body) (\y → (SFunV x y env))
+  SFunV x (Ex (extract body)) env
 
 seval env (BoxSE e) = seval env (extract e)
 
@@ -475,12 +476,13 @@ peval env (BindPE x e₁ e₂) = do
   v₂ ← peval ((x ↦ v₁) ⩌ env) (extract e₂)
   return v₂
 
-peval env (AppPE f _ as) =
-  case seval env (extract f) of
-    (PFunV args body env') →
-      let vs    ∷ 𝐿 Val = map ((seval env) ∘ extract) as
-          env'' ∷ Env = fold env' (\(var :* val) → (⩌ (var ↦ val))) (zip args vs)
-      in peval env'' body
+-- peval env (AppPE f _ as) =
+--   case seval env (extract f) of
+--     (PFunV args body env') →
+--       let vs    ∷ 𝐿 Val = map ((seval env) ∘ extract) as
+--           env'' ∷ Env = fold env' (\(var :* val) → (⩌ (var ↦ val))) (zip args vs)
+         --TODO:QUESTION:Ex Pexp vs PExp p
+--       in peval env'' body
 
 -- sample on two matrices and compute on sample
 -- peval env (SamplePE size xs ys x y e) =
