@@ -167,7 +167,7 @@ mapLookup Nil cols = Nil
 
 -- extract rows in N
 (?) :: Matrix 𝔻 → 𝐿 ℤ → Matrix 𝔻
-(?) m (n:&ns) = (n ↦ (m ⋕! n)) ⩌ (m ? ns)
+(?) m (n:&ns) = ((fromInteger n) ↦ (m ⋕! (fromInteger n))) ⩌ (m ? ns)
 (?) m Nil = dø
 
 toList :: Vector 𝔻 → 𝐿 𝔻
@@ -407,7 +407,7 @@ peval env (AppPE f _ as) =
 -- sample on two matrices and compute on sample
 peval env (SamplePE size xs ys x y e) =
   -- TODO: QUESTION
-  case (seval env (extract size), env ⋕! (extract xs), env ⋕! (extract ys)) of
+  case (seval env (extract size), seval env (extract xs), seval env (extract ys)) of
     (NatV n, MatrixV v1, MatrixV v2) →
       sampleHelper n (mapp urv v1) (mapp urv v2) x y (extract e) env
 
@@ -577,6 +577,7 @@ randIndices :: ℤ → ℤ → ℤ → GenIO → IO (𝐿 ℤ)
 randIndices n a b gen
   | n ≡ zero    = return Nil
   | otherwise = do
+      -- TODO:QUESTION: expects a Haskell Double
       x <- uniformR (a, b) gen
       xs' <- randIndices (n - one) a b gen
       return (x :& xs')
