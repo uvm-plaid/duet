@@ -207,6 +207,22 @@ urv x = case x of
   RealV d → d
   _ → error $ "unpack real val failed" ⧺ pprender x
 
+-- this could be moved to Syntax.hs, and PArgs r (and its Eq and Ord instances)
+-- could be derived using this type
+newtype ExPriv (e ∷ PRIV → ★) = ExPriv { unExPriv ∷ Ex_C PRIV_C e }
+
+deriving instance (∀ p. Show (e p)) ⇒ Show (ExPriv e)
+
+instance (∀ p. Eq (e p)) ⇒ Eq (ExPriv e) where
+  ExPriv (Ex_C (e₁ ∷ e p₁)) ==  ExPriv (Ex_C (e₂ ∷ e p₂)) = case eqPRIV (priv @ p₁) (priv @ p₂) of
+    Some (Refl ∷ p₁ ≟ p₂) → (e₁ ∷ e p₁) ≡ (e₂ ∷ e p₁)
+    None → False
+
+instance (∀ p. Eq (e p),∀ p. Ord (e p)) ⇒ Ord (ExPriv e) where
+  ExPriv (Ex_C (e₁ ∷ e p₁)) `compare`  ExPriv (Ex_C (e₂ ∷ e p₂)) = case eqPRIV (priv @ p₁) (priv @ p₂) of
+    Some (Refl ∷ p₁ ≟ p₂) → (e₁ ∷ e p₁) ⋚ (e₂ ∷ e p₁)
+    None → stripPRIV (priv @ p₁) ⋚ stripPRIV (priv @ p₂)
+
 -- | Defining Val algebraic data type
 data Val =
   NatV ℕ
@@ -216,11 +232,17 @@ data Val =
   | BoolV 𝔹
   | ListV (𝐿 Val)
   | SetV (𝑃 Val)
-  | SFunV 𝕏 (Ex SExp) Env  -- See UVMHS.Core.Init for definition of Ex
-  | PFunV (𝐿 𝕏) (Ex PExp) Env
+  | SFunV 𝕏 (ExPriv SExp) Env  -- See UVMHS.Core.Init for definition of Ex
+  | PFunV (𝐿 𝕏) (ExPriv PExp) Env
   | MatrixV (Matrix Val)
+  deriving (Eq,Ord,Show)
+  -- deriving (Show)
   --TODO:QUESTION
   -- deriving(Eq,Show,Ord)
+
+-- instance Eq Val where
+--   NatV n₁ == NatV n₂ = n₁ ≡ n₂
+--   -- TODO: more cases
 
 -- data Val where
 --   NatV ∷ ℕ → Val
@@ -241,12 +263,12 @@ instance Pretty Val where
     RealV d → pretty d
     StrV s → pretty s
     BoolV b → pretty b
-    ListV l → ppKeyPun "𝐿"
-    -- SetV s → ppKeyPun "𝑃"
+    ListV l → pretty l
+    SetV s → pretty s
     PairV a → pretty a
-    SFunV x se e → ppKeyPun "sλ"
-    PFunV xs pe e → ppKeyPun "pλ"
-    MatrixV m → ppKeyPun "𝕄T"
+    SFunV x se e → ppKeyPun "<sλ value>"
+    PFunV xs pe e → ppKeyPun "<pλ value>"
+    MatrixV m → ppVertical $ list [ppText "MATRIX VALUE:",pretty m]
 
 -- | Converts and integer to a 𝔻
 intDouble ∷ ℕ → 𝔻
@@ -257,7 +279,7 @@ mkDouble ∷ ℕ → 𝔻
 mkDouble = dbl
 
 -- | Evaluates an expression from the sensitivity language
-seval ∷ (Env) → (SExp p) → (Val)
+seval ∷ (PRIV_C p) ⇒ (Env) → (SExp p) → (Val)
 
 -- literals
 seval _ (ℕSE n)        = NatV n
@@ -378,10 +400,10 @@ seval env (MMap2SE e₁ e₂ x₁ x₂ e₃) =
 
 -- functions and application
 seval env (PFunSE _ args body) =
-  PFunV (map fst args) (Ex (extract body)) env
+  PFunV (map fst args) (ExPriv (Ex_C (extract body))) env
 
 seval env (SFunSE x _ body) =
-  SFunV x (Ex (extract body)) env
+  SFunV x (ExPriv (Ex_C (extract body))) env
 
 seval env (BoxSE e) = seval env (extract e)
 
@@ -391,7 +413,8 @@ seval env TrueSE = BoolV True
 
 seval env FalseSE = BoolV False
 
---TODO:QUESTION: what are these meant to do again?
+-- TODO: this is supposed to clip the vector that e evaluates to such that the norm
+-- of the ouptut vector is 1. (only do this if the norm is > 1)
 seval env (ClipSE e) = seval env (extract e)
 
 seval env (ConvSE e) = seval env (extract e)
@@ -400,14 +423,14 @@ seval env (DiscSE e) = seval env (extract e)
 
 seval env (AppSE e₁ e₂) =
   case seval env (extract e₁) of
-    (SFunV x body env') →
+    (SFunV x (ExPriv (Ex_C body)) env') →
       let env'' = (x ↦ (seval env (extract e₂))) ⩌ env'
       --TODO:QUESTION
-      in seval env'' (unpack body _)
+      in seval env'' body
 
 seval env (SetSE es) = SetV $ pow $ map ((seval env) ∘ extract) es
 
-seval env (TupSE e₁ e₂) = PairV (seval env (extract e₁)) :* (seval env (extract e₂))
+seval env (TupSE e₁ e₂) = PairV $ seval env (extract e₁) :* seval env (extract e₂)
 
 -- seval env (CSVtoMatrixSE s _) =
 --   let csvList ∷ 𝐿 (𝐿 𝔻) = mapp read𝕊 s
@@ -415,6 +438,12 @@ seval env (TupSE e₁ e₂) = PairV (seval env (extract e₁)) :* (seval env (ex
 --   in MatrixV $ mapp RealV m
 
 -- error
+
+seval env (EqualsSE e₁ e₂) =
+  let v₁ = seval env $ extract e₁
+      v₂ = seval env $ extract e₂
+  in BoolV $ v₁ ≡ v₂
+
 seval env e = error $ "Unknown expression: " ⧺ (show𝕊 e)
 
 csvToMatrix ∷ 𝐿 (𝐿 𝕊) → Val
@@ -468,7 +497,7 @@ partition₁ k ((val:*llvals):&vs) = case k ≡ val of
   False → partition₁ k vs
 
 -- | Evaluates an expression from the privacy language
-peval ∷ Env → PExp p → IO (Val)
+peval ∷ (PRIV_C p) ⇒ Env → PExp p → IO (Val)
 
 -- bind and application
 peval env (BindPE x e₁ e₂) = do
@@ -521,11 +550,11 @@ peval env (EDLoopPE _ k init xs x₁ x₂ e) =
 
 peval env (ParallelPE e₀ e₁ x₂ e₂ x₃ x₄ e₃) =
   case (seval env (extract e₀), seval env (extract e₁)) of
-    (MatrixV m, ListV p) → do
+    (MatrixV m, SetV p) → do
       let candidates ∷ 𝐿 (Val ∧ 𝐿 (𝐿 Val)) = map (\row → (seval ((x₂ ↦ MatrixV (fromRows (list [row]))) ⩌ env) (extract e₂)) :* (list [row])) (toLists m)
       let parts ∷ 𝐿 (Val ∧ 𝐿 (𝐿 Val)) = partition (list (uniques p)) $ list $ filter (\x → (fst x) ∈ p) candidates
-      r ← mapM (\(v :* llvals) → (peval ((x₃ ↦ v) ⩌ (x₄ ↦ MatrixV (fromRows llvals)) ⩌ env) (extract e₃))) parts
-      return $ ListV $ r
+      r ← pow ^$ mapM (\(v :* llvals) → (peval ((x₃ ↦ v) ⩌ (x₄ ↦ MatrixV (fromRows llvals)) ⩌ env) (extract e₃))) parts
+      return $ SetV $ r
 
 -- evaluate sensitivity expression and return in the context of the privacy language
 peval env (ReturnPE e) =
@@ -553,7 +582,7 @@ peval env e = error $ "Unknown expression: " ⧺ (show𝕊 e)
 
 
 -- | Helper function for loop expressions
-iter₁ ∷ ℕ → Val → 𝕏 → 𝕏 → ℕ → PExp p → Env → IO (Val)
+iter₁ ∷ (PRIV_C p) ⇒ ℕ → Val → 𝕏 → 𝕏 → ℕ → PExp p → Env → IO (Val)
 iter₁ 0 v _ _ _ _ _ = return v
 iter₁ k v t x kp body env = do
   newVal ← peval ((x ↦ v) ⩌ ((t ↦ (NatV $ nat kp)) ⩌ env)) body
@@ -568,7 +597,7 @@ gaussianNoise ∷ 𝔻 → 𝔻 → IO 𝔻
 gaussianNoise c v = normalIO'(c, v)
 
 -- | Helper function for PSampleE
-sampleHelper :: ℕ → Matrix 𝔻 → Matrix  𝔻 → 𝕏 → 𝕏 → PExp p → Env → IO Val
+sampleHelper :: (PRIV_C p) ⇒ ℕ → Matrix 𝔻 → Matrix  𝔻 → 𝕏 → 𝕏 → PExp p → Env → IO Val
 sampleHelper n xs ys x y e env = do
   batch <- minibatch (int n) xs (flatten ys)
   peval (insertDataSet env (x :* y) ((fst batch) :* (snd batch))) e
@@ -664,10 +693,9 @@ randIndices :: ℤ → ℤ → ℤ → GenIO → IO (𝐿 ℤ)
 randIndices n a b gen
   | n ≡ zero    = return Nil
   | otherwise = do
-      -- TODO:QUESTION: expects a Haskell Double
-      x <- uniformR (a, b) gen
+      x <- uniformR (intΩ64 a, intΩ64 b) gen
       xs' <- randIndices (n - one) a b gen
-      return (x :& xs')
+      return (int x :& xs')
 
 -- | Outputs a single minibatch of data
 minibatch :: ℤ → Matrix 𝔻 → Vector 𝔻 → IO (Matrix 𝔻 ∧ Vector 𝔻)

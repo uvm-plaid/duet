@@ -119,7 +119,7 @@ main = do
                 let τs = map fst pargs
                 as ← buildArgs τs (list fnargs)
                 case r of
-                  PFunV xs e₁ γ → do
+                  PFunV xs (ExPriv (Ex_C e₁)) γ → do
                     r' ← peval (assoc (zip xs as) ⩌ γ) e₁
                     case r' of
                       MatrixV m → do
