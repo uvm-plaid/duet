@@ -80,9 +80,9 @@ main = do
       ts ← tokenizeIO tokDuet $ stream $ list $ tokens s
       do pprint $ ppHeader "PARSING" ; flushOut
       unpack_C (parseMode fn) $ \ mode → do
-        e ← parseIO (pSkip tokSkip $ pFinal $ parSExp mode) $ stream ts
+        e ← parseIO (pSkip tokSkip $ pFinal $ parPExp mode) $ stream ts
         do pprint $ ppHeader "TYPE CHECKING" ; flushOut
-        let r = runSM dø initEnv dø $ inferSens e
+        let r = runPM dø initEnv dø $ inferPriv e
         do pprint $ ppHeader "DONE" ; flushOut
         do pprint r ; flushOut
     "lr-accuracy":xsfn:ysfn:mdfn:[] → do
