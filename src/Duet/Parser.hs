@@ -853,7 +853,7 @@ parPExp p = pWithContext "pexp" $ tries
         parLit "⇒"
         e₄ ← parPExp p
         parLit "}"
-        return $ SamplePE e₁ e₂ e₃ x₁ x₂ e₄
+        return $ EDSamplePE e₁ e₂ e₃ x₁ x₂ e₄
       _ → abort
   , do parLit "rand-nat"
        parLit "["

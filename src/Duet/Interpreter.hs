@@ -521,7 +521,7 @@ peval env (IfPE e₁ e₂ e₃) = case seval env (extract e₁) of
 --       in peval env'' body
 
 -- sample on two matrices and compute on sample
-peval env (SamplePE size xs ys x y e) =
+peval env (EDSamplePE size xs ys x y e) =
   case (seval env (extract size), seval env (extract xs), seval env (extract ys)) of
     (NatV n, MatrixV v1, MatrixV v2) →
       sampleHelper n (mapp urv v1) (mapp urv v2) x y (extract e) env
