@@ -18,12 +18,12 @@ let main = pλ m  : ℕ,
               η  : ℝ,
               b  : ℕ[b]
               ⇒
-  let m₀ = mcreate[ L2 | ℕ[1] , cols xs ] { i , j ⇒ 0.0 } in
-  let b = ℕ[50] in
+  let m₀ = mcreate[ L∞ | ℕ[1] , cols xs ] { i , j ⇒ 0.0 } in
+  let b = ℕ[2] in
   aloop[ δ′ ] k on m₀ <xs,ys> { t , θ ⇒
     g ← sample[ b ] xs, ys {xs', ys' ⇒
         let s = ℝ⁺[1.0] / real (rows xs') in
         mgauss[ s , ε , δ ] <xs',ys'> { ∇[ LR | θ ; mclip[L2] xs' , ys' ] } };
-    return θ - η ⋅ g
+    return mmap θ , mmap g { x ⇒ η ⋅ x } { x , y ⇒ x - y }
   }
 in return main

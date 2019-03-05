@@ -167,8 +167,11 @@ mapLookup Nil cols = Nil
 
 -- extract rows in N
 (?) :: Matrix 𝔻 → 𝐿 ℤ → Matrix 𝔻
-(?) m (n:&ns) = ((fromInteger n) ↦ (m ⋕! (fromInteger n))) ⩌ (m ? ns)
-(?) m Nil = dø
+(?) m ns = buildRows (iota (count (m ?? ns))) (m ?? ns)
+
+(??) :: Matrix 𝔻 → 𝐿 ℤ → 𝐿 (ℕ ⇰ 𝔻)
+(??) m (n:&ns) = list [m ⋕! (fromInteger n)] ⧺ (m ?? ns)
+(??) m Nil = Nil
 
 toList :: Vector 𝔻 → 𝐿 𝔻
 toList x = x
@@ -559,7 +562,6 @@ peval env (ParallelPE e₀ e₁ x₂ e₂ x₃ x₄ e₃) =
     (MatrixV m, SetV p) → do
       let candidates ∷ 𝐿 (Val ∧ 𝐿 (𝐿 Val)) = map (\row → (seval ((x₂ ↦ MatrixV (fromRows (list [row]))) ⩌ env) (extract e₂)) :* (list [row])) (toLists m)
       let parts ∷ 𝐿 (Val ∧ 𝐿 (𝐿 Val)) = partition (list (uniques p)) $ list $ filter (\x → (fst x) ∈ p) candidates
-      --TODO:QUESTION:dataframes?
       let parts₁ = filter (\(v:*llvs) → not (llvs ≡ Nil)) parts
       r ← pow ^$ mapM (\(v :* llvals) → (peval ((x₃ ↦ v) ⩌ (x₄ ↦ MatrixV (fromRows llvals)) ⩌ env) (extract e₃))) parts₁
       return $ SetV $ r
@@ -607,7 +609,11 @@ gaussianNoise c v = normalIO'(c, v)
 -- | Helper function for PSampleE
 sampleHelper :: (PRIV_C p) ⇒ ℕ → Matrix 𝔻 → Matrix  𝔻 → 𝕏 → 𝕏 → PExp p → Env → IO Val
 sampleHelper n xs ys x y e env = do
+  pprint "HEY"
+  pprint xs
+  -- pprint (asColumn (flatten ys))
   batch <- minibatch (int n) xs (flatten ys)
+  pprint "YO"
   peval (insertDataSet env (x :* y) ((fst batch) :* (snd batch))) e
 
 insertDataSet ∷ Env → (𝕏 ∧ 𝕏) → (Matrix 𝔻 ∧ Vector 𝔻) → Env
@@ -703,6 +709,9 @@ randIndices n a b gen
   | otherwise = do
       x <- uniformR (intΩ64 a, intΩ64 b) gen
       xs' <- randIndices (n - one) a b gen
+      -- pprint n
+      -- pprint "hello\n"
+      pprint (int x :& xs')
       return (int x :& xs')
 
 -- | Outputs a single minibatch of data
@@ -711,7 +720,7 @@ minibatch batchSize xs ys = do
   gen <- createSystemRandom
   idxs <- randIndices batchSize zero (𝕫 (rows xs) - one) gen
   let bxs = xs ? idxs
-      bys = head $ toColumns $ (asColumn ys) ? idxs
+      bys = head $ toColumns ((asColumn ys) ? idxs)
   return (bxs :* bys)
 
 -- | Generates a list of minibatches

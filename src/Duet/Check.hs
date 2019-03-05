@@ -1037,13 +1037,14 @@ inferPriv eA = case extract eA of
                 sε = ι 2 × ηrows' / ηrows₁
                 sδ = ηrows' / ηrows₁
             σ :* τ ← hijack $ mapEnvL contextTypeL (\ γ → (xs' ↦ τxs') ⩌ (ys' ↦ τys') ⩌ γ) $ inferPriv e
-            let σxs' = joins $ values $ delete xs' σ
-                σys' = joins $ values $ delete ys' σ
+            let σxs' = σ ⋕! xs'
+                σys' = σ ⋕! ys'
+                σ' = without (pow [xs',ys']) σ
             case (σxs',σys') of
               (Priv (Quantity (EDPriv ε₁ δ₁)), Priv (Quantity (EDPriv ε₂ δ₂))) → do
                 tell $ map (Priv ∘ truncate (Quantity (EDPriv (ε₁×sε) (δ₁×sδ))) ∘ unSens) σ₁
                 tell $ map (Priv ∘ truncate (Quantity (EDPriv (ε₂×sε) (δ₂×sδ))) ∘ unSens) σ₂
-                tell σ
+                tell σ'
                 return τ
               _ → error $ "type error in EDSamplePE." ⧺ (pprender (σxs',σys'))
             -- pull out privacies p₁ for xs' p₂ and ys'
