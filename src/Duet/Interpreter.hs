@@ -152,7 +152,7 @@ buildCol idxs vals = single𝐿 $ fold dø (⩌) (zipWith (↦) idxs vals)
 asColumn :: Vector a → Matrix a
 asColumn vec = buildRows (iota (count vec)) (map ((↦) 0) vec)
 
--- given a list of column dicts and its iota, really a matrix
+-- given a list of column dicts and its iota, really build a matrix
 buildRows :: 𝐿 ℕ → 𝐿 (ℕ ⇰ a) → Matrix a
 buildRows rows cols = fold dø (⩌) (zipWith (↦) rows cols)
 
@@ -236,26 +236,6 @@ data Val =
   | PFunV (𝐿 𝕏) (ExPriv PExp) Env
   | MatrixV (Matrix Val)
   deriving (Eq,Ord,Show)
-  -- deriving (Show)
-  --TODO:QUESTION
-  -- deriving(Eq,Show,Ord)
-
--- instance Eq Val where
---   NatV n₁ == NatV n₂ = n₁ ≡ n₂
---   -- TODO: more cases
-
--- data Val where
---   NatV ∷ ℕ → Val
---   RealV ∷ 𝔻 → Val
---   StrV ∷ 𝕊 → Val
---   BoolV ∷ 𝔹 → Val
---   ListV ∷ 𝐿 Val → Val
---   SetV ∷ 𝑃 Val → Val
---   PairV ∷ Val ∧ Val → Val
---   SFunV ∷ 𝕏 → SExp p → Env → Val
---   PFunV ∷ 𝐿 𝕏 → PExp p → Env → Val
---   MatrixV ∷ Matrix Val → Val
--- deriving instance Show Val
 
 instance Pretty Val where
   pretty = \case
@@ -425,12 +405,24 @@ seval env (AppSE e₁ e₂) =
   case seval env (extract e₁) of
     (SFunV x (ExPriv (Ex_C body)) env') →
       let env'' = (x ↦ (seval env (extract e₂))) ⩌ env'
-      --TODO:QUESTION
       in seval env'' body
 
 seval env (SetSE es) = SetV $ pow $ map ((seval env) ∘ extract) es
 
 seval env (TupSE e₁ e₂) = PairV $ seval env (extract e₁) :* seval env (extract e₂)
+
+seval env (MemberSE e₁ e₂) = case (seval env (extract e₁), seval env (extract e₂)) of
+  (v, SetV p) → BoolV $ v ∈ p
+
+seval env (UnionAllSE e) = case (seval env (extract e)) of
+  (SetV ss) → SetV $ fold pø (∪) $ pmap (\(SetV p) → p) ss
+
+seval env (JoinSE e₁ e₂ e₃ e₄) =
+  case (seval env (extract e₁),seval env (extract e₂),seval env (extract e₃),seval env (extract e₄)) of
+    (MatrixV m₁, NatV n₁, MatrixV m₂, NatV n₂) →
+      let colmaps = filter (\colmap → not (colmap ≡ dø)) $ values $ map (\row₁ → joinMatch₁ n₁ row₁ (list (values m₂)) n₂) m₁
+          ccolmaps = count colmaps
+      in MatrixV $ buildRows (iota ccolmaps) (list colmaps)
 
 -- seval env (CSVtoMatrixSE s _) =
 --   let csvList ∷ 𝐿 (𝐿 𝔻) = mapp read𝕊 s
@@ -445,6 +437,18 @@ seval env (EqualsSE e₁ e₂) =
   in BoolV $ v₁ ≡ v₂
 
 seval env e = error $ "Unknown expression: " ⧺ (show𝕊 e)
+
+joinMatch₁ ∷ ℕ → ℕ ⇰ Val → 𝐿 (ℕ ⇰ Val) → ℕ → ℕ ⇰ Val
+joinMatch₁ n₁ row₁ Nil n₂ = dø
+joinMatch₁ n₁ row₁ (row₂:&rows₂) n₂ = case ((row₁ ⋕! n₁) ≡ (row₂ ⋕! n₂)) of
+  True → mergeRows row₁ row₂
+  False → joinMatch₁ n₁ row₁ rows₂ n₂
+
+mergeRows ∷ ℕ ⇰ Val → ℕ ⇰ Val → ℕ ⇰ Val
+mergeRows row₁ row₂ =
+  let vs = (values row₁) ⧺ (values row₂)
+      cvs = count vs
+  in fold dø (⩌) (zipWith (↦) (iota cvs) (list vs))
 
 csvToMatrix ∷ 𝐿 (𝐿 𝕊) → Val
 csvToMatrix sss =
@@ -505,17 +509,19 @@ peval env (BindPE x e₁ e₂) = do
   v₂ ← peval ((x ↦ v₁) ⩌ env) (extract e₂)
   return v₂
 
+peval env (IfPE e₁ e₂ e₃) = case seval env (extract e₁) of
+  BoolV True → peval env (extract e₂)
+  BoolV False → peval env (extract e₃)
+
 -- peval env (AppPE f _ as) =
 --   case seval env (extract f) of
 --     (PFunV args body env') →
 --       let vs    ∷ 𝐿 Val = map ((seval env) ∘ extract) as
 --           env'' ∷ Env = fold env' (\(var :* val) → (⩌ (var ↦ val))) (zip args vs)
-         --TODO:QUESTION:Ex Pexp vs PExp p
 --       in peval env'' body
 
 -- sample on two matrices and compute on sample
 peval env (SamplePE size xs ys x y e) =
-  -- TODO: QUESTION
   case (seval env (extract size), seval env (extract xs), seval env (extract ys)) of
     (NatV n, MatrixV v1, MatrixV v2) →
       sampleHelper n (mapp urv v1) (mapp urv v2) x y (extract e) env
@@ -553,7 +559,9 @@ peval env (ParallelPE e₀ e₁ x₂ e₂ x₃ x₄ e₃) =
     (MatrixV m, SetV p) → do
       let candidates ∷ 𝐿 (Val ∧ 𝐿 (𝐿 Val)) = map (\row → (seval ((x₂ ↦ MatrixV (fromRows (list [row]))) ⩌ env) (extract e₂)) :* (list [row])) (toLists m)
       let parts ∷ 𝐿 (Val ∧ 𝐿 (𝐿 Val)) = partition (list (uniques p)) $ list $ filter (\x → (fst x) ∈ p) candidates
-      r ← pow ^$ mapM (\(v :* llvals) → (peval ((x₃ ↦ v) ⩌ (x₄ ↦ MatrixV (fromRows llvals)) ⩌ env) (extract e₃))) parts
+      --TODO:QUESTION:dataframes?
+      let parts₁ = filter (\(v:*llvs) → not (llvs ≡ Nil)) parts
+      r ← pow ^$ mapM (\(v :* llvals) → (peval ((x₃ ↦ v) ⩌ (x₄ ↦ MatrixV (fromRows llvals)) ⩌ env) (extract e₃))) parts₁
       return $ SetV $ r
 
 -- evaluate sensitivity expression and return in the context of the privacy language

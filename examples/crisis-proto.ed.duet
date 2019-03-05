@@ -1,0 +1,40 @@
+-- `duet run <this-file> "incoming1.csv" "outgoing1.csv" "blocks1.csv" "crisis1.cs" 0.05 0.0001 > output.csv`
+-- Presna algorithm
+let main = pλ ε : ℝ⁺,
+              δ : ℝ⁺
+              .
+              -- interval:ℕ,phone_id:ℕ,x:ℕ,y:ℕ,hash:𝕊
+              incoming : 𝕄 [L∞ , U | ★ , 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ [] ],
+              outgoing : 𝕄 [L∞ , U | ★ , 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ [] ],
+              -- blocks   : ℘ (𝐝 ℕ × 𝐝 ℕ),      -- set of all the blocks of interest
+              -- crisis   : ℘ (𝐝 ℕ × 𝐝 ℕ),      -- set of blocks in crisis
+              ε : ℝ⁺[ε],
+              δ : ℝ⁺[δ]
+              ⇒
+
+  let getXY = sλ row : 𝕄 [L∞ , U | 1 , 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ [] ] ⇒
+    ⟨ clip (row#[ℕ[0],ℕ[2]]), clip (row#[ℕ[0],ℕ[3]]) ⟩
+  in
+  let getXYsnd = sλ row : 𝕄 [L∞ , U | 1 , 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ [] ] ⇒
+    ⟨ clip (row#[ℕ[0],ℕ[7]]), clip (row#[ℕ[0],ℕ[8]]) ⟩
+  in
+  let blocks = ℘ {⟨1,1⟩,⟨1,2⟩,⟨2,1⟩,⟨2,2⟩,⟨2,3⟩} in
+  let crisis = ℘ {⟨1,1⟩,⟨2,3⟩,⟨2,2⟩} in
+  -- CRISIS mode
+  -- result of the join is a ℕ ∷ ℕ ∷ ℕ ∷ ℕ ∷ 𝕊 ∷ ℕ ∷ ℕ ∷ ℕ ∷ ℕ ∷ 𝕊 ∷ []
+  parallel [ join₁[outgoing, ℕ[4], incoming, ℕ[4]] , ℘ { true, false } ] { row ⇒ (getXY row) ∈ crisis }
+      { n, pb ⇒
+          if n then {
+            r ← parallel [pb, blocks] { row ⇒ getXY row }
+                  { b₁, p₁ ⇒ parallel [p₁, blocks] { row ⇒ getXYsnd row }
+                               { b₂, p₂ ⇒ noisyCount ← gauss[ℝ⁺[1.0], ε, δ] <p₂> { real (rows p₂) };
+                                 return ⟨⟨b₁, b₂⟩, noisyCount⟩ } };
+            return ⟨n, unionAll r⟩
+          } else {
+            r ← parallel [pb, blocks] { row ⇒ getXY row }
+                  { b, p ⇒ noisyCount ← gauss[ℝ⁺[1.0], ε, δ] <p> { real (rows p) };
+                    return ⟨⟨b, b⟩, noisyCount⟩ };
+            return ⟨n, r⟩
+          }
+      }
+in return main
