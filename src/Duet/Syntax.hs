@@ -100,8 +100,8 @@ instance (Join r,Meet r) ⇒ Join (Pr p r) where
   ZCPriv ρ₁ ⊔ ZCPriv ρ₂ = ZCPriv $ ρ₁ ⊔ ρ₂
   TCPriv ρ₁ ω₁ ⊔ TCPriv ρ₂ ω₂ = TCPriv (ρ₁ ⊔ ρ₂) (ω₁ ⊓ ω₂)
 
-scalePr ∷ (Times r) ⇒ r → Pr p r → Pr p r
-scalePr x = \case
+iteratePr ∷ (Times r) ⇒ r → Pr p r → Pr p r
+iteratePr x = \case
   EpsPriv ε → EpsPriv $ x × ε
   EDPriv ε δ → EDPriv (x × ε) (x × δ)
   RenyiPriv α ε → RenyiPriv α $ x × ε
@@ -356,7 +356,7 @@ data PExp (p ∷ PRIV) where
   LaplacePE ∷ SExpSource p → LaplaceParams p → 𝐿 𝕏 → SExpSource p → PExp p
   ExponentialPE ∷ SExpSource p → ExponentialParams p → SExpSource p → 𝐿 𝕏 → 𝕏  → SExpSource p → PExp p
   RRespPE ∷ SExpSource p → SExpSource p → 𝐿 𝕏 → SExpSource p → PExp p
-  SamplePE ∷ SExpSource p → SExpSource p → SExpSource p → 𝕏 → 𝕏 → PExpSource p → PExp p
+  EDSamplePE ∷ SExpSource 'ED → SExpSource 'ED → SExpSource 'ED → 𝕏 → 𝕏 → PExpSource 'ED → PExp 'ED
   RandNatPE ∷ SExpSource p → SExpSource p → PExp p
   ConvertZCEDPE ∷ SExpSource 'ED → PExpSource 'ZC → PExp 'ED
   ConvertRENYIEDPE ∷ SExpSource 'ED → PExpSource 'RENYI → PExp 'ED

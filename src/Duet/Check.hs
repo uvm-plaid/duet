@@ -820,8 +820,8 @@ inferPriv eA = case extract eA of
     let σ₄Keep = restrict xs' σ₄'
         σ₄KeepMax = joins $ values σ₄Keep
         σ₄Toss = without xs' σ₄'
-    case (τ₁,τ₂,ιview @ (Pr 'ED RNF) σ₄KeepMax) of
-      (ℝˢT ηᵟ',ℕˢT ηₙ,Some (EDPriv ηᵋ ηᵟ)) | τ₄ ≡ τ₃ → do
+    case (τ₁,τ₂,σ₄KeepMax) of
+      (ℝˢT ηᵟ',ℕˢT ηₙ,Priv (Quantity (EDPriv ηᵋ ηᵟ))) | τ₄ ≡ τ₃ → do
         let ε = ι 2 × ηᵋ × root (ι 2 × ηₙ × log (ι 1 / ηᵟ'))
             δ = ηᵟ' + ηₙ × ηᵟ
         tell $ map (Priv ∘ truncate (Quantity $ EDPriv ε δ) ∘ unPriv) σ₄Keep
@@ -840,7 +840,7 @@ inferPriv eA = case extract eA of
         σ₄Toss = without xs' σ₄'
     case (τ₂,ιview @ (Pr p RNF) σ₄KeepMax) of
       (ℕˢT ηₙ,Some p) | τ₄ ≡ τ₃ → do
-        let p' = scalePr ηₙ p
+        let p' = iteratePr ηₙ p
         tell $ map (Priv ∘ truncate (Quantity p') ∘ unPriv) σ₄Keep
         tell $ map (Priv ∘ truncate Inf ∘ unPriv) σ₄Toss
         return τ₃
@@ -1002,7 +1002,7 @@ inferPriv eA = case extract eA of
       𝕄T _ℓ _c (RexpRT r₁) (RexpME _r₂ τ₃) → do
         σ₄ :* τ₄ ← pmFromSM $ hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ₃) ⩌ γ) $ inferSens e₄
         let σ₄' = delete x σ₄
-        let σ₄Keep = restrict xs' σ₄'
+            σ₄Keep = restrict xs' σ₄'
             σ₄KeepMax = joins $ values σ₄Keep
             σ₄Toss = without xs' σ₄'
         case (τ₁,τ₂,ιview @ RNF σ₄KeepMax) of
@@ -1024,6 +1024,27 @@ inferPriv eA = case extract eA of
       ℝˢT ηᵟ → do
         mapPPM (onPriv $ map $ convertRENYIEDPr ηᵟ) $ inferPriv e₂
       _ → error "type error: ConvertRENYIEDPE"
+  EDSamplePE en exs eys xs' ys' e → do
+    _ :* τn ← pmFromSM $ hijack $ inferSens en -- throw away the cost
+    σ₁ :* τxs ← pmFromSM $ hijack $ inferSens exs
+    σ₂ :* τys ← pmFromSM $ hijack $ inferSens eys
+    -- check that upper bound on each of σ₁ and σ₂ is less than 1
+    case (τn,τxs,τys) of
+      (ℕˢT ηrows',𝕄T ℓ₁ c₁ (RexpRT ηrows₁) ς₁,𝕄T ℓ₂ c₂ (RexpRT ηrows₂) ς₂) 
+        | (ηrows₁ ≡ ηrows₂) {-⩓ (ηrows' ≤ ηrows₁)-} → do
+            let τxs' = 𝕄T ℓ₁ c₁ (RexpRT ηrows') ς₁
+                τys' = 𝕄T ℓ₂ c₂ (RexpRT ηrows') ς₂
+                sε = ι 2 × ηrows' / ηrows₁
+                sδ = ηrows' / ηrows₁
+            σ :* τ ← hijack $ mapEnvL contextTypeL (\ γ → (xs' ↦ τxs') ⩌ (ys' ↦ τys') ⩌ γ) $ inferPriv e 
+            -- pull out privacies p₁ for xs' p₂ and ys'
+            -- truncate everything in σ₁ to be p₁ scaled by ⟨sε,sδ⟩
+            -- truncate everything in σ₂ to be p₂ scaled by ⟨sε,sδ⟩
+            -- output σ₁, σ₂, and leftovers from σ
+            undefined
+      _ → error "type error in SamplePE"
+    undefined
+
   e → error $ fromString $ show e
 
 -- infraRed :: PExp -> KEnv → TEnv -> (TypeSource RNF, PEnv)
