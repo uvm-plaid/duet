@@ -26,4 +26,4 @@ let main = pλ m  : ℕ,
         mgauss[ s , ε , δ ] <xs',ys'> { ∇[ LR | θ ; mclip[L2] xs' , ys' ] } };
     return θ - η ⋅ g
   }
-in main
+in return main

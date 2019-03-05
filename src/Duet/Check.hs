@@ -1030,20 +1030,27 @@ inferPriv eA = case extract eA of
     σ₂ :* τys ← pmFromSM $ hijack $ inferSens eys
     -- check that upper bound on each of σ₁ and σ₂ is less than 1
     case (τn,τxs,τys) of
-      (ℕˢT ηrows',𝕄T ℓ₁ c₁ (RexpRT ηrows₁) ς₁,𝕄T ℓ₂ c₂ (RexpRT ηrows₂) ς₂) 
-        | (ηrows₁ ≡ ηrows₂) {-⩓ (ηrows' ≤ ηrows₁)-} → do
+      (ℕˢT ηrows',𝕄T ℓ₁ c₁ (RexpRT ηrows₁) ς₁,𝕄T ℓ₂ c₂ (RexpRT ηrows₂) ς₂)
+        | (ηrows₁ ≡ ηrows₂) ⩓ (joins (values σ₁) ⊑ ι 1) ⩓ (joins (values σ₂) ⊑ ι 1) {-⩓ (ηrows' ≤ ηrows₁)-} → do
             let τxs' = 𝕄T ℓ₁ c₁ (RexpRT ηrows') ς₁
                 τys' = 𝕄T ℓ₂ c₂ (RexpRT ηrows') ς₂
                 sε = ι 2 × ηrows' / ηrows₁
                 sδ = ηrows' / ηrows₁
-            σ :* τ ← hijack $ mapEnvL contextTypeL (\ γ → (xs' ↦ τxs') ⩌ (ys' ↦ τys') ⩌ γ) $ inferPriv e 
+            σ :* τ ← hijack $ mapEnvL contextTypeL (\ γ → (xs' ↦ τxs') ⩌ (ys' ↦ τys') ⩌ γ) $ inferPriv e
+            let σxs' = joins $ values $ delete xs' σ
+                σys' = joins $ values $ delete ys' σ
+            case (σxs',σys') of
+              (Priv (Quantity (EDPriv ε₁ δ₁)), Priv (Quantity (EDPriv ε₂ δ₂))) → do
+                tell $ map (Priv ∘ truncate (Quantity (EDPriv (ε₁×sε) (δ₁×sδ))) ∘ unSens) σ₁
+                tell $ map (Priv ∘ truncate (Quantity (EDPriv (ε₂×sε) (δ₂×sδ))) ∘ unSens) σ₂
+                tell σ
+                return τ
+              _ → error $ "type error in EDSamplePE." ⧺ (pprender (σxs',σys'))
             -- pull out privacies p₁ for xs' p₂ and ys'
             -- truncate everything in σ₁ to be p₁ scaled by ⟨sε,sδ⟩
             -- truncate everything in σ₂ to be p₂ scaled by ⟨sε,sδ⟩
             -- output σ₁, σ₂, and leftovers from σ
-            undefined
-      _ → error "type error in SamplePE"
-    undefined
+      _ → error "type error in EDSamplePE"
 
   e → error $ fromString $ show e
 
