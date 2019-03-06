@@ -1,5 +1,5 @@
 NAME := duet
-ARGS := run examples/crisis-proto.ed.duet data_long/incoming.csv data_long/outgoing.csv 0.05 0.0001
+ARGS := run examples/crisis-proto.ed.duet data_short/incoming.csv data_short/outgoing.csv 0.05 0.0001
 
 
 # Working Examples
