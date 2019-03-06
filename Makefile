@@ -1,8 +1,9 @@
 NAME := duet
-ARGS := run examples/gd-pb-mini.ed.duet data_long/adp1kxs.csv data_long/adp1kys.csv 0.05 100 0.0001 0.0001 1 50
+ARGS := run examples/crisis-proto.ed.duet data_long/incoming.csv data_long/outgoing.csv 0.05 0.0001
 
 
 # Working Examples
+# run examples/gd-pb-mini.ed.duet data_long/adp1kxs.csv data_long/adp1kys.csv 0.05 100 0.0001 0.0001 1 50
 # run examples/gd-pb-mini.ed.duet data_short/fbxs.csv data_short/fbys.csv 0.05 100 0.0001 0.0001 1 50
 # run examples/crisis-proto.ed.duet data_short/incoming1.csv data_short/outgoing1.csv 0.05 0.0001
 # run examples/parallel-simple.ed.duet data_short/made_up.csv 0.05 0.0001 0 0 0 1
