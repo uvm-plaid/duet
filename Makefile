@@ -1,20 +1,17 @@
 NAME := duet
-ARGS := run examples/gd-pb-mini.ed.duet data_short/fbxs.csv data_short/fbys.csv 0.05 100 0.0001 0.0001 1 10
+ARGS := run examples/gd-pb-mini.ed.duet data_long/adp1kxs.csv data_long/adp1kys.csv 0.05 100 0.0001 0.0001 1 50
 
+
+# Working Examples
+# run examples/gd-pb-mini.ed.duet data_short/fbxs.csv data_short/fbys.csv 0.05 100 0.0001 0.0001 1 50
 # run examples/crisis-proto.ed.duet data_short/incoming1.csv data_short/outgoing1.csv 0.05 0.0001
-
-# run examples/gd-pb-mini.ed.duet data_long/adp1kxs.csv data_long/adp1kys.csv 0.05 100 0.0001 0.0001 1 50
-
 # run examples/parallel-simple.ed.duet data_short/made_up.csv 0.05 0.0001 0 0 0 1
-
 # run examples/basic-boxing.ed.duet 1
-
 # run examples/baby.ed.duet 0.05 0.0001 data_short/made_up.csv
-
 # lr-accuracy data_long/adp1kxs.csv data_long/adp1kys.csv out/out.csv
-
 # run examples/gd-pb.ed.duet data_long/adp1kxs.csv data_long/adp1kys.csv 0.05 100 0.0001 0.0001 1
 
+# Run Using GHCI
 # stack ghci
 # :set args check "examples/gd-pb.ed.duet"
 # main

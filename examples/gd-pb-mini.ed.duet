@@ -19,7 +19,7 @@ let main = pλ m  : ℕ,
               b  : ℕ[b]
               ⇒
   let m₀ = mcreate[ L∞ | ℕ[1] , cols xs ] { i , j ⇒ 0.0 } in
-  let b = ℕ[2] in
+  let b = ℕ[50] in
   aloop[ δ′ ] k on m₀ <xs,ys> { t , θ ⇒
     g ← sample[ b ] xs, ys {xs', ys' ⇒
         let s = ℝ⁺[1.0] / real (rows xs') in

@@ -158,8 +158,7 @@ buildRows rows cols = fold dø (⩌) (zipWith (↦) rows cols)
 
 -- Creates a list of vectors from the columns of a matrix
 toColumns :: Matrix t → 𝐿 (Vector t)
-toColumns m = let colLists = (values m) in
-  (mapLookup (iota (count colLists)) (list colLists))
+toColumns m = mapLookup (iota (cols m)) (list (values m))
 
 mapLookup :: 𝐿 ℕ →  𝐿 (ℕ ⇰ a) → 𝐿 (𝐿 a)
 mapLookup (i:&idxs) cols = single𝐿 (map (\x → x ⋕! i) cols) ⧺ mapLookup idxs cols
@@ -167,10 +166,12 @@ mapLookup Nil cols = Nil
 
 -- extract rows in N
 (?) :: Matrix 𝔻 → 𝐿 ℤ → Matrix 𝔻
-(?) m ns = buildRows (iota (count (m ?? ns))) (m ?? ns)
+(?) m ns = buildRows (iota (count ns)) (m ?? ns)
 
 (??) :: Matrix 𝔻 → 𝐿 ℤ → 𝐿 (ℕ ⇰ 𝔻)
-(??) m (n:&ns) = list [m ⋕! (fromInteger n)] ⧺ (m ?? ns)
+(??) m (n:&ns) = case (m ⋕? (natΩ n)) of
+  None → error $ "mextract" ⧺ pprender n
+  Some x → x :& (m ?? ns)
 (??) m Nil = Nil
 
 toList :: Vector 𝔻 → 𝐿 𝔻
@@ -353,7 +354,7 @@ seval env (MLipGradSE LR e₁ e₂ e₃) =
               ys' ∷ Vector 𝔻 = flatten (mapp urv ys)
           in MatrixV $ mapp RealV $ asRow $ ngrad θ' (mapp urv xs) ys'
         False →
-          error $ "Incorrect matrix dimensions for gradient: " ⧺ (show𝕊 (rows θ, rows ys))
+          error $ "Incorrect matrix dimensions for gradient: " ⧺ (show𝕊 (rows θ, cols ys))
     (a, b, c) → error $ "No pattern for " ⧺ (show𝕊 (a, b, c))
 
 -- create matrix
@@ -609,16 +610,12 @@ gaussianNoise c v = normalIO'(c, v)
 -- | Helper function for PSampleE
 sampleHelper :: (PRIV_C p) ⇒ ℕ → Matrix 𝔻 → Matrix  𝔻 → 𝕏 → 𝕏 → PExp p → Env → IO Val
 sampleHelper n xs ys x y e env = do
-  pprint "HEY"
-  pprint xs
-  -- pprint (asColumn (flatten ys))
   batch <- minibatch (int n) xs (flatten ys)
-  pprint "YO"
   peval (insertDataSet env (x :* y) ((fst batch) :* (snd batch))) e
 
-insertDataSet ∷ Env → (𝕏 ∧ 𝕏) → (Matrix 𝔻 ∧ Vector 𝔻) → Env
+insertDataSet ∷ Env → (𝕏 ∧ 𝕏) → (Matrix 𝔻 ∧ Matrix 𝔻) → Env
 insertDataSet env (x :* y) (xs :* ys) =
-  (x ↦ (MatrixV $ mapp RealV $ xs)) ⩌ (y ↦ (MatrixV $ mapp RealV $ asRow ys)) ⩌ env
+  (x ↦ (MatrixV $ mapp RealV $ xs)) ⩌ (y ↦ (MatrixV $ mapp RealV ys)) ⩌ env
 
 -- GRADIENT --
 
@@ -709,18 +706,15 @@ randIndices n a b gen
   | otherwise = do
       x <- uniformR (intΩ64 a, intΩ64 b) gen
       xs' <- randIndices (n - one) a b gen
-      -- pprint n
-      -- pprint "hello\n"
-      pprint (int x :& xs')
       return (int x :& xs')
 
 -- | Outputs a single minibatch of data
-minibatch :: ℤ → Matrix 𝔻 → Vector 𝔻 → IO (Matrix 𝔻 ∧ Vector 𝔻)
+minibatch :: ℤ → Matrix 𝔻 → Vector 𝔻 → IO (Matrix 𝔻 ∧ Matrix 𝔻)
 minibatch batchSize xs ys = do
   gen <- createSystemRandom
   idxs <- randIndices batchSize zero (𝕫 (rows xs) - one) gen
   let bxs = xs ? idxs
-      bys = head $ toColumns ((asColumn ys) ? idxs)
+      bys = ((asColumn ys) ? idxs)
   return (bxs :* bys)
 
 -- | Generates a list of minibatches
