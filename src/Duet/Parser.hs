@@ -854,6 +854,22 @@ parPExp p = pWithContext "pexp" $ tries
         e₄ ← parPExp p
         parLit "}"
         return $ EDSamplePE e₁ e₂ e₃ x₁ x₂ e₄
+      RENYI_W → do
+        parLit "sample"
+        parLit "["
+        e₁ ← parSExp p
+        parLit "]"
+        e₂ ← parSExp p
+        parLit ","
+        e₃ ← parSExp p
+        parLit "{"
+        x₁ ← parVar
+        parLit ","
+        x₂ ← parVar
+        parLit "⇒"
+        e₄ ← parPExp p
+        parLit "}"
+        return $ RenyiSamplePE e₁ e₂ e₃ x₁ x₂ e₄
       _ → abort
   , do parLit "rand-nat"
        parLit "["

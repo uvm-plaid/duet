@@ -547,6 +547,14 @@ peval env (MGaussPE r (EDGaussParams ε δ) vs e) =
       return $ MatrixV $ (mapp RealV (fromLists mat'))
     (a, b, c, d) → error $ "No pattern for: " ⧺ (show𝕊 (a,b,c,d))
 
+peval env (MGaussPE r (RenyiGaussParams α ϵ) vs e) =
+  case (seval env (extract r), seval env (extract α), seval env (extract ϵ), seval env (extract e)) of
+    (RealV r', RealV α', RealV ϵ', MatrixV mat) → do
+      let σ = (r' × (root α')) / (root (2.0 × ϵ'))
+      mat' ← mapM (\row → mapM (\val → gaussianNoise val σ) row) $ toLists (mapp urv mat)
+      return $ MatrixV $ (mapp RealV (fromLists mat'))
+    (a, b, c, d) → error $ "No pattern for: " ⧺ (show𝕊 (a,b,c,d))
+
 -- evaluate finite iteration
 peval env (LoopPE k init xs x₁ x₂ e) =
   case (seval env (extract k), seval env (extract init)) of

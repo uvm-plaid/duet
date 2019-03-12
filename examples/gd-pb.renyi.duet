@@ -5,8 +5,8 @@ let main = pλ m  : ℕ,
               α  : ℝ⁺,
               k  : ℕ
               .
-              xs : 𝕄 [L∞ U|m,n] 𝔻,
-              ys : 𝕄 [L∞ U|m,1] 𝔻,
+              xs : 𝕄 [L∞, U|m, n⋅𝔻 ] ,
+              ys : 𝕄 [L∞, U|m, 1⋅𝔻 ] ,
               α  : ℝ⁺[α],
               ε  : ℝ⁺[ε],
               k  : ℕ[k],
@@ -22,4 +22,4 @@ let main = pλ m  : ℕ,
     g ← mgauss[ s , α, ε ] <xs,ys> { ∇[ LR | θ ; mclip[L2] xs, ys ] } ;
     return mmap θ , mmap g { x ⇒ η ⋅ x } { x , y ⇒ x - y }
   }
-in main
+in return main

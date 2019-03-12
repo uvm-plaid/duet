@@ -1052,8 +1052,48 @@ inferPriv eA = case extract eA of
             -- truncate everything in σ₂ to be p₂ scaled by ⟨sε,sδ⟩
             -- output σ₁, σ₂, and leftovers from σ
       _ → error "type error in EDSamplePE"
+  -- RenyiSamplePE en exs eys xs' ys' e → do
+  --   _ :* τn ← pmFromSM $ hijack $ inferSens en
+  --   σ₁ :* τxs ← pmFromSM $ hijack $ inferSens exs
+  --   σ₂ :* τys ← pmFromSM $ hijack $ inferSens eys
+  --   case (τn,τxs,τys) of
+  --     (ℕˢT ηrows',𝕄T ℓ₁ c₁ (RexpRT ηrows₁) ς₁,𝕄T ℓ₂ c₂ (RexpRT ηrows₂) ς₂)
+  --       | (ηrows₁ ≡ ηrows₂) ⩓ (joins (values σ₁) ⊑ ι 1) ⩓ (joins (values σ₂) ⊑ ι 1) → do
+  --           let τxs' = 𝕄T ℓ₁ c₁ (RexpRT ηrows') ς₁
+  --               τys' = 𝕄T ℓ₂ c₂ (RexpRT ηrows') ς₂
+  --               sε = ι 2 × ηrows' / ηrows₁
+  --               s = ηrows' / ηrows₁
+  --           σ :* τ ← hijack $ mapEnvL contextTypeL (\ γ → (xs' ↦ τxs') ⩌ (ys' ↦ τys') ⩌ γ) $ inferPriv e
+  --           let σxs' = σ ⋕! xs'
+  --               σys' = σ ⋕! ys'
+  --               σ' = without (pow [xs',ys']) σ
+  --           case (σxs',σys') of
+  --             (Priv (Quantity (RenyiPriv α₁ ϵ₁)), Priv (Quantity (RenyiPriv α₂ ϵ₂))) → do
+  --               tell $ map (Priv ∘ truncate (Quantity (RenyiPriv α₁ (ϵ' α₁)) ∘ unSens) σ₁
+  --               tell $ map (Priv ∘ truncate (Quantity (RenyiPriv α₁ (ϵ' α₁)) ∘ unSens) σ₂
+  --               tell σ'
+  --               return τ
+  --             _ → error $ "type error in EDSamplePE." ⧺ (pprender (σxs',σys'))
+  --     _ → error "type error in EDSamplePE"
 
   e → error $ fromString $ show e
+
+-- renyiϵ' :: ℕ → ℕ → ℝ
+-- renyiϵ' α s = (one / (α - one)) × log (1 + ())
+--
+-- renyiϵ'Σ :: ℕ → ℕ → ℕ → ℝ
+-- renyiϵ'Σ j α s = case α < j of
+--   True → 0
+--   False → (2 × (s^j)) × (choose α j) × (exp ((j - one) ×))
+--
+
+-- fac :: ℕ → ℕ
+-- fac 0 = 1
+-- fac 1 = 1
+-- fac n = n × (fac (n - one))
+--
+-- choose :: ℕ → ℕ → ℕ
+-- choose n k = (fac n) / ((fac k) × (fac (n - k)))
 
 -- infraRed :: PExp -> KEnv → TEnv -> (TypeSource RNF, PEnv)
 --
