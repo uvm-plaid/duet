@@ -19,7 +19,9 @@ data RExpPre =
   | TimesRE RExp RExp
   | DivRE RExp RExp
   | RootRE RExp
+  | ExpRE RExp RExp
   | LogRE RExp
+  | ExpFnRE RExp
   | MinusRE RExp RExp
   deriving (Eq,Ord)
 makePrettySum ''RExpPre
@@ -35,7 +37,9 @@ interpRExp γ = \case
   TimesRE e₁ e₂ → interpRExp γ (extract e₁) × interpRExp γ (extract e₂)
   DivRE e₁ e₂ → interpRExp γ (extract e₁) / interpRExp γ (extract e₂)
   RootRE e → root $ interpRExp γ $ extract e
+  ExpRE e₁ e₂ → interpRExp γ (extract e₁) ^ interpRExp γ (extract e₂)
   LogRE e → log $ interpRExp γ $ extract e
+  ExpFnRE e → exp $ interpRExp γ $ extract e
   MinusRE e₁ e₂ → interpRExp γ (extract e₁) - interpRExp γ (extract e₂)
 
 data RNF = 
@@ -50,7 +54,9 @@ data RAtom =
   | VarRA 𝕏
   | InvRA RSP
   | RootRA RSP
+  | ExpRA RSP RSP
   | LogRA RSP
+  | ExpFnRA RSP
   | MinusRA RNF RNF
   deriving (Eq,Ord,Show)
 
@@ -61,11 +67,13 @@ instance HasPrism RNF 𝔻 where hasPrism = nNRealRNFL
 
 ppRAtom ∷ RAtom → Doc
 ppRAtom = \case
-  VarRA x → pretty x
   NNRealRA r → pretty r
+  VarRA x → pretty x
   InvRA e → ppAtLevel 7 $ concat [ppOp "1/",ppRSP e]
   RootRA e → ppAtLevel 7 $ concat [ppOp "√",ppRSP e]
+  ExpRA e₁ e₂ → ppAtLevel 8 $ concat [ppBump $ ppRSP e₁,ppOp "^",ppRSP e₂]
   LogRA e → ppAtLevel 7 $ concat [ppOp "㏒",ppRSP e]
+  ExpFnRA e → ppAtLevel 7 $ concat [ppOp "exp",ppRSP e]
   MinusRA e₁ e₂ → ppAtLevel 5 $ concat [ppRNF e₁,ppOp "-",ppBump $ ppRNF e₂]
 
 ppProd ∷ (RAtom ⇰ ℕ) → Doc
@@ -129,7 +137,9 @@ interpRAtom γ = \case
   NNRealRA r → r
   InvRA xs² → 1.0 / interpRSP γ xs²
   RootRA xs² → root $ interpRSP γ xs²
+  ExpRA xs² ys² → interpRSP γ xs² ^ interpRSP γ ys²
   LogRA xs² → log $ interpRSP γ xs²
+  ExpFnRA xs² → exp $ interpRSP γ xs²
   MinusRA xs⁴ ys⁴ → interpRNF γ xs⁴ - interpRNF γ ys⁴
 
 interpRSP ∷ (𝕏 ⇰ 𝔻) → RSP → 𝔻
@@ -210,11 +220,6 @@ timesRNF = binopRNF (pow [NatRNF 1,NNRealRNF 1.0]) (pow [NatRNF 0,NNRealRNF 0.0]
       (ys :* n) ← list $ unRSP ys²
       return $ unionWith (+) xs ys ↦ m×n
 
-expRNF ∷ RNF → ℕ → RNF
-expRNF e = \case
-  0 → NatRNF 1
-  n → timesRNF e (expRNF e (n - 1))
-
 invRNF ∷ RNF → RNF
 invRNF (NatRNF n) = NNRealRNF $ 1.0 / dbl n
 invRNF (NNRealRNF r) = NNRealRNF $ 1.0 / r
@@ -231,14 +236,40 @@ rootRNF (SymRNF xs⁴) = SymRNF $ pow $ do
   xs³ ← list xs⁴
   return $ pow $ do
     xs² ← list xs³
-    return $ RSP $ case dmin $ unRSP xs² of
-      -- Some (m :* xs :* xs²') | xs²' ≡ dø →
-      --   let blah = undefined
-      --       -- xs' = dict $ do
-      --       --   n :* x ← list xs
-      --       --   return $ RootRA ((n :* x) ↦ n 
-      --   in undefined -- blah ↦ m
-      _ → (RootRA xs² ↦ 1) ↦ 1
+    return $ RSP $ (RootRA xs² ↦ 1) ↦ 1
+
+expRNF ∷ RNF → RNF → RNF
+expRNF (NatRNF n₁) (NatRNF n₂) = NatRNF $ n₁ ^ n₂
+expRNF (NatRNF n₁) (NNRealRNF r₂) = NNRealRNF $ dbl n₁ ^ r₂
+expRNF (NNRealRNF r₁) (NatRNF n₂) = NNRealRNF $ r₁ ^ dbl n₂
+expRNF (NNRealRNF r₁) (NNRealRNF r₂) = NNRealRNF $ r₁ ^ r₂
+expRNF (SymRNF xs⁴) (NatRNF n₂) = SymRNF $ pow $ do
+  xs³ ← list xs⁴
+  return $ pow $ do
+    xs² ← list xs³
+    return $ RSP $ (ExpRA xs² (RSP $ (NNRealRA (dbl n₂) ↦ 1)  ↦ 1) ↦ 1) ↦ 1
+expRNF (SymRNF xs⁴) (NNRealRNF r₂) = SymRNF $ pow $ do
+  xs³ ← list xs⁴
+  return $ pow $ do
+    xs² ← list xs³
+    return $ RSP $ (ExpRA xs² (RSP $ (NNRealRA r₂ ↦ 1)  ↦ 1) ↦ 1) ↦ 1
+expRNF (NatRNF n₁) (SymRNF ys⁴) = SymRNF $ pow $ do
+  ys³ ← list ys⁴
+  return $ pow $ do
+    ys² ← list ys³
+    return $ RSP $ (ExpRA (RSP $ (NNRealRA (dbl n₁) ↦ 1) ↦ 1) ys² ↦ 1) ↦ 1
+expRNF (NNRealRNF r₁) (SymRNF ys⁴) = SymRNF $ pow $ do
+  ys³ ← list ys⁴
+  return $ pow $ do
+    ys² ← list ys³
+    return $ RSP $ (ExpRA (RSP $ (NNRealRA r₁ ↦ 1) ↦ 1) ys² ↦ 1) ↦ 1
+expRNF (SymRNF xs⁴) (SymRNF ys⁴) = SymRNF $ pow $ do
+  xs³ ← list xs⁴
+  ys³ ← list ys⁴
+  return $ pow $ do
+    xs² ← list xs³
+    ys² ← list ys³
+    return $ RSP $ (ExpRA xs² ys² ↦ 1) ↦ 1
 
 logRNF ∷ RNF → RNF
 logRNF (NatRNF n) = NNRealRNF $ log $ dbl n
@@ -248,6 +279,15 @@ logRNF (SymRNF xs⁴) = SymRNF $ pow $ do
   return $ pow $ do
     xs² ← list xs³
     return $ RSP $ (LogRA xs² ↦ 1) ↦ 1
+
+expFnRNF ∷ RNF → RNF
+expFnRNF (NatRNF n) = NNRealRNF $ exp $ dbl n
+expFnRNF (NNRealRNF r) = NNRealRNF $ exp $ r
+expFnRNF (SymRNF xs⁴) = SymRNF $ pow $ do
+  xs³ ← list xs⁴
+  return $ pow $ do
+    xs² ← list xs³
+    return $ RSP $ (ExpFnRA xs² ↦ 1) ↦ 1
 
 minusRNF ∷ RNF → RNF → RNF
 minusRNF xs⁴ ys⁴ = SymRNF $ single $ single $ RSP $ (MinusRA xs⁴ ys⁴ ↦ one) ↦ one
@@ -266,6 +306,9 @@ instance Times RNF where (×) = timesRNF
 instance Divide RNF where e₁ / e₂ = e₁ `timesRNF` invRNF e₂
 instance Root RNF where root = rootRNF
 instance Log RNF where log = logRNF
+
+instance Exponential RNF where (^) = expRNF
+instance ExponentialFn RNF where exp = expFnRNF
 
 instance Multiplicative RNF
 instance Additive RNF
@@ -295,7 +338,9 @@ normalizeRExpPre (PlusRE e₁ e₂) = plusRNF (normalizeRExpPre $ extract e₁) 
 normalizeRExpPre (TimesRE e₁ e₂) = timesRNF (normalizeRExpPre $ extract e₁) (normalizeRExpPre $ extract e₂)
 normalizeRExpPre (DivRE e₁ e₂) = timesRNF (normalizeRExpPre $ extract e₁) $ invRNF (normalizeRExpPre $ extract e₂)
 normalizeRExpPre (RootRE e) = rootRNF (normalizeRExpPre $ extract e)
+normalizeRExpPre (ExpRE e₁ e₂) = expRNF (normalizeRExpPre $ extract e₁) (normalizeRExpPre $ extract e₂)
 normalizeRExpPre (LogRE e) = logRNF (normalizeRExpPre $ extract e)
+normalizeRExpPre (ExpFnRE e) = expFnRNF (normalizeRExpPre $ extract e)
 normalizeRExpPre (MinusRE e₁ e₂) = minusRNF (normalizeRExpPre $ extract e₁) (normalizeRExpPre $ extract e₂)
 
 normalizeRExp ∷ RExp → RNF
