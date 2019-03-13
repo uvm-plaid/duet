@@ -619,7 +619,6 @@ laplaceNoise ∷ 𝔻 → IO 𝔻
 laplaceNoise scale = do
   gen ← createSystemRandom
   u ← uniformR (neg 0.5, 0.5) gen
-  pprint u
   return $ neg $ scale × (signum u) × log(1.0 - 2.0 × (abs u))
 
 -- | Helper function for PSampleE
