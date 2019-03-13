@@ -861,6 +861,21 @@ inferPriv eA = case extract eA of
         tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
         return ℝT
       _ → error $ "Gauss error: " ⧺ (pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄ :* ιview @ RNF σ₄KeepMax))
+  LaplacePE e₁ (EpsLaplaceParams e₂) xs e₄ → do
+    let xs' = pow xs
+    τ₁ ← pmFromSM $ inferSens e₁
+    τ₂ ← pmFromSM $ inferSens e₂
+    σ₄ :* τ₄ ← pmFromSM $ hijack $ inferSens e₄
+    let σ₄Keep = restrict xs' σ₄
+        σ₄KeepMax = joins $ values σ₄Keep
+        σ₄Toss = without xs' σ₄
+    -- TODO: fix this ιview thing as in MGauss
+    case (τ₁,τ₂,τ₄,ιview @ RNF σ₄KeepMax) of
+      (ℝˢT ηₛ,ℝˢT ηᵋ,ℝT,Some ς) | ς ⊑ ηₛ → do
+        tell $ map (Priv ∘ truncate (Quantity $ EpsPriv ηᵋ) ∘ unSens) σ₄Keep
+        tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
+        return ℝT
+      _ → error $ "Laplace error: " ⧺ (pprender $ (τ₁ :* τ₂ :* τ₄ :* ιview @ RNF σ₄KeepMax))
   ParallelPE e₀ e₁ x₂ e₂ x₃ x₄ e₃ → do
     σ₀ :* τ₀ ← pmFromSM  $ hijack $ inferSens e₀
     σ₁ :* τ₁ ← pmFromSM $ hijack $ inferSens e₁

@@ -25,7 +25,8 @@ tokKeywords = list
   ,"real","bag","set","record", "unionAll"
   ,"countBag","filterBag","partitionDF","addColDF","mapDF","join₁","joinDF₁","parallel"
   ,"matrix","mcreate","mclip","clip","∇","mmap","bmap","idx","℘","𝐝","conv","disc","∈"
-  ,"aloop","loop","gauss","mgauss","bgauss","rows","cols","exponential","rand-resp"
+  ,"aloop","loop","gauss","mgauss","bgauss","laplace","mlaplace"
+  ,"rows","cols","exponential","rand-resp"
   ,"sample","rand-nat"
   ,"L1","L2","L∞","U"
   ,"dyn","real"
@@ -754,6 +755,21 @@ parPExp p = pWithContext "pexp" $ tries
         parLit "}"
         return $ BGaussPE e₁ (ZCGaussParams e₂) xs e₄
       _ → abort
+  , case p of
+      EPS_W → do
+        parLit "laplace"
+        parLit "["
+        e₁ ← parSExp p
+        parLit ","
+        e₂ ← parSExp p
+        parLit "]"
+        parLit "<"
+        xs ← pManySepBy (parLit ",") parVar
+        parLit ">"
+        parLit "{"
+        e₃ ← parSExp p
+        parLit "}"
+        return $ LaplacePE e₁ (EpsLaplaceParams e₂) xs e₃
   , case p of
       ED_W → do
         parLit "gauss"

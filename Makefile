@@ -2,7 +2,7 @@ NAME := duet
 
 ARGS := check examples/gd-pb.ed.duet
 ARGS := run examples/gd-pb.ed.duet data_short/fbxs.csv data_short/fbys.csv 0.05 100 0.0001 0.0001 1
-ARGS := run examples/presna-crisis.ed.duet data_short/incoming.csv data_short/outgoing.csv 0.05 1.0
+ARGS := run examples/presna-crisis.eps.duet data_short/incoming.csv data_short/outgoing.csv 1.0
 
 # Working Examples
 # run examples/gd-pb-mini.ed.duet data_long/adp1kxs.csv data_long/adp1kys.csv 0.05 100 0.0001 0.0001 1 50

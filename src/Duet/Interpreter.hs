@@ -538,6 +538,14 @@ peval env (GaussPE r (EDGaussParams ε δ) vs e) =
       return $ RealV $ v + r
     (a, b, c, d) → error $ "No pattern for: " ⧺ (show𝕊 (a,b,c,d))
 
+-- laplace mechanism for real numbers
+peval env (LaplacePE r (EpsLaplaceParams ε) vs e) =
+  case (seval env (extract r), seval env (extract ε), seval env (extract e)) of
+    (RealV r', RealV ε', RealV v) → do
+      r ← laplaceNoise (r' / ε')
+      return $ RealV $ v + r
+    (a, b, c) → error $ "No pattern for: " ⧺ (show𝕊 (a,b,c))
+
 -- gaussian mechanism for matrices
 peval env (MGaussPE r (EDGaussParams ε δ) vs e) =
   case (seval env (extract r), seval env (extract ε), seval env (extract δ), seval env (extract e)) of
@@ -607,6 +615,13 @@ emptyEnv = dø
 gaussianNoise ∷ 𝔻 → 𝔻 → IO 𝔻
 gaussianNoise c v = normalIO'(c, v)
 
+laplaceNoise ∷ 𝔻 → IO 𝔻
+laplaceNoise scale = do
+  gen ← createSystemRandom
+  u ← uniformR (neg 0.5, 0.5) gen
+  pprint u
+  return $ neg $ scale × (signum u) × log(1.0 - 2.0 × (abs u))
+
 -- | Helper function for PSampleE
 sampleHelper :: (PRIV_C p) ⇒ ℕ → Matrix 𝔻 → Matrix  𝔻 → 𝕏 → 𝕏 → PExp p → Env → IO Val
 sampleHelper n xs ys x y e env = do
@@ -668,11 +683,17 @@ predict θ (x :* y) = signum $ x <.> θ
 (<.>) :: Vector 𝔻 → Vector 𝔻 → 𝔻
 (<.>) a b = sum $ zipWith (×) a b
 
--- signum ∷ (Ord a,Plus a,Minus a) ⇒ a → a
+signum ∷ (Ord a, Zero a, Zero p, Minus p, One p) ⇒ a → p
 signum x = case compare x zero of
   LT → neg one
   EQ → zero
   GT → one
+
+abs ∷ (Ord p, Zero p, Minus p) ⇒ p → p
+abs x = case compare x zero of
+  LT → neg x
+  EQ → zero
+  GT → x
 
 isCorrect ∷ (𝔻 ∧ 𝔻) → (ℕ ∧ ℕ)
 isCorrect (prediction :* actual) | prediction ≡ actual = (1 :* 0)

@@ -329,8 +329,6 @@ deriving instance Show (GaussParams p)
 
 data LaplaceParams (p ∷ PRIV) where
   EpsLaplaceParams ∷ SExpSource 'EPS → LaplaceParams 'EPS
-  EDLaplaceParams ∷ SExpSource 'ED → SExpSource 'ED → LaplaceParams 'ED
-  RenyiLaplaceParams ∷ SExpSource 'RENYI → SExpSource 'RENYI → LaplaceParams 'RENYI
 deriving instance Eq (LaplaceParams p)
 deriving instance Ord (LaplaceParams p)
 deriving instance Show (LaplaceParams p)
@@ -354,6 +352,7 @@ data PExp (p ∷ PRIV) where
   MGaussPE ∷ SExpSource p → GaussParams p → 𝐿 𝕏 → SExpSource p → PExp p
   BGaussPE ∷ SExpSource p → GaussParams p → 𝐿 𝕏 → SExpSource p → PExp p
   LaplacePE ∷ SExpSource p → LaplaceParams p → 𝐿 𝕏 → SExpSource p → PExp p
+  MLaplacePE ∷ SExpSource p → LaplaceParams p → 𝐿 𝕏 → SExpSource p → PExp p
   ExponentialPE ∷ SExpSource p → ExponentialParams p → SExpSource p → 𝐿 𝕏 → 𝕏  → SExpSource p → PExp p
   RRespPE ∷ SExpSource p → SExpSource p → 𝐿 𝕏 → SExpSource p → PExp p
   EDSamplePE ∷ SExpSource 'ED → SExpSource 'ED → SExpSource 'ED → 𝕏 → 𝕏 → PExpSource 'ED → PExp 'ED

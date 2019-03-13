@@ -9,6 +9,7 @@ initEnv = dict [ var "sign" ↦ (ℝT :⊸: (ι 1 :* ℝT))
 
 parseMode ∷ 𝕊 → Ex_C PRIV_C PRIV_W
 parseMode s = case splitOn𝕊 "." s of
+  _ :& "eps" :& "duet" :& Nil → Ex_C EPS_W
   _ :& "ed" :& "duet" :& Nil → Ex_C ED_W
   _ :& "renyi" :& "duet" :& Nil → Ex_C RENYI_W
   _ :& "zcdp" :& "duet" :& Nil → Ex_C ZC_W
@@ -108,6 +109,7 @@ main = do
         e ← parseIO (pSkip tokSkip $ pFinal $ parPExp mode) $ stream ts
         do pprint $ ppHeader "TYPE CHECKING" ; flushOut
         let τ = runPM dø initEnv dø $ inferPriv e
+        do pprint τ ; flushOut
         do pprint $ ppHeader "RUNNING" ; flushOut
         r ← peval dø (extract e)
         do pprint r ; flushOut
