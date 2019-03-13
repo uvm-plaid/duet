@@ -12,6 +12,7 @@ parseMode s = case splitOn𝕊 "." s of
   _ :& "eps" :& "duet" :& Nil → Ex_C EPS_W
   _ :& "ed" :& "duet" :& Nil → Ex_C ED_W
   _ :& "renyi" :& "duet" :& Nil → Ex_C RENYI_W
+  _ :& "tcdp" :& "duet" :& Nil → Ex_C TC_W
   _ :& "zcdp" :& "duet" :& Nil → Ex_C ZC_W
   _ → error "BAD FILE NAME"
 
@@ -98,6 +99,7 @@ main = do
       let csvss₃ = map (splitOn𝕊 ",") $ filter (\x → not (isEmpty𝕊 x)) $ splitOn𝕊 "\n" csvs₃
       let csvys :: Model = flatten $ csvToMatrix𝔻 $ list csvss₃
       let r = accuracy csvxs csvys csvmd
+      write "out/acc.csv" (intercalate "," (map show𝕊 (list [(fst r),(snd r)])))
       pprint r
     "run":fn:_ → do
       do pprint $ ppHeader "READING" ; flushOut
@@ -126,7 +128,7 @@ main = do
                     case r' of
                       MatrixV m → do
                         pprint r'
-                        write "out/out.csv" (intercalate "\n" (map (intercalate ",") (mapp (show𝕊 ∘ urv) (toLists m))))
+                        write "out/model.csv" (intercalate "\n" (map (intercalate ",") (mapp (show𝕊 ∘ urv) (toLists m))))
                       _ → do pprint r'
                     pprint $ ppHeader "DONE" ; flushOut
                   _ → error "expected pλ at top level"
