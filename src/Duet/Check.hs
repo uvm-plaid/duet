@@ -934,7 +934,7 @@ inferPriv eA = case extract eA of
         σ₄KeepMax = joins $ values σ₄Keep
         σ₄Toss = without xs' σ₄
     case (τ₁,τ₂,τ₃,τ₄,ιview @ RNF σ₄KeepMax) of
-      (ℝˢT ηₛ,ℝˢT ηᵅ,ℝˢT ηᵋ,𝕄T L2 _c ηₘ ηₙ,Some ς) | ς ⊑ ηₛ → do
+      (ℝˢT ηₛ,ℕˢT ηᵅ,ℝˢT ηᵋ,𝕄T L2 _c ηₘ ηₙ,Some ς) | ς ⊑ ηₛ → do
         b ← isRealMExp ηₙ
         when (not b) $ throw (error "MGauss error isRealMExp check failed" ∷ TypeError)
         tell $ map (Priv ∘ truncate (Quantity $ RenyiPriv ηᵅ ηᵋ) ∘ unSens) σ₄Keep
@@ -1052,48 +1052,47 @@ inferPriv eA = case extract eA of
             -- truncate everything in σ₂ to be p₂ scaled by ⟨sε,sδ⟩
             -- output σ₁, σ₂, and leftovers from σ
       _ → error "type error in EDSamplePE"
-  -- RenyiSamplePE en exs eys xs' ys' e → do
-  --   _ :* τn ← pmFromSM $ hijack $ inferSens en
-  --   σ₁ :* τxs ← pmFromSM $ hijack $ inferSens exs
-  --   σ₂ :* τys ← pmFromSM $ hijack $ inferSens eys
-  --   case (τn,τxs,τys) of
-  --     (ℕˢT ηrows',𝕄T ℓ₁ c₁ (RexpRT ηrows₁) ς₁,𝕄T ℓ₂ c₂ (RexpRT ηrows₂) ς₂)
-  --       | (ηrows₁ ≡ ηrows₂) ⩓ (joins (values σ₁) ⊑ ι 1) ⩓ (joins (values σ₂) ⊑ ι 1) → do
-  --           let τxs' = 𝕄T ℓ₁ c₁ (RexpRT ηrows') ς₁
-  --               τys' = 𝕄T ℓ₂ c₂ (RexpRT ηrows') ς₂
-  --               sε = ι 2 × ηrows' / ηrows₁
-  --               s = ηrows' / ηrows₁
-  --           σ :* τ ← hijack $ mapEnvL contextTypeL (\ γ → (xs' ↦ τxs') ⩌ (ys' ↦ τys') ⩌ γ) $ inferPriv e
-  --           let σxs' = σ ⋕! xs'
-  --               σys' = σ ⋕! ys'
-  --               σ' = without (pow [xs',ys']) σ
-  --           case (σxs',σys') of
-  --             (Priv (Quantity (RenyiPriv α₁ ϵ₁)), Priv (Quantity (RenyiPriv α₂ ϵ₂))) → do
-  --               tell $ map (Priv ∘ truncate (Quantity (RenyiPriv α₁ (ϵ' α₁)) ∘ unSens) σ₁
-  --               tell $ map (Priv ∘ truncate (Quantity (RenyiPriv α₁ (ϵ' α₁)) ∘ unSens) σ₂
-  --               tell σ'
-  --               return τ
-  --             _ → error $ "type error in EDSamplePE." ⧺ (pprender (σxs',σys'))
-  --     _ → error "type error in EDSamplePE"
+  RenyiSamplePE en exs eys xs' ys' e → do
+    _ :* τn ← pmFromSM $ hijack $ inferSens en
+    σ₁ :* τxs ← pmFromSM $ hijack $ inferSens exs
+    σ₂ :* τys ← pmFromSM $ hijack $ inferSens eys
+    case (τn,τxs,τys) of
+      (ℕˢT ηrows',𝕄T ℓ₁ c₁ (RexpRT ηrows₁) ς₁,𝕄T ℓ₂ c₂ (RexpRT ηrows₂) ς₂)
+        | (ηrows₁ ≡ ηrows₂) ⩓ (joins (values σ₁) ⊑ ι 1) ⩓ (joins (values σ₂) ⊑ ι 1) → do
+            let τxs' = 𝕄T ℓ₁ c₁ (RexpRT ηrows') ς₁
+                τys' = 𝕄T ℓ₂ c₂ (RexpRT ηrows') ς₂
+                sε = ι 2 × ηrows' / ηrows₁
+                s = ηrows' / ηrows₁
+            σ :* τ ← hijack $ mapEnvL contextTypeL (\ γ → (xs' ↦ τxs') ⩌ (ys' ↦ τys') ⩌ γ) $ inferPriv e
+            let σxs' = σ ⋕! xs'
+                σys' = σ ⋕! ys'
+                σ' = without (pow [xs',ys']) σ
+            case (σxs',σys',s) of
+              (Priv (Quantity (RenyiPriv (NatRNF α₁) (NNRealRNF ϵ₁))), Priv (Quantity (RenyiPriv (NatRNF α₂) (NNRealRNF ϵ₂))), NNRealRNF s') → do
+                tell $ map (Priv ∘ truncate (Quantity (RenyiPriv (NatRNF α₁) (NNRealRNF (renyiϵ' 2 α₁ s' ϵ₁)))) ∘ unSens) σ₁
+                tell $ map (Priv ∘ truncate (Quantity (RenyiPriv (NatRNF α₂) (NNRealRNF (renyiϵ' 2 α₂ s' ϵ₂)))) ∘ unSens) σ₂
+                tell σ'
+                return τ
+              _ → error $ "type error in RenyiSamplePE." ⧺ (pprender (σxs',σys')) ⧺ ", " ⧺ pprender s
+      _ → error "type error in RenyiSamplePE"
 
   e → error $ fromString $ show e
 
--- renyiϵ' :: ℕ → ℕ → ℝ
--- renyiϵ' α s = (one / (α - one)) × log (1 + ())
---
--- renyiϵ'Σ :: ℕ → ℕ → ℕ → ℝ
--- renyiϵ'Σ j α s = case α < j of
---   True → 0
---   False → (2 × (s^j)) × (choose α j) × (exp ((j - one) ×))
---
+renyiϵ' ∷ ℕ → ℕ → 𝔻 → 𝔻 → 𝔻
+renyiϵ' j α s ϵ = (one / ((dbl α) - one)) × log (1.0 + (renyiϵ'Σ j α s ϵ))
 
--- fac :: ℕ → ℕ
--- fac 0 = 1
--- fac 1 = 1
--- fac n = n × (fac (n - one))
---
--- choose :: ℕ → ℕ → ℕ
--- choose n k = (fac n) / ((fac k) × (fac (n - k)))
+renyiϵ'Σ :: ℕ → ℕ → 𝔻 → 𝔻 → 𝔻
+renyiϵ'Σ j α s ϵ = case α < j of
+  True → 0.0
+  False → ((2.0 × (s^(dbl j))) × (choose α j) × (exp (((dbl j) - one) × ϵ))) + renyiϵ'Σ (j + 1) α s ϵ
+
+fac :: ℕ → ℕ
+fac 0 = 1
+fac 1 = 1
+fac n = n × (fac (n - one))
+
+choose :: ℕ → ℕ → 𝔻
+choose n k = (dbl (fac n)) / (dbl ((fac k) × (fac (n - k))))
 
 -- infraRed :: PExp -> KEnv → TEnv -> (TypeSource RNF, PEnv)
 --
