@@ -770,6 +770,7 @@ parPExp p = pWithContext "pexp" $ tries
         e₃ ← parSExp p
         parLit "}"
         return $ LaplacePE e₁ (EpsLaplaceParams e₂) xs e₃
+      _ → abort
   , case p of
       ED_W → do
         parLit "gauss"
