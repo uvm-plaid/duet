@@ -2,7 +2,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GADTs #-}
 
-import           Crypto.Cipher.AES (AES256)
+import           Crypto.Cipher.AES (AES128)
 import           Crypto.Cipher.Types (BlockCipher(..), Cipher(..), nullIV, KeySizeSpecifier(..), IV, makeIV)
 import           Crypto.Error (CryptoFailable(..), CryptoError(..))
 
@@ -40,13 +40,13 @@ encrypt secretKey initIV msg =
 decrypt :: (BlockCipher c, ByteArray a) => Key c a -> IV c -> a -> Either CryptoError a
 decrypt = encrypt
 
-exampleAES256 :: ByteString -> IO ()
-exampleAES256 msg = do
-  -- secret key needs 256 bits (32 * 8)
-  secretKey <- genSecretKey (undefined :: AES256) 32
-  mInitIV <- genRandomIV (undefined :: AES256)
+exampleAES128 :: ByteString -> IO ()
+exampleAES128 msg = do
+  -- secret key needs 128 bits (16 * 8)
+  secretKey <- genSecretKey (undefined :: AES128) 16
+  mInitIV <- genRandomIV (undefined :: AES128)
   case mInitIV of
-    Nothing -> error "Failed to generate and initialization vector."
+    Nothing -> error "Failed to generate an initialization vector."
     Just initIV -> do
       let encryptedMsg = encrypt secretKey initIV msg
           decryptedMsg = decrypt secretKey initIV =<< encryptedMsg
@@ -57,11 +57,11 @@ exampleAES256 msg = do
           putStrLn $ "Message after encryption: " ++ show eMsg
           putStrLn $ "Message after decryption: " ++ show dMsg
 
-example1AES256 :: [ByteString] -> IO ()
-example1AES256 msg = do
-  -- secret key needs 256 bits (32 * 8)
-  secretKey <- genSecretKey (undefined :: AES256) 32
-  mInitIV <- genRandomIV (undefined :: AES256)
+example1AES128 :: [ByteString] -> IO ()
+example1AES128 msg = do
+  -- secret key needs 128 bits (16 * 8)
+  secretKey <- genSecretKey (undefined :: AES128) 16
+  mInitIV <- genRandomIV (undefined :: AES128)
   case mInitIV of
     Nothing -> error "Failed to generate and initialization vector."
     Just initIV -> do
@@ -83,5 +83,5 @@ encryptCSV secretKey initIV (x:xs) =
 decryptCSV :: (BlockCipher c, ByteArray a) => Key c a -> IV c -> [a] -> [a]
 decryptCSV = encryptCSV
 
--- main = exampleAES256 "Hello, World!"
-main = example1AES256 ["Hello, World!", "Goodbye, World!"]
+-- main = exampleAES128 "Hello, World!"
+main = example1AES128 ["Hello, World!", "Goodbye, World!"]
