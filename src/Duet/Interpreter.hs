@@ -13,8 +13,8 @@ import System.Random.MWC
 import Data.Random.Normal
 
 type Env = 𝕏 ⇰ Val
-type Vector v = 𝐿 v
-type Matrix v = (ℕ ⇰ (ℕ ⇰ v))
+type OldVector v = 𝐿 v
+type OldMatrix v = (ℕ ⇰ (ℕ ⇰ v))
 
 -- TODO: eventually add this to UVMHS
 minElem ::  Ord b => (a → b) → 𝐿 a → a
@@ -45,7 +45,7 @@ take n (x:&xs) = x :& take (n-1) xs
 iterate :: (a → a) → a → [a]
 iterate f a = a : iterate f (f a)
 
-norm_2 :: Vector 𝔻 → 𝔻
+norm_2 :: OldVector 𝔻 → 𝔻
 norm_2 = root ∘ sum ∘ map (\x → x×x)
 
 fst1 :: (a,b) → a
@@ -56,34 +56,34 @@ snd1 (_,x) = x
 
 -- matrix ops
 
-cols :: Matrix v → ℕ
+cols :: OldMatrix v → ℕ
 cols a =
   let rws = list𝐼 (uniques (keys a)) in
     case rws of
       (x:&xs) → (dsize (a ⋕! x))
       _ → error "cols: empty matrix"
 
-rows :: Matrix v → ℕ
+rows :: OldMatrix v → ℕ
 rows = dsize
 
-tr :: Matrix 𝔻 → Matrix 𝔻
+tr :: OldMatrix 𝔻 → OldMatrix 𝔻
 tr m = fromLists $ transpose $ toRows m
 
 transpose:: 𝐿 (𝐿 a) → 𝐿 (𝐿 a)
 transpose (Nil:&_) = Nil
 transpose m = (map head m) :& transpose (map tail m)
 
-(===) :: Matrix a → Matrix a → Matrix a
+(===) :: OldMatrix a → OldMatrix a → OldMatrix a
 (===) a b =
   let a₁ = toRows a
       b₁ = toRows b
       c = a₁ ⧺ b₁
   in fromRows c
 
-normalize :: Vector 𝔻 → 𝐿 𝔻
+normalize :: OldVector 𝔻 → 𝐿 𝔻
 normalize vec = map (/ (root $ sum (map (^2.0) vec))) vec
 
-ident :: ℕ → Matrix 𝔻
+ident :: ℕ → OldMatrix 𝔻
 ident n = let m = [ [boolCheck $ i ≡ j | i <- list $ upTo n] | j <- list $ upTo n] in
   fromRows m
 
@@ -91,23 +91,23 @@ boolCheck :: 𝔹 → 𝔻
 boolCheck True = 1.0
 boolCheck False = 0.0
 
-flatten :: Matrix 𝔻 → Vector 𝔻
+flatten :: OldMatrix 𝔻 → OldVector 𝔻
 flatten m = fold Nil (⧺) (list (values (map (list ∘ values) m)))
 
-(<>) :: Matrix 𝔻 → Matrix 𝔻 → Matrix 𝔻
+(<>) :: OldMatrix 𝔻 → OldMatrix 𝔻 → OldMatrix 𝔻
 (<>) a b =
   let a₁ = toRows a
       b₁ = toRows (tr b)
       c = [ [ sum $ zipWith (×) ar bc | bc <- b₁ ] | ar <- a₁ ]
   in fromRows c
 
-scale :: 𝔻 → Vector 𝔻 → Model
+scale :: 𝔻 → OldVector 𝔻 → Model
 scale r v = map (× r) v
 
-mscale :: 𝔻 → Matrix 𝔻 → Matrix 𝔻
+mscale :: 𝔻 → OldMatrix 𝔻 → OldMatrix 𝔻
 mscale r v = mapp (× r) v
 
-vector :: 𝐿 𝔻 → Vector 𝔻
+vector :: 𝐿 𝔻 → OldVector 𝔻
 vector x = x
 
 head :: 𝐿 a → a
@@ -118,23 +118,23 @@ tail :: 𝐿 a → 𝐿 a
 tail (x:&xs) = xs
 tail _ = error "tail failed"
 
-fromList :: 𝐿 𝔻 → Vector 𝔻
+fromList :: 𝐿 𝔻 → OldVector 𝔻
 fromList x = x
 
 -- Creates a matrix from a list of vectors, as columns
-fromColumns :: 𝐿 (Vector t) → Matrix t
+fromColumns :: 𝐿 (OldVector t) → OldMatrix t
 fromColumns vecs =
   let rows = buildCols vecs in
     buildRows (iota (count rows)) rows
 
 -- given list of vecs build list of colmaps, so really building rows
-buildCols :: 𝐿 (Vector t) → 𝐿 (ℕ ⇰ t)
+buildCols :: 𝐿 (OldVector t) → 𝐿 (ℕ ⇰ t)
 buildCols vecs = case (fold Nil (⧺) vecs) of
   (x:&xs) → let row = (map head vecs) in
     (buildCol (iota (count row)) row) ⧺ buildCols (map tail vecs)
   Nil → empty𝐿
 
-fromLists :: 𝐿 (𝐿 a) → Matrix a
+fromLists :: 𝐿 (𝐿 a) → OldMatrix a
 fromLists ls =
   let cols = fromLists1 ls in buildRows (iota (count cols)) cols
 
@@ -149,15 +149,15 @@ buildCol :: 𝐿 ℕ → 𝐿 a → 𝐿 (ℕ ⇰ a)
 buildCol idxs vals = single𝐿 $ fold dø (⩌) (zipWith (↦) idxs vals)
 
 -- creates a 1-column matrix from a vector
-asColumn :: Vector a → Matrix a
+asColumn :: OldVector a → OldMatrix a
 asColumn vec = buildRows (iota (count vec)) (map ((↦) 0) vec)
 
 -- given a list of column dicts and its iota, really build a matrix
-buildRows :: 𝐿 ℕ → 𝐿 (ℕ ⇰ a) → Matrix a
+buildRows :: 𝐿 ℕ → 𝐿 (ℕ ⇰ a) → OldMatrix a
 buildRows rows cols = fold dø (⩌) (zipWith (↦) rows cols)
 
 -- Creates a list of vectors from the columns of a matrix
-toColumns :: Matrix t → 𝐿 (Vector t)
+toColumns :: OldMatrix t → 𝐿 (OldVector t)
 toColumns m = mapLookup (iota (cols m)) (list (values m))
 
 mapLookup :: 𝐿 ℕ →  𝐿 (ℕ ⇰ a) → 𝐿 (𝐿 a)
@@ -165,32 +165,32 @@ mapLookup (i:&idxs) cols = single𝐿 (map (\x → x ⋕! i) cols) ⧺ mapLookup
 mapLookup Nil cols = Nil
 
 -- extract rows in N
-(?) :: Matrix 𝔻 → 𝐿 ℤ → Matrix 𝔻
+(?) :: OldMatrix 𝔻 → 𝐿 ℤ → OldMatrix 𝔻
 (?) m ns = buildRows (iota (count ns)) (m ?? ns)
 
-(??) :: Matrix 𝔻 → 𝐿 ℤ → 𝐿 (ℕ ⇰ 𝔻)
+(??) :: OldMatrix 𝔻 → 𝐿 ℤ → 𝐿 (ℕ ⇰ 𝔻)
 (??) m (n:&ns) = case (m ⋕? (natΩ n)) of
   None → error $ "mextract" ⧺ pprender n
   Some x → x :& (m ?? ns)
 (??) m Nil = Nil
 
-toList :: Vector 𝔻 → 𝐿 𝔻
+toList :: OldVector 𝔻 → 𝐿 𝔻
 toList x = x
 
 -- extracts the rows of a matrix as a list of vectors
-toRows :: Matrix a → 𝐿 (Vector a)
+toRows :: OldMatrix a → 𝐿 (OldVector a)
 toRows m =  list $ values $ map (list ∘ values) m
 
 toLists = toRows
 
-size :: Matrix Val → (ℕ, ℕ)
+size :: OldMatrix Val → (ℕ, ℕ)
 size m = (dsize m, (dsize (head (list (values m)))))
 
 -- creates a 1-row matrix from a vector
-asRow :: Vector a → Matrix a
+asRow :: OldVector a → OldMatrix a
 asRow vec = 0 ↦ (fold dø (⩌) (buildCol (iota (count vec)) vec))
 
-(+++) :: (Plus a) => Matrix a → Matrix a → Matrix a
+(+++) :: (Plus a) => OldMatrix a → OldMatrix a → OldMatrix a
 (+++) a b =
   let a₁ = toRows a
       b₁ = toRows b
@@ -198,7 +198,7 @@ asRow vec = 0 ↦ (fold dø (⩌) (buildCol (iota (count vec)) vec))
       c = add a₁ b₁
   in fromRows c
 
-(-/) :: (Minus a) => Matrix a → Matrix a → Matrix a
+(-/) :: (Minus a) => OldMatrix a → OldMatrix a → OldMatrix a
 (-/) a b =
   let a₁ = toRows a
       b₁ = toRows b
@@ -238,7 +238,7 @@ data Val =
   | SetV (𝑃 Val)
   | SFunV 𝕏 (ExPriv SExp) Env  -- See UVMHS.Core.Init for definition of Ex
   | PFunV (𝐿 𝕏) (ExPriv PExp) Env
-  | MatrixV (Matrix Val)
+  | MatrixV (OldMatrix Val)
   deriving (Eq,Ord,Show)
 
 instance Pretty Val where
@@ -330,8 +330,8 @@ seval env (MIndexSE e₁ e₂ e₃) =
 seval env (IdxSE e) =
   case (seval env (extract e)) of
     (NatV d) →
-      let posMat ∷ Matrix 𝔻 = ident d
-          negMat ∷ Matrix 𝔻 = mscale (neg one) posMat
+      let posMat ∷ OldMatrix 𝔻 = ident d
+          negMat ∷ OldMatrix 𝔻 = mscale (neg one) posMat
       in MatrixV (mapp RealV (posMat === negMat))
 
 -- seval env (SMTrE e) =
@@ -350,8 +350,8 @@ seval env (MLipGradSE LR e₁ e₂ e₃) =
     (MatrixV θ, MatrixV xs, MatrixV ys) →
       case ((rows θ ≡ 1) ⩓ (cols ys ≡ 1)) of
         True →
-          let θ'  ∷ Vector 𝔻 = flatten (mapp urv θ)
-              ys' ∷ Vector 𝔻 = flatten (mapp urv ys)
+          let θ'  ∷ OldVector 𝔻 = flatten (mapp urv θ)
+              ys' ∷ OldVector 𝔻 = flatten (mapp urv ys)
           in MatrixV $ mapp RealV $ asRow $ ngrad θ' (mapp urv xs) ys'
         False →
           error $ "Incorrect matrix dimensions for gradient: " ⧺ (show𝕊 (rows θ, cols ys))
@@ -430,7 +430,7 @@ seval env (JoinSE e₁ e₂ e₃ e₄) =
 
 -- seval env (CSVtoMatrixSE s _) =
 --   let csvList ∷ 𝐿 (𝐿 𝔻) = mapp read𝕊 s
---       m ∷ Matrix 𝔻 = fromLists csvList
+--       m ∷ OldMatrix 𝔻 = fromLists csvList
 --   in MatrixV $ mapp RealV m
 
 -- error
@@ -457,7 +457,7 @@ mergeRows row₁ row₂ =
 csvToMatrix ∷ 𝐿 (𝐿 𝕊) → Val
 csvToMatrix sss =
   let csvList ∷ 𝐿 (𝐿 𝔻) = mapp read𝕊 sss
-      m ∷ Matrix 𝔻 = fromLists csvList
+      m ∷ OldMatrix 𝔻 = fromLists csvList
   in MatrixV $ mapp RealV m
 
 schemaToTypes :: MExp r → 𝐿 (Type r)
@@ -488,7 +488,7 @@ csvToDF sss τs =
   let csvList ∷ 𝐿 (𝐿 Val) = map (rowToDFRow τs) sss
   in MatrixV $ fromLists csvList
 
-csvToMatrix𝔻 ∷ 𝐿 (𝐿 𝕊) → Matrix 𝔻
+csvToMatrix𝔻 ∷ 𝐿 (𝐿 𝕊) → OldMatrix 𝔻
 csvToMatrix𝔻 sss =
   let csvList ∷ 𝐿 (𝐿 𝔻) = mapp read𝕊 sss
   in fromLists csvList
@@ -630,44 +630,44 @@ laplaceNoise scale = do
   return $ neg $ scale × (signum u) × log(1.0 - 2.0 × (abs u))
 
 -- | Helper function for PSampleE
-sampleHelper :: (PRIV_C p) ⇒ ℕ → Matrix 𝔻 → Matrix  𝔻 → 𝕏 → 𝕏 → PExp p → Env → IO Val
+sampleHelper :: (PRIV_C p) ⇒ ℕ → OldMatrix 𝔻 → OldMatrix  𝔻 → 𝕏 → 𝕏 → PExp p → Env → IO Val
 sampleHelper n xs ys x y e env = do
   batch <- minibatch (int n) xs (flatten ys)
   peval (insertDataSet env (x :* y) ((fst batch) :* (snd batch))) e
 
-insertDataSet ∷ Env → (𝕏 ∧ 𝕏) → (Matrix 𝔻 ∧ Matrix 𝔻) → Env
+insertDataSet ∷ Env → (𝕏 ∧ 𝕏) → (OldMatrix 𝔻 ∧ OldMatrix 𝔻) → Env
 insertDataSet env (x :* y) (xs :* ys) =
   (x ↦ (MatrixV $ mapp RealV $ xs)) ⩌ (y ↦ (MatrixV $ mapp RealV ys)) ⩌ env
 
 -- GRADIENT --
 
-type Model = Vector 𝔻
+type Model = OldVector 𝔻
 
 
 -- | Calculates LR loss
--- loss ∷ Model → Matrix 𝔻 → Vector 𝔻 → 𝔻
+-- loss ∷ Model → OldMatrix 𝔻 → OldVector 𝔻 → 𝔻
 -- loss θ x y =
---   let θ'       ∷ Matrix 𝔻 = asColumn θ
---       y'       ∷ Matrix 𝔻 = asColumn y
---       exponent ∷ Matrix 𝔻 = -((x <> θ') × y')
+--   let θ'       ∷ OldMatrix 𝔻 = asColumn θ
+--       y'       ∷ OldMatrix 𝔻 = asColumn y
+--       exponent ∷ OldMatrix 𝔻 = -((x <> θ') × y')
 --   in (sumElements (mapp (\x → (log (exp(x)+1.0))) exponent)) / (dbl $ rows x)
 --
--- sumElements :: Matrix 𝔻 → 𝔻
+-- sumElements :: OldMatrix 𝔻 → 𝔻
 -- sumElements m = mapp sum m
 
 -- | Averages LR gradient over the whole matrix of examples
-ngrad ∷ Model → Matrix 𝔻 → Vector 𝔻 → Vector 𝔻
+ngrad ∷ Model → OldMatrix 𝔻 → OldVector 𝔻 → OldVector 𝔻
 ngrad θ x y =
-  let θ'       ∷ Matrix 𝔻 = asColumn θ
-      y'       ∷ Matrix 𝔻 = asColumn y
-      exponent ∷ Matrix 𝔻 = (x <> θ') × y'
-      scaled   ∷ Matrix 𝔻 = y' × (mapp (\x → 1.0/(exp(x)+1.0) ) exponent)
-      gradSum  ∷ Matrix 𝔻 = (tr x) <> scaled
-      avgGrad  ∷ Vector 𝔻 = flatten $ mscale (1.0/(dbl $ rows x)) gradSum
+  let θ'       ∷ OldMatrix 𝔻 = asColumn θ
+      y'       ∷ OldMatrix 𝔻 = asColumn y
+      exponent ∷ OldMatrix 𝔻 = (x <> θ') × y'
+      scaled   ∷ OldMatrix 𝔻 = y' × (mapp (\x → 1.0/(exp(x)+1.0) ) exponent)
+      gradSum  ∷ OldMatrix 𝔻 = (tr x) <> scaled
+      avgGrad  ∷ OldVector 𝔻 = flatten $ mscale (1.0/(dbl $ rows x)) gradSum
   in (scale (neg one) avgGrad)
 
 -- | Obtains a vector in the same direction with L2-norm=1
--- normalize :: Vector 𝔻 → Vector 𝔻
+-- normalize :: OldVector 𝔻 → OldVector 𝔻
 -- normalize v
 --   | r > 1     =  scale (1/r) v
 --   | otherwise =  v
@@ -675,7 +675,7 @@ ngrad θ x y =
 --     r = norm_2 v
 
 -- | Performs gradient descent with a fixed learning rate
--- gradientDescent ∷ ℕ → Model → Matrix 𝔻 → Vector 𝔻 → 𝔻 → Model
+-- gradientDescent ∷ ℕ → Model → OldMatrix 𝔻 → OldVector 𝔻 → 𝔻 → Model
 -- gradientDescent 0 θ x y η = θ
 -- gradientDescent n θ x y η = let θ' = θ - (scale η $ ngrad θ x y)
 --                             in trace ("training iter " ⧺ (show n) ⧺
@@ -683,11 +683,11 @@ ngrad θ x y =
 --                                gradientDescent (n-1) θ' x y η
 
 -- | Makes a single prediction
-predict ∷ Model → (Vector 𝔻 ∧ 𝔻) → 𝔻
+predict ∷ Model → (OldVector 𝔻 ∧ 𝔻) → 𝔻
 predict θ (x :* y) = signum $ x <.> θ
 
 -- dot product
-(<.>) :: Vector 𝔻 → Vector 𝔻 → 𝔻
+(<.>) :: OldVector 𝔻 → OldVector 𝔻 → 𝔻
 (<.>) a b = sum $ zipWith (×) a b
 
 signum ∷ (Ord a, Zero a, Zero p, Minus p, One p) ⇒ a → p
@@ -707,12 +707,12 @@ isCorrect (prediction :* actual) | prediction ≡ actual = (1 :* 0)
                                  | otherwise = (0 :* 1)
 
 -- | Converts a matrix to a model (flatten it)
--- toModel ∷ Matrix 𝔻 → Model
+-- toModel ∷ OldMatrix 𝔻 → Model
 -- toModel = flatten
 
 -- | Calculates the accuracy of a model
-accuracy ∷ Matrix 𝔻 → Vector 𝔻 → Model → (ℕ ∧ ℕ)
-accuracy x y θ = let pairs ∷ 𝐿 (Vector 𝔻 ∧ 𝔻) = list $ zip (map normalize $ toRows x) (toList y)
+accuracy ∷ OldMatrix 𝔻 → OldVector 𝔻 → Model → (ℕ ∧ ℕ)
+accuracy x y θ = let pairs ∷ 𝐿 (OldVector 𝔻 ∧ 𝔻) = list $ zip (map normalize $ toRows x) (toList y)
                      labels ∷ 𝐿 𝔻 = map (predict θ) pairs
                      correct ∷ 𝐿 (ℕ ∧ ℕ) = map isCorrect $ list $ zip labels (toList y)
                  in fold (0 :* 0) (\a b → ((fst a + fst b) :* (snd a + snd b))) correct
@@ -737,7 +737,7 @@ randIndices n a b gen
       return (int x :& xs')
 
 -- | Outputs a single minibatch of data
-minibatch :: ℤ → Matrix 𝔻 → Vector 𝔻 → IO (Matrix 𝔻 ∧ Matrix 𝔻)
+minibatch :: ℤ → OldMatrix 𝔻 → OldVector 𝔻 → IO (OldMatrix 𝔻 ∧ OldMatrix 𝔻)
 minibatch batchSize xs ys = do
   gen <- createSystemRandom
   idxs <- randIndices batchSize zero (𝕫 (rows xs) - one) gen
@@ -746,7 +746,7 @@ minibatch batchSize xs ys = do
   return (bxs :* bys)
 
 -- | Generates a list of minibatches
--- nminibatch :: ℕ → ℕ → Matrix 𝔻 → Vector 𝔻 → IO [(Matrix 𝔻, Vector 𝔻)]
+-- nminibatch :: ℕ → ℕ → OldMatrix 𝔻 → OldVector 𝔻 → IO [(OldMatrix 𝔻, OldVector 𝔻)]
 -- nminibatch n batchSize x y
 --   | n == 0    = return []
 --   | otherwise = do
@@ -770,7 +770,7 @@ minibatch batchSize xs ys = do
 --       return (x : xs)
 
 -- | Initializes model and regularization parameter
--- initModel :: ℕ → 𝔻 → 𝔻 → 𝑂 𝔻 →  IO (Vector 𝔻, 𝔻)
+-- initModel :: ℕ → 𝔻 → 𝔻 → 𝑂 𝔻 →  IO (OldVector 𝔻, 𝔻)
 -- initModel m l lambda l2 = do
 --   rand <- randUniform m
 --   case (lambda, l2) of
@@ -780,7 +780,7 @@ minibatch batchSize xs ys = do
 --     otherwise → return (fromList $ replicate m 0.0, zero)
 
 -- | Runs gradient descent on an initial model and a set of minibatches
--- mbgradientDescent :: ℕ → ℕ  → Model → [(Matrix 𝔻, Vector 𝔻)] → 𝔻 →  [𝔻] → Model
+-- mbgradientDescent :: ℕ → ℕ  → Model → [(OldMatrix 𝔻, OldVector 𝔻)] → 𝔻 →  [𝔻] → Model
 -- mbgradientDescent 0 m theta batches rate noise = theta
 -- mbgradientDescent n m theta batches rate noise =
 --   let x = (fst (head batches))
@@ -795,8 +795,8 @@ minibatch batchSize xs ys = do
 {- | Runs differentially private, minibatch gradient descent on input matrices
      `x` and `y` and a set of input parameters.
 -}
--- privateMBSGD :: Matrix 𝔻
---             → Vector 𝔻
+-- privateMBSGD :: OldMatrix 𝔻
+--             → OldVector 𝔻
 --             → 𝔻
 --             → 𝔻
 --             → ℕ
@@ -813,8 +813,8 @@ minibatch batchSize xs ys = do
 --   return (mbgradientDescent iters (cols x) (fst init) minibatches learningRate normalNoise)
 
 -- | Runs noiseless minibatch gradient descent.
--- mbSGD :: Matrix 𝔻
---             → Vector 𝔻
+-- mbSGD :: OldMatrix 𝔻
+--             → OldVector 𝔻
 --             → 𝔻
 --             → 𝔻
 --             → ℕ
