@@ -956,6 +956,23 @@ inferPriv eA = case extract eA of
         tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
         return $ 𝕄T LInf UClip ηₘ ηₙ
       _ → error $ "MGauss error: " ⧺ (pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄ :* ιview @ RNF σ₄KeepMax))
+  MGaussPE e₁ (TCGaussParams e₂ e₃) xs e₄ → do
+    let xs' = pow xs
+    τ₁ ← pmFromSM $ inferSens e₁
+    τ₂ ← pmFromSM $ inferSens e₂
+    τ₃ ← pmFromSM $ inferSens e₃
+    σ₄ :* τ₄ ← pmFromSM $ hijack $ inferSens e₄
+    let σ₄Keep = restrict xs' σ₄
+        σ₄KeepMax = joins $ values σ₄Keep
+        σ₄Toss = without xs' σ₄
+    case (τ₁,τ₂,τ₃,τ₄,ιview @ RNF σ₄KeepMax) of
+      (ℝˢT ηₛ,ℝˢT ρ,ℕˢT ω,𝕄T L2 _c ηₘ ηₙ,Some ς) | ς ⊑ ηₛ → do
+        b ← isRealMExp ηₙ
+        when (not b) $ throw (error "MGauss error isRealMExp check failed" ∷ TypeError)
+        tell $ map (Priv ∘ truncate (Quantity $ TCPriv ρ ω) ∘ unSens) σ₄Keep
+        tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
+        return $ 𝕄T LInf UClip ηₘ ηₙ
+      _ → error $ "MGauss error: " ⧺ (pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄ :* ιview @ RNF σ₄KeepMax))
   BGaussPE e₁ (EDGaussParams e₂ e₃) xs e₄ → do
     let xs' = pow xs
     τ₁ ← pmFromSM $ inferSens e₁
@@ -1067,6 +1084,28 @@ inferPriv eA = case extract eA of
             -- truncate everything in σ₂ to be p₂ scaled by ⟨sε,sδ⟩
             -- output σ₁, σ₂, and leftovers from σ
       _ → error "type error in EDSamplePE"
+  TCSamplePE en exs eys xs' ys' e → do
+    _ :* τn ← pmFromSM $ hijack $ inferSens en
+    σ₁ :* τxs ← pmFromSM $ hijack $ inferSens exs
+    σ₂ :* τys ← pmFromSM $ hijack $ inferSens eys
+    case (τn,τxs,τys) of
+      (ℕˢT ηrows',𝕄T ℓ₁ c₁ (RexpRT ηrows₁) ς₁,𝕄T ℓ₂ c₂ (RexpRT ηrows₂) ς₂)
+        | (ηrows₁ ≡ ηrows₂) ⩓ (joins (values σ₁) ⊑ ι 1) ⩓ (joins (values σ₂) ⊑ ι 1) → do
+            let τxs' = 𝕄T ℓ₁ c₁ (RexpRT ηrows') ς₁
+                τys' = 𝕄T ℓ₂ c₂ (RexpRT ηrows') ς₂
+                s = ηrows' / ηrows₁
+            σ :* τ ← hijack $ mapEnvL contextTypeL (\ γ → (xs' ↦ τxs') ⩌ (ys' ↦ τys') ⩌ γ) $ inferPriv e
+            let σxs' = σ ⋕! xs'
+                σys' = σ ⋕! ys'
+                σ' = without (pow [xs',ys']) σ
+            case (σxs',σys') of
+              (Priv (Quantity (TCPriv ρ₁ _ω₁)), Priv (Quantity (TCPriv ρ₂ _ω₂))) → do
+                tell $ map (Priv ∘ truncate (Quantity (TCPriv ((NNRealRNF 13.0) × s × s × ρ₁) ((log ((NNRealRNF 1.0)/s)) / ((NNRealRNF 4.0) × ρ₁)))) ∘ unSens) σ₁
+                tell $ map (Priv ∘ truncate (Quantity (TCPriv ((NNRealRNF 13.0) × s × s × ρ₂) ((log ((NNRealRNF 1.0)/s)) / ((NNRealRNF 4.0) × ρ₂)))) ∘ unSens) σ₂
+                tell σ'
+                return τ
+              _ → error $ "type error in TCSamplePE." ⧺ (pprender (σxs',σys'))
+      _ → error "type error in TCSamplePE"
   RenyiSamplePE en exs eys xs' ys' e → do
     _ :* τn ← pmFromSM $ hijack $ inferSens en
     σ₁ :* τxs ← pmFromSM $ hijack $ inferSens exs
@@ -1076,38 +1115,41 @@ inferPriv eA = case extract eA of
         | (ηrows₁ ≡ ηrows₂) ⩓ (joins (values σ₁) ⊑ ι 1) ⩓ (joins (values σ₂) ⊑ ι 1) → do
             let τxs' = 𝕄T ℓ₁ c₁ (RexpRT ηrows') ς₁
                 τys' = 𝕄T ℓ₂ c₂ (RexpRT ηrows') ς₂
-                sε = ι 2 × ηrows' / ηrows₁
                 s = ηrows' / ηrows₁
             σ :* τ ← hijack $ mapEnvL contextTypeL (\ γ → (xs' ↦ τxs') ⩌ (ys' ↦ τys') ⩌ γ) $ inferPriv e
             let σxs' = σ ⋕! xs'
                 σys' = σ ⋕! ys'
                 σ' = without (pow [xs',ys']) σ
-            case (σxs',σys',s) of
-              (Priv (Quantity (RenyiPriv (NatRNF α₁) (NNRealRNF ϵ₁))), Priv (Quantity (RenyiPriv (NatRNF α₂) (NNRealRNF ϵ₂))), NNRealRNF s') → do
-                tell $ map (Priv ∘ truncate (Quantity (RenyiPriv (NatRNF α₁) (NNRealRNF (renyiϵ' 2 α₁ s' ϵ₁)))) ∘ unSens) σ₁
-                tell $ map (Priv ∘ truncate (Quantity (RenyiPriv (NatRNF α₂) (NNRealRNF (renyiϵ' 2 α₂ s' ϵ₂)))) ∘ unSens) σ₂
+            case (σxs',σys') of
+              (Priv (Quantity (RenyiPriv α₁ ϵ₁)), Priv (Quantity (RenyiPriv α₂ ϵ₂))) → do
+                tell $ map (Priv ∘ truncate (Quantity (RenyiPriv α₁ (renyiϵ' (NatRNF 2) α₁ s ϵ₁))) ∘ unSens) σ₁
+                tell $ map (Priv ∘ truncate (Quantity (RenyiPriv α₂ (renyiϵ' (NatRNF 2) α₂ s ϵ₂))) ∘ unSens) σ₂
                 tell σ'
                 return τ
-              _ → error $ "type error in RenyiSamplePE." ⧺ (pprender (σxs',σys')) ⧺ ", " ⧺ pprender s
+              _ → error $ "type error in RenyiSamplePE." ⧺ (pprender (σxs',σys'))
       _ → error "type error in RenyiSamplePE"
 
   e → error $ fromString $ show e
 
-renyiϵ' ∷ ℕ → ℕ → 𝔻 → 𝔻 → 𝔻
-renyiϵ' j α s ϵ = (one / ((dbl α) - one)) × log (1.0 + (renyiϵ'Σ j α s ϵ))
+renyiϵ' ∷ RNF → RNF → RNF → RNF → RNF
+-- TODO
+renyiϵ' j α s ϵ = (one / (α - one)) × log ((NNRealRNF 1.0) + (renyiϵ'Σpess j α s ϵ))
 
-renyiϵ'Σ :: ℕ → ℕ → 𝔻 → 𝔻 → 𝔻
+renyiϵ'Σpess ∷ RNF → RNF → RNF → RNF → RNF
+renyiϵ'Σpess j α s ϵ = α × ((NNRealRNF 2.0) × (s^α)) × (α^α) × (exp ((α - one) × ϵ))
+
+renyiϵ'Σ ∷ RNF → RNF → RNF → RNF → RNF
 renyiϵ'Σ j α s ϵ = case α < j of
-  True → 0.0
-  False → ((2.0 × (s^(dbl j))) × (choose α j) × (exp (((dbl j) - one) × ϵ))) + renyiϵ'Σ (j + 1) α s ϵ
+  True → (NNRealRNF 0.0)
+  False → (((NNRealRNF 2.0) × (s^j)) × (choose α j) × (exp ((j - one) × ϵ))) + renyiϵ'Σ (j + (NatRNF 1)) α s ϵ
 
-fac :: ℕ → ℕ
-fac 0 = 1
-fac 1 = 1
+fac :: RNF → RNF
+fac (NatRNF 0) = (NatRNF 1)
+fac (NatRNF 1) = (NatRNF 1)
 fac n = n × (fac (n - one))
 
-choose :: ℕ → ℕ → 𝔻
-choose n k = (dbl (fac n)) / (dbl ((fac k) × (fac (n - k))))
+choose :: RNF → RNF → RNF
+choose n k = (fac n) / ((fac k) × (fac (n - k)))
 
 -- infraRed :: PExp -> KEnv → TEnv -> (TypeSource RNF, PEnv)
 --

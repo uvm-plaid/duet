@@ -322,6 +322,7 @@ data SExp (p ∷ PRIV) where
 data GaussParams (p ∷ PRIV) where
   EDGaussParams ∷ SExpSource 'ED → SExpSource 'ED → GaussParams 'ED
   RenyiGaussParams ∷ SExpSource 'RENYI → SExpSource 'RENYI → GaussParams 'RENYI
+  TCGaussParams ∷ SExpSource 'TC → SExpSource 'TC → GaussParams 'TC
   ZCGaussParams ∷ SExpSource 'ZC → GaussParams 'ZC
 deriving instance Eq (GaussParams p)
 deriving instance Ord (GaussParams p)
@@ -357,6 +358,7 @@ data PExp (p ∷ PRIV) where
   RRespPE ∷ SExpSource p → SExpSource p → 𝐿 𝕏 → SExpSource p → PExp p
   EDSamplePE ∷ SExpSource 'ED → SExpSource 'ED → SExpSource 'ED → 𝕏 → 𝕏 → PExpSource 'ED → PExp 'ED
   RenyiSamplePE ∷ SExpSource 'RENYI → SExpSource 'RENYI → SExpSource 'RENYI → 𝕏 → 𝕏 → PExpSource 'RENYI → PExp 'RENYI
+  TCSamplePE ∷ SExpSource 'TC → SExpSource 'TC → SExpSource 'TC → 𝕏 → 𝕏 → PExpSource 'TC → PExp 'TC
   RandNatPE ∷ SExpSource p → SExpSource p → PExp p
   ConvertZCEDPE ∷ SExpSource 'ED → PExpSource 'ZC → PExp 'ED
   ConvertRENYIEDPE ∷ SExpSource 'ED → PExpSource 'RENYI → PExp 'ED

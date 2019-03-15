@@ -3,15 +3,15 @@
 -- with minibatching
 let main = pλ m  : ℕ,
               n  : ℕ,
-              ε  : ℝ⁺,
-              α  : ℕ,
+              ρ  : ℝ⁺,
+              ω  : ℕ,
               k  : ℕ,
               b  : ℕ
               .
               xs : 𝕄 [L∞, U|m, n⋅𝔻 ] ,
               ys : 𝕄 [L∞, U|m, 1⋅𝔻 ] ,
-              ε  : ℝ⁺[ε],
-              α  : ℕ[α],
+              ρ  : ℝ⁺[ρ],
+              ω  : ℕ[ω],
               k  : ℕ[k],
               η  : ℝ,
               b  : ℕ[b]
@@ -20,7 +20,7 @@ let main = pλ m  : ℕ,
   loop k on m₀ <xs,ys> { t , θ ⇒
     g ← sample[ b ] xs, ys {xs', ys' ⇒
         let s = ℝ⁺[1.0] / real (rows xs') in
-        mgauss[ s , α, ε ] <xs',ys'> { ∇[ LR | θ ; mclip[L2] xs' , ys' ] } };
+        mgauss[ s, ρ, ω ] <xs',ys'> { ∇[ LR | θ ; mclip[L2] xs' , ys' ] } };
     return mmap θ , mmap g { x ⇒ η ⋅ x } { x , y ⇒ x - y }
   }
 in return main

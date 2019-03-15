@@ -211,6 +211,9 @@ urv x = case x of
   RealV d → d
   _ → error $ "unpack real val failed" ⧺ pprender x
 
+arsinh ∷ 𝔻 → 𝔻
+arsinh x = log $ x + (root $ (x × x) + 1.0)
+
 -- this could be moved to Syntax.hs, and PArgs r (and its Eq and Ord instances)
 -- could be derived using this type
 newtype ExPriv (e ∷ PRIV → ★) = ExPriv { unExPriv ∷ Ex_C PRIV_C e }
@@ -530,6 +533,16 @@ peval env (EDSamplePE size xs ys x y e) =
     (NatV n, MatrixV v1, MatrixV v2) →
       sampleHelper n (mapp urv v1) (mapp urv v2) x y (extract e) env
 
+peval env (TCSamplePE size xs ys x y e) =
+  case (seval env (extract size), seval env (extract xs), seval env (extract ys)) of
+    (NatV n, MatrixV v1, MatrixV v2) →
+      sampleHelper n (mapp urv v1) (mapp urv v2) x y (extract e) env
+
+peval env (RenyiSamplePE size xs ys x y e) =
+  case (seval env (extract size), seval env (extract xs), seval env (extract ys)) of
+    (NatV n, MatrixV v1, MatrixV v2) →
+      sampleHelper n (mapp urv v1) (mapp urv v2) x y (extract e) env
+
 -- gaussian mechanism for real numbers
 peval env (GaussPE r (EDGaussParams ε δ) vs e) =
   case (seval env (extract r), seval env (extract ε), seval env (extract δ), seval env (extract e)) of
@@ -557,8 +570,18 @@ peval env (MGaussPE r (EDGaussParams ε δ) vs e) =
 
 peval env (MGaussPE r (RenyiGaussParams α ϵ) vs e) =
   case (seval env (extract r), seval env (extract α), seval env (extract ϵ), seval env (extract e)) of
-    (RealV r', RealV α', RealV ϵ', MatrixV mat) → do
-      let σ = (r' × (root α')) / (root (2.0 × ϵ'))
+    (RealV r', NatV α', RealV ϵ', MatrixV mat) → do
+      let σ = (r' × (root (dbl α'))) / (root (2.0 × ϵ'))
+      mat' ← mapM (\row → mapM (\val → gaussianNoise val σ) row) $ toLists (mapp urv mat)
+      return $ MatrixV $ (mapp RealV (fromLists mat'))
+    (a, b, c, d) → error $ "No pattern for: " ⧺ (show𝕊 (a,b,c,d))
+
+peval env (MGaussPE r (TCGaussParams ρ ω) vs e) =
+  case (seval env (extract r), seval env (extract ρ), seval env (extract ω), seval env (extract e)) of
+    (RealV r', RealV ρ', NatV ω', MatrixV mat) → do
+      gn ← gaussianNoise 0.0 ((8.0 × r' × r') / ρ')
+      let a = 8.0 × r' × (dbl ω')
+      let σ =  a × (arsinh $ (1.0 / a) × gn)
       mat' ← mapM (\row → mapM (\val → gaussianNoise val σ) row) $ toLists (mapp urv mat)
       return $ MatrixV $ (mapp RealV (fromLists mat'))
     (a, b, c, d) → error $ "No pattern for: " ⧺ (show𝕊 (a,b,c,d))

@@ -692,6 +692,22 @@ parPExp p = pWithContext "pexp" $ tries
         e₄ ← parSExp p
         parLit "}"
         return $ MGaussPE e₁ (RenyiGaussParams e₂ e₃) xs e₄
+      TC_W → do
+        parLit "mgauss"
+        parLit "["
+        e₁ ← parSExp p
+        parLit ","
+        e₂ ← parSExp p
+        parLit ","
+        e₃ ← parSExp p
+        parLit "]"
+        parLit "<"
+        xs ← pManySepBy (parLit ",") parVar
+        parLit ">"
+        parLit "{"
+        e₄ ← parSExp p
+        parLit "}"
+        return $ MGaussPE e₁ (TCGaussParams e₂ e₃) xs e₄
       ZC_W → do
         parLit "mgauss"
         parLit "["
@@ -887,6 +903,22 @@ parPExp p = pWithContext "pexp" $ tries
         e₄ ← parPExp p
         parLit "}"
         return $ RenyiSamplePE e₁ e₂ e₃ x₁ x₂ e₄
+      TC_W → do
+        parLit "sample"
+        parLit "["
+        e₁ ← parSExp p
+        parLit "]"
+        e₂ ← parSExp p
+        parLit ","
+        e₃ ← parSExp p
+        parLit "{"
+        x₁ ← parVar
+        parLit ","
+        x₂ ← parVar
+        parLit "⇒"
+        e₄ ← parPExp p
+        parLit "}"
+        return $ TCSamplePE e₁ e₂ e₃ x₁ x₂ e₄
       _ → abort
   , do parLit "rand-nat"
        parLit "["
