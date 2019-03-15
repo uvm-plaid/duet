@@ -94,7 +94,7 @@ main = do
       let csvmd :: Model = flatten $ csvToMatrix𝔻 $ list csvss₁
       csvs₂ ← read xsfn
       let csvss₂ = map (splitOn𝕊 ",") $ filter (\x → not (isEmpty𝕊 x)) $ splitOn𝕊 "\n" csvs₂
-      let csvxs :: Matrix 𝔻 = csvToMatrix𝔻 $ list csvss₂
+      let csvxs :: OldMatrix 𝔻 = csvToMatrix𝔻 $ list csvss₂
       csvs₃ ← read ysfn
       let csvss₃ = map (splitOn𝕊 ",") $ filter (\x → not (isEmpty𝕊 x)) $ splitOn𝕊 "\n" csvs₃
       let csvys :: Model = flatten $ csvToMatrix𝔻 $ list csvss₃
