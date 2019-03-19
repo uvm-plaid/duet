@@ -22,7 +22,7 @@ let main = pλ m  : ℕ,
   let m₀ = mcreate[ L∞ | ℕ[1] , cols xs ] { i , j ⇒ 0.0 } in
   let c = box (mclip[L2] xs) in
   aloop[ δ′ ] k on m₀ <xs,ys> { a, θ ⇒
-    let s = ℝ⁺[0.5] / real (rows xs) in
+    let s = ℝ⁺[1.0] / real (rows xs) in
     g ← mgauss[ s , ε , δ ] <xs,ys> { ∇[ LR | θ ; unbox c , ys ] } ;
     return mmap θ , mmap g { x ⇒ η ⋅ x } { x , y ⇒ x - y }
   }
