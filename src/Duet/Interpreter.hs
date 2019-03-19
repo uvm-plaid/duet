@@ -58,10 +58,10 @@ norm_2 :: DuetVector 𝔻 → 𝔻
 norm_2 = root ∘ sum ∘ map (\x → x×x)
 
 cols :: ExMatrix a → ℕ
-cols (ExMatrix xs) = nat $ xcols xs
+cols (ExMatrix xs) = nat $ unSℕ32 $ xcols xs
 
 rows :: ExMatrix a → ℕ
-rows (ExMatrix xs) = nat $ xrows xs
+rows (ExMatrix xs) = nat $ unSℕ32 $ xrows xs
 
 tr :: ExMatrix 𝔻 → ExMatrix 𝔻
 tr (ExMatrix xs) = ExMatrix $ xbp $ xtranspose $ xvirt xs
@@ -81,7 +81,7 @@ boolCheck :: 𝔹 → 𝔻
 boolCheck True = 1.0
 boolCheck False = 0.0
 
-flatten :: ExMatrix 𝔻 → DuetVector 𝔻
+flatten :: ExMatrix a → DuetVector a
 flatten m = fold Nil (⧺) (toRows m)
 
 (<>) :: ExMatrix 𝔻 → ExMatrix 𝔻 → ExMatrix 𝔻
@@ -121,7 +121,7 @@ buildRows ls = xb𝐿 ls ExMatrix
 (?) m ns = buildRows (m ?? ns)
 
 (??) :: ExMatrix 𝔻 → 𝐿 ℤ → 𝐿 (𝐿 𝔻)
-(??) m (n:&ns) = (xlist2 (xrow (natΩ n) m)) ⧺ (m ?? ns)
+(??) (ExMatrix m) (n:&ns) = (xlist2 (xrow (n2i (xrows m) (natΩ n)) (xvirt m))) ⧺ ((ExMatrix m) ?? ns)
 (??) m Nil = Nil
 
 toList :: DuetVector 𝔻 → 𝐿 𝔻
@@ -168,9 +168,10 @@ arsinh x = log $ x + (root $ (x × x) + 1.0)
 -- mostly because matrices are the only thing we can index
 joinMatch₁ ∷ ℕ → ExMatrix Val → 𝐿 (ExMatrix Val) → ℕ → 𝐿 Val
 joinMatch₁ n₁ row₁ Nil n₂ = Nil
-joinMatch₁ n₁ row₁ (row₂:&rows₂) n₂ = case ((indexBᴍ 0 n₁ row₁) ≡ (indexBᴍ 0 n₂ row₂)) of
-  True →  (flatten row₁) ⧺ (flatten row₂)
-  False → joinMatch₁ n₁ row₁ rows₂ n₂
+joinMatch₁ n₁ (ExMatrix row₁) ((ExMatrix row₂):&rows₂) n₂ =
+  case ((indexBᴍ (n2i (xrows row₁) 0) (n2i (xcols row₁) n₁) row₁) ≡ (indexBᴍ (n2i (xrows row₂) 0) (n2i (xcols row₂) n₂) row₂)) of
+    True →  (flatten (ExMatrix row₁)) ⧺ (flatten (ExMatrix row₂))
+    False → joinMatch₁ n₁ (ExMatrix row₁) rows₂ n₂
 
 csvToMatrix ∷ 𝐿 (𝐿 𝕊) → Val
 csvToMatrix sss =
@@ -254,24 +255,26 @@ data Val =
 
 instance Eq (Sℕ32 n) where
   TRUSTME_Sℕ32 n₁ == TRUSTME_Sℕ32 n₂ = n₁ ≡ n₂
-instance Eq (Bᴍ m n a) where
-  Bᴍ m₁ n₁ a₁ == Bᴍ m₂ n₂ a₂ = (m₁ ≡ m₂) ⩓ (n₁ ≡ n₂) ⩓ (a₁ ≡ a₂)
+instance (Eq a) ⇒ Eq (Bᴍ m n a) where
+  Bᴍ m₁ n₁ a₁ == Bᴍ m₂ n₂ a₂ = (m₁ == m₂) ⩓ (n₁ == n₂) ⩓ (a₁ == a₂)
 data ExMatrix a where
   ExMatrix ∷ Bᴍ m n a -> ExMatrix a
+instance Functor ExMatrix where
+  map f (ExMatrix m) = ExMatrix $ xbp $ map f (xvirt m)
 instance (Eq a) ⇒ Eq (ExMatrix a) where
   ExMatrix (Bᴍ _ _ a₁) == ExMatrix (Bᴍ _ _ a₂) = a₁ ≡ a₂
 instance (Ord a) ⇒ Ord (ExMatrix a) where
-  compare (ExMatrix (Bᴍ _ _ a₁)) (ExMatrix (Bᴍ _ _ a₂)) = compare a₁ a₂
+  compare (ExMatrix xs₁) (ExMatrix xs₂) = compare (xlist2 $ xvirt xs₁) (xlist2 $ xvirt xs₂)
 instance (Show a) ⇒ Show (ExMatrix a) where
   show (ExMatrix xs) = show $ xlist2 $ xvirt xs
 
 ex2m :: ExMatrix a → (∀ m n. Bᴍ m n a → b) → b
 ex2m (ExMatrix xs) f = f xs
 
-n2i :: ℕ → 𝕀32 n
-n2i n = case (d𝕚 (TRUSTME_Sℕ32 (𝕟32 (n+1))) (𝕟32 n)) of
+n2i :: Sℕ32 n → ℕ → 𝕀32 n
+n2i s n = case (d𝕚 s (𝕟32 n)) of
   Some x → x
-  None → error "error creating index value"
+  None → error "index out of bounds"
 
 instance Pretty Val where
   pretty = \case
@@ -285,6 +288,12 @@ instance Pretty Val where
     SFunV x se e → ppKeyPun "<sλ value>"
     PFunV xs pe e → ppKeyPun "<pλ value>"
     MatrixV m → ppVertical $ list [ppText "MATRIX VALUE:",pretty m]
+
+instance (Pretty a) ⇒ Pretty (ExMatrix a) where
+  pretty (ExMatrix a) = pretty a
+
+instance (Pretty a) ⇒ Pretty (Bᴍ m n a) where
+  pretty m = pretty $ xlist2 $ xvirt m
 
 -- | Converts and integer to a 𝔻
 intDouble ∷ ℕ → 𝔻
@@ -360,6 +369,9 @@ seval env (MIndexSE e₁ e₂ e₃) =
       case (d𝕚 (xrows v) (natΩ32 n₁),d𝕚 (xcols v) (natΩ32 n₂)) of
         (Some (n₁' ∷ 𝕀32 m),Some (n₂' ∷ 𝕀32 n))  → v 𝄪 (n₁',n₂')
         _ → error "index out of bounds"
+
+--
+
 
 seval env (IdxSE e) =
   case (seval env (extract e)) of
@@ -635,8 +647,8 @@ ngrad ∷ Model → ExMatrix 𝔻 → DuetVector 𝔻 → DuetVector 𝔻
 ngrad θ x y =
   let θ'       = asColumn θ
       y'       = asColumn y
-      exponent = (x <> θ') × y'
-      scaled   = y' × (map (\x → 1.0/(exp(x)+1.0) ) exponent)
+      exponent = (x <> θ') <> y'
+      scaled   = y' <> (map (\x → 1.0/(exp(x)+1.0) ) exponent)
       gradSum  = (tr x) <> scaled
       avgGrad  ∷ DuetVector 𝔻 = flatten $ mscale (1.0/(dbl $ rows x)) gradSum
   in (scale (neg one) avgGrad)
