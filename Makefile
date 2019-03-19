@@ -8,14 +8,13 @@ ARGS := check examples/gd-pb-mini.tcdp.duet
 ARGS := run examples/gd-pb-mini.tcdp.duet data_long/adpxs.csv data_long/adpys.csv 0.05 11 100 1 50
 ARGS := check examples/gd-pb-mini.renyi.duet
 ARGS := run examples/gd-pb-mini.renyi.duet data_short/ffxs.csv data_short/ffys.csv 0.05 6 100 1 50
-ARGS := run examples/gd-pb-mini.ed.duet data_long/adpxs.csv data_long/adpys.csv 100000 1000 0.0001 0.0001 1 250
+ARGS := run examples/gd-pb-mini.ed.duet data_long/adpxs.csv data_long/adpys.csv 100000 1000 0.0001 0.0001 1 50
 ARGS := lr-accuracy data_long/adpxs.csv data_long/adpys.csv out/model.csv
 
 # run examples/gd-pb-mini.ed.duet data_short/fbxs.csv data_short/fbys.csv 0.05 100 0.0001 0.0001 1 50
 # run examples/parallel-simple.ed.duet data_short/made_up.csv 0.05 0.0001 0 0 0 1
 # run examples/basic-boxing.ed.duet 1
 # run examples/baby.ed.duet 0.05 0.0001 data_short/made_up.csv
-# lr-accuracy data_long/adp1kxs.csv data_long/adp1kys.csv out/out.csv
 
 # Run Using GHCI
 # stack ghci
