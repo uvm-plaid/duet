@@ -922,7 +922,12 @@ inferPriv eA = case extract eA of
           tell $ map (Priv ∘ truncate (Quantity $ EDPriv ηᵋ ηᵟ) ∘ unSens) σ₄Keep
           tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
           return $ 𝕄T LInf UClip ηₘ ηₙ
-      _ → error $ "MGauss error: " ⧺ (pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄ :* ιview @ RNF σ₄KeepMax))
+      _ → error $ concat
+        [ "MGauss error: " 
+        , pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄ :* ιview @ RNF σ₄KeepMax)
+        , "\n"
+        , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
+        ]
   MGaussPE e₁ (ZCGaussParams e₂) xs e₄ → do
     let xs' = pow xs
     τ₁ ← pmFromSM $ inferSens e₁
