@@ -58,13 +58,13 @@ norm_2 :: DuetVector 𝔻 → 𝔻
 norm_2 = root ∘ sum ∘ map (\x → x×x)
 
 cols :: ExMatrix a → ℕ
-cols = nat ∘ unSℕ32 ∘ xcols ∘ ex2m
+cols (ExMatrix xs) = nat $ xcols xs
 
 rows :: ExMatrix a → ℕ
-rows = nat ∘ unSℕ32 ∘ xrows ∘ ex2m
+rows (ExMatrix xs) = nat $ xrows xs
 
 tr :: ExMatrix 𝔻 → ExMatrix 𝔻
-tr m = xbp $ xtranspose $ xvirt m
+tr (ExMatrix xs) = ExMatrix $ xbp $ xtranspose $ xvirt xs
 
 (===) :: ExMatrix a → ExMatrix a → ExMatrix a
 (===) a b =
@@ -95,7 +95,7 @@ scale :: 𝔻 → DuetVector 𝔻 → Model
 scale r v = map (× r) v
 
 mscale :: 𝔻 → ExMatrix 𝔻 → ExMatrix 𝔻
-mscale r m = xbp $ xmap (× r) (xvirt m)
+mscale r (ExMatrix m) = ExMatrix $ xbp $ xmap (× r) (xvirt m)
 
 vector :: 𝐿 𝔻 → DuetVector 𝔻
 vector x = x
@@ -114,14 +114,11 @@ asColumn vec = buildRows (map single𝐿 vec)
 
 -- really build a matrix
 buildRows :: 𝐿 (𝐿 a) → ExMatrix a
-buildRows ls = xb𝐿 ls xbIdentity
-
-xbIdentity ∷ Bᴍ m n a → Bᴍ m n a
-xbIdentity x = x
+buildRows ls = xb𝐿 ls ExMatrix
 
 -- extract rows in N
 (?) :: ExMatrix 𝔻 → 𝐿 ℤ → ExMatrix 𝔻
-(?) m ns = buildRows (iota (count ns)) (m ?? ns)
+(?) m ns = buildRows (m ?? ns)
 
 (??) :: ExMatrix 𝔻 → 𝐿 ℤ → 𝐿 (𝐿 𝔻)
 (??) m (n:&ns) = (xlist2 (xrow (natΩ n) m)) ⧺ (m ?? ns)
@@ -132,7 +129,7 @@ toList x = x
 
 -- extracts the rows of a matrix as a list of vectors
 toRows :: ExMatrix a → 𝐿 (𝐿 a)
-toRows = xlist2 ∘ xvirt
+toRows (ExMatrix m) = xlist2 $ xvirt m
 
 toLists = toRows
 
@@ -255,20 +252,21 @@ data Val =
   | MatrixV (ExMatrix Val)
   deriving (Eq,Ord,Show)
 
-deriving instance Ord (ExMatrix a)
-deriving instance Show (ExMatrix a)
-
 instance Eq (Sℕ32 n) where
   TRUSTME_Sℕ32 n₁ == TRUSTME_Sℕ32 n₂ = n₁ ≡ n₂
 instance Eq (Bᴍ m n a) where
   Bᴍ m₁ n₁ a₁ == Bᴍ m₂ n₂ a₂ = (m₁ ≡ m₂) ⩓ (n₁ ≡ n₂) ⩓ (a₁ ≡ a₂)
 data ExMatrix a where
   ExMatrix ∷ Bᴍ m n a -> ExMatrix a
-instance Eq (ExMatrix a) where
-  ExMatrix (Bᴍ m₁ n₁ a₁) == ExMatrix (Bᴍ m₂ n₂ a₂) = Bᴍ m₁ n₁ a₁ ≡ Bᴍ m₂ n₂ a₂
+instance (Eq a) ⇒ Eq (ExMatrix a) where
+  ExMatrix (Bᴍ _ _ a₁) == ExMatrix (Bᴍ _ _ a₂) = a₁ ≡ a₂
+instance (Ord a) ⇒ Ord (ExMatrix a) where
+  compare (ExMatrix (Bᴍ _ _ a₁)) (ExMatrix (Bᴍ _ _ a₂)) = compare a₁ a₂
+instance (Show a) ⇒ Show (ExMatrix a) where
+  show (ExMatrix xs) = show $ xlist2 $ xvirt xs
 
-ex2m :: ExMatrix a → Bᴍ m n a
-ex2m (ExMatrix (Bᴍ m n a)) = Bᴍ m n a
+ex2m :: ExMatrix a → (∀ m n. Bᴍ m n a → b) → b
+ex2m (ExMatrix xs) f = f xs
 
 n2i :: ℕ → 𝕀32 n
 n2i n = case (d𝕚 (TRUSTME_Sℕ32 (𝕟32 (n+1))) (𝕟32 n)) of
@@ -358,9 +356,10 @@ seval env (MColsSE e) =
 
 seval env (MIndexSE e₁ e₂ e₃) =
   case (seval env (extract e₁),seval env (extract e₂),seval env (extract e₃)) of
-    (MatrixV v, NatV n₁, NatV n₂) →
-      indexBᴍ (n2i n₁) (n2i n₂) (ex2m v)
-
+    (MatrixV (ExMatrix v), NatV n₁, NatV n₂) →
+      case (d𝕚 (xrows v) (natΩ32 n₁),d𝕚 (xcols v) (natΩ32 n₂)) of
+        (Some (n₁' ∷ 𝕀32 m),Some (n₂' ∷ 𝕀32 n))  → v 𝄪 (n₁',n₂')
+        _ → error "index out of bounds"
 
 seval env (IdxSE e) =
   case (seval env (extract e)) of

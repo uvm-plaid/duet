@@ -102,6 +102,7 @@ main = do
       write "out/acc.csv" (intercalate "," (map show𝕊 (list [(fst r),(snd r)])))
       pprint r
     "run":fn:_ → do
+      -- make this spit out concrete privacy costs based on the input
       do pprint $ ppHeader "READING" ; flushOut
       s ← read fn
       do pprint $ ppHeader "TOKENIZING" ; flushOut
