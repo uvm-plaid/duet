@@ -788,7 +788,7 @@ inferPriv eA = case extract eA of
   AppPE e ηs as → do
     τ ← pmFromSM $ inferSens e
     ηks ← pmFromSM $ mapM (inferKind ∘ extract) ηs
-    aστs ← pmFromSM $ mapM (hijack ∘ inferSens) as
+    aστs ← pmFromSM $ mapM inferSens as
     let aσs = map fst aστs
     let aτs = map snd aστs
     case τ of
@@ -923,7 +923,7 @@ inferPriv eA = case extract eA of
           tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
           return $ 𝕄T LInf UClip ηₘ ηₙ
       _ → error $ concat
-        [ "MGauss error: " 
+        [ "MGauss error: "
         , pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄ :* ιview @ RNF σ₄KeepMax)
         , "\n"
         , pprender $ ppLineNumbers $ pretty $ annotatedTag eA

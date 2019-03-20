@@ -30,17 +30,6 @@ minElem f (x:&xs) = fold x (\ x₁ x₂ → case f x₁ < f x₂ of { True → x
 minElemPairs :: Ord b => 𝐿 (a ∧ b) → a ∧ b
 minElemPairs = minElem snd
 
-iota :: ℕ → 𝐿 ℕ
-iota n = (single𝐿 0) ⧺ list (upTo (n-1))
-
-head :: 𝐿 a → a
-head (x:&xs) = x
-head _ = error "head failed"
-
-tail :: 𝐿 a → 𝐿 a
-tail (x:&xs) = xs
-tail _ = error "tail failed"
-
 replicate :: ℕ → a → 𝐿 a
 replicate len v = list $ build len v (\ x → x)
 
@@ -48,14 +37,6 @@ zipWith :: (a → b → c) → 𝐿 a → 𝐿 b → 𝐿 c
 zipWith _ Nil _ = Nil
 zipWith _ _ Nil = Nil
 zipWith f (x:&xs) (y:&ys) = f x y :& zipWith f xs ys
-
-take :: ℕ → 𝐿 𝔻 → 𝐿 𝔻
-take 0 _ = Nil
-take _ Nil= Nil
-take n (x:&xs) = x :& take (n-1) xs
-
-iterate :: (a → a) → a → [a]
-iterate f a = a : iterate f (f a)
 
 -- vector/matrix ops
 
@@ -424,12 +405,13 @@ seval env (MMapSE e₁ x e₂) =
 
 seval env (MMap2SE e₁ e₂ x₁ x₂ e₃) =
   case (seval env (extract e₁),seval env (extract e₂)) of
-    (MatrixV v₁, MatrixV v₂) →
-      let fn = zipWith (zipWith (\a b → (seval ((x₂ ↦ b) ⩌ ((x₁ ↦ a) ⩌ env)) (extract e₃))))
-          v₁' = toRows v₁
-          v₂' = toRows v₂
-          c = fn v₁' v₂'
-      in MatrixV $ fromRows c
+    (MatrixV v₁, MatrixV v₂) → case v₁ of
+      ExMatrix (xs ∷ Vᴍ m n Val) → case shapedExMatrix (xrows xs) (xcols xs) v₂ of
+        None → error "bad dimensions"
+        Some (ys ∷ Vᴍ m n Val) →
+          let fn = (\a b → (seval ((x₂ ↦ b) ⩌ ((x₁ ↦ a) ⩌ env)) (extract e₃)))
+              c = xmap2 fn xs ys
+          in MatrixV $ ExMatrix c
 
 -- functions and application
 seval env (PFunSE _ args body) =
@@ -515,8 +497,8 @@ peval env (EDSamplePE size xs ys x y e) =
     (NatV n, MatrixV v1, MatrixV v2) → case v1 of
       ExMatrix (xs ∷ Vᴍ m n Val) → case shapedExMatrix (xrows xs) (s𝕟32 @ 1) v2 of
         None → error "bad dimensions"
-        Some (ys ∷ Vᴍ m 1 Val) → error "TODO"
-      -- sampleHelper n (map urv v1) (map urv v2) x y (extract e) env
+        Some (ys ∷ Vᴍ m 1 Val) →
+          (d𝕟32 (natΩ32 n) (\n₁ → sampleHelper n₁ (map urv xs) (map urv ys) x y (extract e) env))
 
 peval env (TCSamplePE size xs ys x y e) =
   case (seval env (extract size), seval env (extract xs), seval env (extract ys)) of
@@ -637,16 +619,31 @@ laplaceNoise scale = do
   u ← uniformR (neg 0.5, 0.5) gen
   return $ neg $ scale × (signum u) × log(1.0 - 2.0 × (abs u))
 
--- WE STILL NEED THIS BUT IT DOESN'T WORK YET -David
 -- -- | Helper function for PSampleE
--- sampleHelper :: (PRIV_C p) ⇒ ℕ → ExMatrix 𝔻 → ExMatrix 𝔻 → 𝕏 → 𝕏 → PExp p → Env → IO Val
--- sampleHelper n xs ys x y e env = do
---   batch <- minibatch (int n) xs (flatten ys)
---   peval (insertDataSet env (x :* y) ((fst batch) :* (snd batch))) e
+sampleHelper :: (PRIV_C p, Rℕ o) ⇒ Sℕ32 o → Vᴍ m n 𝔻 → Vᴍ m 1 𝔻 → 𝕏 → 𝕏 → PExp p → Env → IO Val
+sampleHelper n xs ys x y e env = do
+  batch <- minibatch n xs ys
+  peval (insertDataSet env (x :* y) ((fst batch) :* (snd batch))) e
 
-insertDataSet ∷ Env → (𝕏 ∧ 𝕏) → (ExMatrix 𝔻 ∧ ExMatrix 𝔻) → Env
-insertDataSet env (x :* y) (xs :* ys) =
-  (x ↦ (MatrixV $ map RealV $ xs)) ⩌ (y ↦ (MatrixV $ map RealV ys)) ⩌ env
+randIndex ∷ GenIO → Sℕ32 m → IO (𝕀32 m)
+randIndex gen n = do
+  x ← uniformR (zero, unSℕ32 n) gen
+  return $ d𝕟32 x $ \ x' → 𝕀32 x' TRUSTME_LT
+
+-- -- | Generates random indicies for sampling
+randIndices ∷ (Rℕ m) ⇒ GenIO → Sℕ32 m → Sℕ32 n → IO (Vᴍ 1 m (𝕀32 n))
+randIndices gen m n = map xvirt $ xbmapM (\ () → randIndex gen n) $ xconst (s𝕟32 @ 1) m ()
+
+-- | Outputs a single minibatch of data
+minibatch :: (Rℕ o) ⇒ Sℕ32 o → Vᴍ m n 𝔻 → Vᴍ m 1 𝔻 → IO (Vᴍ o n 𝔻 ∧ Vᴍ o 1 𝔻)
+minibatch batchSize xs@(Vᴍ _ _ _) ys@(Vᴍ _ _ _) = do
+  gen <- createSystemRandom
+  idxs <- randIndices gen batchSize (xrows xs)
+  return (xindirect xs idxs :* xindirect ys idxs)
+
+insertDataSet ∷ Env → (𝕏 ∧ 𝕏) → (Vᴍ o n 𝔻 ∧ Vᴍ o 1 𝔻) → Env
+insertDataSet env (x :* y) (xs@(Vᴍ _ _ _) :* ys@(Vᴍ _ _ _)) =
+  (x ↦ (MatrixV $ ExMatrix $ map RealV xs)) ⩌ (y ↦ (MatrixV $ ExMatrix $ map RealV ys)) ⩌ env
 
 type Model = DuetVector 𝔻
 
@@ -699,27 +696,3 @@ accuracy x y θ = let pairs ∷ 𝐿 (DuetVector 𝔻 ∧ 𝔻) = list $ zip (ma
                      labels ∷ 𝐿 𝔻 = map (predict θ) pairs
                      correct ∷ 𝐿 (ℕ ∧ ℕ) = map isCorrect $ list $ zip labels (toList y)
                  in fold (0 :* 0) (\a b → ((fst a + fst b) :* (snd a + snd b))) correct
-
-randIndex ∷ GenIO → Sℕ32 m → IO (𝕀32 m)
-randIndex gen n = do
-  x ← uniformR (zero, unSℕ32 n) gen
-  return $ d𝕟32 x $ \ x' → 𝕀32 x' TRUSTME_LT
-
--- -- | Generates random indicies for sampling
--- randIndices :: ℤ → ℤ → ℤ → GenIO → IO (𝐿 ℤ)
--- randIndices n a b gen
---   | n ≡ zero    = return Nil
---   | otherwise = do
---       x <- uniformR (intΩ64 a, intΩ64 b) gen
---       xs' <- randIndices (n - one) a b gen
---       return (int x :& xs')
-
-randIndices ∷ (Rℕ m) ⇒ GenIO → Sℕ32 m → Sℕ32 n → IO (Vᴍ 1 m (𝕀32 n))
-randIndices gen m n = map xvirt $ xbmapM (\ () → randIndex gen n) $ xconst (s𝕟32 @ 1) m () 
-
--- | Outputs a single minibatch of data
-minibatch :: (Rℕ o) ⇒ Sℕ32 o → Vᴍ m n 𝔻 → Vᴍ m 1 𝔻 → IO (Vᴍ o n 𝔻 ∧ Vᴍ o 1 𝔻)
-minibatch batchSize xs ys = do
-  gen <- createSystemRandom
-  idxs <- randIndices gen batchSize (xrows xs)
-  return (xindirect xs idxs :* xindirect ys idxs)
