@@ -12,6 +12,11 @@ import System.Random
 import System.Random.MWC
 import Data.Random.Normal
 
+-- import qualified GHC.TypeLits as HS
+-- import qualified Prelude as HS
+-- import qualified Data.Type.Equality as HS
+-- import qualified Data.Proxy as HS
+
 type Env = 𝕏 ⇰ Val
 type DuetVector a = 𝐿 a
 
@@ -113,7 +118,7 @@ asColumn vec = buildRows (map single𝐿 vec)
 
 -- really build a matrix
 buildRows :: 𝐿 (𝐿 a) → ExMatrix a
-buildRows ls = xb𝐿 ls (ExMatrix ∘ xvirt)
+buildRows ls = xb𝐿 ls $ \ xs → ExMatrix (xvirt xs)
 
 -- extract rows in N
 (?) :: ExMatrix 𝔻 → 𝐿 ℤ → ExMatrix 𝔻
@@ -216,6 +221,12 @@ partition₁ k ((val:*llvals):&vs) = case k ≡ val of
   True → llvals ⧺ partition₁ k vs
   False → partition₁ k vs
 
+shapedExMatrix ∷ ∀ m n a. (Rℕ m,Rℕ n) ⇒ Sℕ32 m → Sℕ32 n → ExMatrix a → 𝑂 (Vᴍ m n a)
+shapedExMatrix m n (ExMatrix (xs ∷ Vᴍ m' n' a)) = do
+  Refl ← compareTℕ @ m @ m'
+  Refl ← compareTℕ @ n @ n'
+  return xs
+
 -- this could be moved to Syntax.hs, and PArgs r (and its Eq and Ord instances)
 -- could be derived using this type
 newtype ExPriv (e ∷ PRIV → ★) = ExPriv { unExPriv ∷ Ex_C PRIV_C e }
@@ -251,7 +262,7 @@ instance Eq (Sℕ32 n) where
 instance (Eq a) ⇒ Eq (Vᴍ m n a) where
   Vᴍ m₁ n₁ a₁ == Vᴍ m₂ n₂ a₂ = (m₁ == m₂) ⩓ (n₁ == n₂) ⩓ (a₁ == a₂)
 data ExMatrix a where
-  ExMatrix ∷ Vᴍ m n a -> ExMatrix a
+  ExMatrix ∷ (Rℕ m,Rℕ n) ⇒ Vᴍ m n a -> ExMatrix a
 instance Functor ExMatrix where
   map f (ExMatrix m) = ExMatrix $ map f m
 instance (Eq a) ⇒ Eq (ExMatrix a) where
@@ -501,18 +512,21 @@ peval env (IfPE e₁ e₂ e₃) = case seval env (extract e₁) of
 -- sample on two matrices and compute on sample
 peval env (EDSamplePE size xs ys x y e) =
   case (seval env (extract size), seval env (extract xs), seval env (extract ys)) of
-    (NatV n, MatrixV v1, MatrixV v2) →
-      sampleHelper n (map urv v1) (map urv v2) x y (extract e) env
+    (NatV n, MatrixV v1, MatrixV v2) → case v1 of
+      ExMatrix (xs ∷ Vᴍ m n Val) → case shapedExMatrix (xrows xs) (s𝕟32 @ 1) v2 of
+        None → error "bad dimensions"
+        Some (ys ∷ Vᴍ m 1 Val) → error "TODO"
+      -- sampleHelper n (map urv v1) (map urv v2) x y (extract e) env
 
 peval env (TCSamplePE size xs ys x y e) =
   case (seval env (extract size), seval env (extract xs), seval env (extract ys)) of
-    (NatV n, MatrixV v1, MatrixV v2) →
-      sampleHelper n (map urv v1) (map urv v2) x y (extract e) env
+    (NatV n, MatrixV v1, MatrixV v2) → error "TODO"
+      -- sampleHelper n (map urv v1) (map urv v2) x y (extract e) env
 
 peval env (RenyiSamplePE size xs ys x y e) =
   case (seval env (extract size), seval env (extract xs), seval env (extract ys)) of
-    (NatV n, MatrixV v1, MatrixV v2) →
-      sampleHelper n (map urv v1) (map urv v2) x y (extract e) env
+    (NatV n, MatrixV v1, MatrixV v2) → error "TODO"
+      -- sampleHelper n (map urv v1) (map urv v2) x y (extract e) env
 
 -- gaussian mechanism for real numbers
 peval env (GaussPE r (EDGaussParams ε δ) vs e) =
@@ -623,11 +637,12 @@ laplaceNoise scale = do
   u ← uniformR (neg 0.5, 0.5) gen
   return $ neg $ scale × (signum u) × log(1.0 - 2.0 × (abs u))
 
--- | Helper function for PSampleE
-sampleHelper :: (PRIV_C p) ⇒ ℕ → ExMatrix 𝔻 → ExMatrix 𝔻 → 𝕏 → 𝕏 → PExp p → Env → IO Val
-sampleHelper n xs ys x y e env = do
-  batch <- minibatch (int n) xs (flatten ys)
-  peval (insertDataSet env (x :* y) ((fst batch) :* (snd batch))) e
+-- WE STILL NEED THIS BUT IT DOESN'T WORK YET -David
+-- -- | Helper function for PSampleE
+-- sampleHelper :: (PRIV_C p) ⇒ ℕ → ExMatrix 𝔻 → ExMatrix 𝔻 → 𝕏 → 𝕏 → PExp p → Env → IO Val
+-- sampleHelper n xs ys x y e env = do
+--   batch <- minibatch (int n) xs (flatten ys)
+--   peval (insertDataSet env (x :* y) ((fst batch) :* (snd batch))) e
 
 insertDataSet ∷ Env → (𝕏 ∧ 𝕏) → (ExMatrix 𝔻 ∧ ExMatrix 𝔻) → Env
 insertDataSet env (x :* y) (xs :* ys) =
@@ -685,20 +700,26 @@ accuracy x y θ = let pairs ∷ 𝐿 (DuetVector 𝔻 ∧ 𝔻) = list $ zip (ma
                      correct ∷ 𝐿 (ℕ ∧ ℕ) = map isCorrect $ list $ zip labels (toList y)
                  in fold (0 :* 0) (\a b → ((fst a + fst b) :* (snd a + snd b))) correct
 
--- | Generates random indicies for sampling
-randIndices :: ℤ → ℤ → ℤ → GenIO → IO (𝐿 ℤ)
-randIndices n a b gen
-  | n ≡ zero    = return Nil
-  | otherwise = do
-      x <- uniformR (intΩ64 a, intΩ64 b) gen
-      xs' <- randIndices (n - one) a b gen
-      return (int x :& xs')
+randIndex ∷ GenIO → Sℕ32 m → IO (𝕀32 m)
+randIndex gen n = do
+  x ← uniformR (zero, unSℕ32 n) gen
+  return $ d𝕟32 x $ \ x' → 𝕀32 x' TRUSTME_LT
+
+-- -- | Generates random indicies for sampling
+-- randIndices :: ℤ → ℤ → ℤ → GenIO → IO (𝐿 ℤ)
+-- randIndices n a b gen
+--   | n ≡ zero    = return Nil
+--   | otherwise = do
+--       x <- uniformR (intΩ64 a, intΩ64 b) gen
+--       xs' <- randIndices (n - one) a b gen
+--       return (int x :& xs')
+
+randIndices ∷ (Rℕ m) ⇒ GenIO → Sℕ32 m → Sℕ32 n → IO (Vᴍ 1 m (𝕀32 n))
+randIndices gen m n = map xvirt $ xbmapM (\ () → randIndex gen n) $ xconst (s𝕟32 @ 1) m () 
 
 -- | Outputs a single minibatch of data
-minibatch :: ℤ → ExMatrix 𝔻 → DuetVector 𝔻 → IO (ExMatrix 𝔻 ∧ ExMatrix 𝔻)
+minibatch :: (Rℕ o) ⇒ Sℕ32 o → Vᴍ m n 𝔻 → Vᴍ m 1 𝔻 → IO (Vᴍ o n 𝔻 ∧ Vᴍ o 1 𝔻)
 minibatch batchSize xs ys = do
   gen <- createSystemRandom
-  idxs <- randIndices batchSize zero (𝕫 (rows xs) - one) gen
-  let bxs = xs ? idxs
-      bys = ((asColumn ys) ? idxs)
-  return (bxs :* bys)
+  idxs <- randIndices gen batchSize (xrows xs)
+  return (xindirect xs idxs :* xindirect ys idxs)
