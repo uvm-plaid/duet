@@ -1,0 +1,62 @@
+-- `duet run <this-file> "incoming1.csv" "outgoing1.csv" "blocks1.csv" "crisis1.cs" 0.05 0.0001 > output.csv`
+-- Presna algorithm
+let main = pλ ε : ℝ⁺
+              .
+              -- interval:ℕ,phone_id:ℕ,x:ℕ,y:ℕ,hash:𝕊
+              incoming : 𝕄 [L∞ , U | ★ , 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 𝕊 ∷ [] ],
+              outgoing : 𝕄 [L∞ , U | ★ , 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 𝕊 ∷ [] ],
+              -- blocks   : ℘ (𝐝 ℕ × 𝐝 ℕ),      -- set of all the blocks of interest
+              -- crisis   : ℘ (𝐝 ℕ × 𝐝 ℕ),      -- set of blocks in crisis
+              ε : ℝ⁺[ε]
+              ⇒
+
+  let getXYone = sλ row : 𝕄 [L∞ , U | 1 , 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 𝕊∷ [] ] ⇒
+    ⟨ clip (row#[ℕ[0],ℕ[2]]), clip (row#[ℕ[0],ℕ[3]]) ⟩
+  in
+  let getXY = sλ row : 𝕄 [L∞ , U | 1 , 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 𝕊 ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 𝕊 ∷ [] ] ⇒
+    ⟨ clip (row#[ℕ[0],ℕ[2]]), clip (row#[ℕ[0],ℕ[3]]) ⟩
+  in
+  let getXYsnd = sλ row : 𝕄 [L∞ , U | 1 , 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 𝕊 ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 𝕊 ∷ [] ] ⇒
+    ⟨ clip (row#[ℕ[0],ℕ[7]]), clip (row#[ℕ[0],ℕ[8]]) ⟩
+  in
+  let blocks = ℘ {⟨0,0⟩,⟨0,1⟩,⟨1,0⟩,⟨1,1⟩} in
+  let crisis = ℘ {⟨1,1⟩} in
+  let query01 = pλ ε : ℝ⁺
+              .
+              -- interval:ℕ,phone_id:ℕ,x:ℕ,y:ℕ,hash:𝕊
+              incoming : 𝕄 [L∞ , U | ★ , 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 𝕊 ∷ [] ],
+              outgoing : 𝕄 [L∞ , U | ★ , 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 𝕊 ∷ [] ],
+              ε : ℝ⁺[ε]
+              ⇒
+    parallel [ outgoing , ℘ { true, false } ] { row ⇒ (getXYone row) ∈ crisis }
+          { n, pb ⇒
+              if n then {
+                r ← parallel [ join₁[pb, ℕ[4], incoming, ℕ[4]] , blocks] { row ⇒ getXY row }
+                      { b₁, p₁ ⇒ parallel [p₁, blocks] { row ⇒ getXYsnd row }
+                                   { b₂, p₂ ⇒ noisyCount ← laplace[ℝ⁺[1.0], ε] <p₂> { real (rows p₂) };
+                                     return ⟨⟨b₁, b₂⟩, noisyCount⟩ } };
+                return ⟨n, unionAll r⟩
+              } else {
+                r ← parallel [pb, blocks] { row ⇒ getXYone row }
+                      { b, p ⇒ noisyCount ← laplace[ℝ⁺[1.0], ε] <p> { real (rows p) };
+                        return ⟨⟨b, b⟩, noisyCount⟩ };
+                return ⟨n, r⟩
+              }
+          }
+  in
+  let query2 = pλ ε : ℝ⁺
+              .
+              -- interval:ℕ,phone_id:ℕ,x:ℕ,y:ℕ,hash:𝕊
+              incoming : 𝕄 [L∞ , U | ★ , 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 𝕊 ∷ [] ],
+              ε : ℝ⁺[ε]
+              ⇒
+    parallel [ incoming , blocks ] { row ⇒ getXYone row }
+      { b, p ⇒ noisyCount ← laplace[ℝ⁺[1.0], ε] <p> { real (rows p) };
+        return ⟨b, noisyCount⟩ }
+  in
+  r₁ ← query01@[ε . incoming, outgoing, ε];
+  r₂ ← query2@[ε . incoming, ε];
+  return ⟨r₁, r₂⟩
+
+in return main
+
