@@ -4,7 +4,7 @@ cabal-version: 2.2
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: c0417760a2957ba69e58c747a7132d0fcb2c34c25b41d5245c989659337a6541
+-- hash: f76ed3f2ec0127da3ad37c58fbd8184fd9f670ee4afbb835e70f12ffd1451dc1
 
 name:           duet
 version:        0.0.0.0
@@ -27,7 +27,7 @@ executable duet
       src
       main
   default-extensions: ConstraintKinds DataKinds ExplicitNamespaces FlexibleContexts FlexibleInstances FunctionalDependencies GADTs GeneralizedNewtypeDeriving InstanceSigs KindSignatures LambdaCase MonadComprehensions MultiParamTypeClasses NoImplicitPrelude OverloadedStrings PatternSynonyms PolyKinds QuantifiedConstraints RankNTypes RebindableSyntax ScopedTypeVariables StandaloneDeriving Strict StrictData TemplateHaskell TypeApplications TypeFamilies TypeOperators UndecidableInstances UndecidableSuperClasses UnicodeSyntax ViewPatterns
-  ghc-options: -Wall -Wno-orphans -Wno-partial-type-signatures -j -O0
+  ghc-options: -Wall -Wno-orphans -Wno-partial-type-signatures -j -O0 -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base
     , mwc-random

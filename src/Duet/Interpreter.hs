@@ -64,7 +64,7 @@ rows :: ExMatrix a → ℕ
 rows (ExMatrix xs) = nat $ unSℕ32 $ xrows xs
 
 tr :: ExMatrix 𝔻 → ExMatrix 𝔻
-tr (ExMatrix xs) = ExMatrix $ xbp $ xtranspose $ xvirt xs
+tr (ExMatrix xs) = ExMatrix $ xtranspose xs
 
 (===) :: ExMatrix a → ExMatrix a → ExMatrix a
 (===) a b =
@@ -85,17 +85,16 @@ flatten :: ExMatrix a → DuetVector a
 flatten m = fold Nil (⧺) (toRows m)
 
 (<>) :: ExMatrix 𝔻 → ExMatrix 𝔻 → ExMatrix 𝔻
-(<>) a b =
-  let a₁ = toRows a
-      b₁ = toRows (tr b)
-      c = [ [ sum $ zipWith (×) ar bc | bc <- b₁ ] | ar <- a₁ ]
-  in fromRows c
+(<>) (ExMatrix a) (ExMatrix b) =
+  let b' = (xbp b) in
+  let b'' = matrix (xcols a) (xcols b) $ \ i j → b' 𝄪 ((n2i (xrows b) (nat (un𝕀32 i))),j) in
+    ExMatrix $ xproduct (xvirt (xbp a)) b''
 
 scale :: 𝔻 → DuetVector 𝔻 → Model
 scale r v = map (× r) v
 
 mscale :: 𝔻 → ExMatrix 𝔻 → ExMatrix 𝔻
-mscale r (ExMatrix m) = ExMatrix $ xbp $ xmap (× r) (xvirt m)
+mscale r (ExMatrix m) = ExMatrix $ xmap (× r) m
 
 vector :: 𝐿 𝔻 → DuetVector 𝔻
 vector x = x
@@ -114,14 +113,14 @@ asColumn vec = buildRows (map single𝐿 vec)
 
 -- really build a matrix
 buildRows :: 𝐿 (𝐿 a) → ExMatrix a
-buildRows ls = xb𝐿 ls ExMatrix
+buildRows ls = xb𝐿 ls (ExMatrix ∘ xvirt)
 
 -- extract rows in N
 (?) :: ExMatrix 𝔻 → 𝐿 ℤ → ExMatrix 𝔻
 (?) m ns = buildRows (m ?? ns)
 
 (??) :: ExMatrix 𝔻 → 𝐿 ℤ → 𝐿 (𝐿 𝔻)
-(??) (ExMatrix m) (n:&ns) = (xlist2 (xrow (n2i (xrows m) (natΩ n)) (xvirt m))) ⧺ ((ExMatrix m) ?? ns)
+(??) (ExMatrix m) (n:&ns) = (xlist2 (xrow (n2i (xrows m) (natΩ n)) m)) ⧺ ((ExMatrix m) ?? ns)
 (??) m Nil = Nil
 
 toList :: DuetVector 𝔻 → 𝐿 𝔻
@@ -129,7 +128,7 @@ toList x = x
 
 -- extracts the rows of a matrix as a list of vectors
 toRows :: ExMatrix a → 𝐿 (𝐿 a)
-toRows (ExMatrix m) = xlist2 $ xvirt m
+toRows (ExMatrix m) = xlist2 m
 
 toLists = toRows
 
@@ -141,20 +140,14 @@ asRow :: DuetVector a → ExMatrix a
 asRow vec = fromLists $ list [vec]
 
 (+++) :: (Plus a) => ExMatrix a → ExMatrix a → ExMatrix a
-(+++) a b =
-  let a₁ = toRows a
-      b₁ = toRows b
-      add = zipWith (zipWith (+))
-      c = add a₁ b₁
-  in fromRows c
+(+++) (ExMatrix a) (ExMatrix b) =
+  let b' = matrix (xrows a) (xcols a) $ \ i j → b 𝄪 ((n2i (xrows b) (nat (un𝕀32 i))),(n2i (xcols b) (nat (un𝕀32 j)))) in
+  ExMatrix $ xmap2 (+) a b'
 
 (-/) :: (Minus a) => ExMatrix a → ExMatrix a → ExMatrix a
-(-/) a b =
-  let a₁ = toRows a
-      b₁ = toRows b
-      sub = zipWith (zipWith (-))
-      c = sub a₁ b₁
-  in fromRows c
+(-/) (ExMatrix a) (ExMatrix b) =
+  let b' = matrix (xrows a) (xcols a) $ \ i j → b 𝄪 ((n2i (xrows b) (nat (un𝕀32 i))),(n2i (xcols b) (nat (un𝕀32 j)))) in
+  ExMatrix $ xmap2 (-) a b'
 
 urv :: Val → 𝔻
 urv x = case x of
@@ -169,7 +162,7 @@ arsinh x = log $ x + (root $ (x × x) + 1.0)
 joinMatch₁ ∷ ℕ → ExMatrix Val → 𝐿 (ExMatrix Val) → ℕ → 𝐿 Val
 joinMatch₁ n₁ row₁ Nil n₂ = Nil
 joinMatch₁ n₁ (ExMatrix row₁) ((ExMatrix row₂):&rows₂) n₂ =
-  case ((indexBᴍ (n2i (xrows row₁) 0) (n2i (xcols row₁) n₁) row₁) ≡ (indexBᴍ (n2i (xrows row₂) 0) (n2i (xcols row₂) n₂) row₂)) of
+  case ((indexVᴍ (n2i (xrows row₁) 0) (n2i (xcols row₁) n₁) row₁) ≡ (indexVᴍ (n2i (xrows row₂) 0) (n2i (xcols row₂) n₂) row₂)) of
     True →  (flatten (ExMatrix row₁)) ⧺ (flatten (ExMatrix row₂))
     False → joinMatch₁ n₁ (ExMatrix row₁) rows₂ n₂
 
@@ -255,20 +248,20 @@ data Val =
 
 instance Eq (Sℕ32 n) where
   TRUSTME_Sℕ32 n₁ == TRUSTME_Sℕ32 n₂ = n₁ ≡ n₂
-instance (Eq a) ⇒ Eq (Bᴍ m n a) where
-  Bᴍ m₁ n₁ a₁ == Bᴍ m₂ n₂ a₂ = (m₁ == m₂) ⩓ (n₁ == n₂) ⩓ (a₁ == a₂)
+instance (Eq a) ⇒ Eq (Vᴍ m n a) where
+  Vᴍ m₁ n₁ a₁ == Vᴍ m₂ n₂ a₂ = (m₁ == m₂) ⩓ (n₁ == n₂) ⩓ (a₁ == a₂)
 data ExMatrix a where
-  ExMatrix ∷ Bᴍ m n a -> ExMatrix a
+  ExMatrix ∷ Vᴍ m n a -> ExMatrix a
 instance Functor ExMatrix where
-  map f (ExMatrix m) = ExMatrix $ xbp $ map f (xvirt m)
+  map f (ExMatrix m) = ExMatrix $ map f m
 instance (Eq a) ⇒ Eq (ExMatrix a) where
-  ExMatrix (Bᴍ _ _ a₁) == ExMatrix (Bᴍ _ _ a₂) = a₁ ≡ a₂
+  ExMatrix (Vᴍ _ _ a₁) == ExMatrix (Vᴍ _ _ a₂) = a₁ ≡ a₂
 instance (Ord a) ⇒ Ord (ExMatrix a) where
-  compare (ExMatrix xs₁) (ExMatrix xs₂) = compare (xlist2 $ xvirt xs₁) (xlist2 $ xvirt xs₂)
+  compare (ExMatrix xs₁) (ExMatrix xs₂) = compare (xlist2 xs₁) (xlist2 xs₂)
 instance (Show a) ⇒ Show (ExMatrix a) where
-  show (ExMatrix xs) = show $ xlist2 $ xvirt xs
+  show (ExMatrix xs) = show $ xlist2 xs
 
-ex2m :: ExMatrix a → (∀ m n. Bᴍ m n a → b) → b
+ex2m :: ExMatrix a → (∀ m n. Vᴍ m n a → b) → b
 ex2m (ExMatrix xs) f = f xs
 
 n2i :: Sℕ32 n → ℕ → 𝕀32 n
@@ -292,8 +285,8 @@ instance Pretty Val where
 instance (Pretty a) ⇒ Pretty (ExMatrix a) where
   pretty (ExMatrix a) = pretty a
 
-instance (Pretty a) ⇒ Pretty (Bᴍ m n a) where
-  pretty m = pretty $ xlist2 $ xvirt m
+instance (Pretty a) ⇒ Pretty (Vᴍ m n a) where
+  pretty m = pretty $ xlist2 m
 
 -- | Converts and integer to a 𝔻
 intDouble ∷ ℕ → 𝔻

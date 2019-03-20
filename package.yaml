@@ -44,6 +44,7 @@ ghc-options:
   - -Wno-partial-type-signatures
   - -j
   - -O0
+  - -threaded -rtsopts -with-rtsopts=-N 
 
 executable:
   source-dirs:
