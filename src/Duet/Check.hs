@@ -765,14 +765,8 @@ isRealType (ℝˢT _r) = True
 isRealType (ℝT) = True
 isRealType _ = False
 
---TODO: uvmhs?
-zipWith :: (a → b → c) → 𝐿 a → 𝐿 b → 𝐿 c
-zipWith _ Nil _ = Nil
-zipWith _ _ Nil = Nil
-zipWith f (x:&xs) (y:&ys) = f x y :& zipWith f xs ys
-
 matchArgPrivs ∷ 𝐿 (𝕏 ⇰ Sens RNF) → 𝐿 (Priv p RNF) → 𝐿 (𝕏 ⇰ Priv p RNF)
-matchArgPrivs xss xps = zipWith (↦) (fold Nil (⧺) (map (list ∘ uniques ∘ keys) xss)) xps
+matchArgPrivs xss xps = list $ zipWith (↦) (fold Nil (⧺) (map (list ∘ uniques ∘ keys) xss)) xps
 
 -- TODO: define and use these in place of truncate
 
@@ -802,17 +796,20 @@ inferPriv eA = case extract eA of
     case τ of
       ((ακs :* xτs) :⊸⋆: τ₁) | joins (values (joins aσs)) ⊑ ι 1 → do
         case xτs of
-          (PArgs xτs') :: PArgs (𝐿 (Type RNF ∧ Priv p RNF)) → do
-            let x' :: 𝐿 (Type RNF ∧ Priv p RNF) = xτs'
-            let τs = map fst x'
-            let x :: 𝐿 (Priv p RNF) = (map snd x')
-            let aps ∷ 𝐿 (𝕏 ⇰ Priv p RNF) = matchArgPrivs aσs x
-            let ks = map snd ακs
-            case (ηks ≡ ks, aτs ≡ τs) of
-              (True,True) → do
-                mapM tell aps
-                return τ₁
-              _ → error $ "AppPE argument kind/type error" ⧺ pprender (ηks :* ks, aτs :* τs)
+          PArgs (xτs' :: 𝐿 (Type RNF ∧ Priv p' RNF)) → do
+            case eqPRIV (priv @ p) (priv @ p') of
+              None → error "privacy variants dont match"
+              Some Refl → do
+                let x' :: 𝐿 (Type RNF ∧ Priv p RNF) = xτs'
+                let τs = map fst x'
+                let x :: 𝐿 (Priv p RNF) = (map snd x')
+                let aps ∷ 𝐿 (𝕏 ⇰ Priv p RNF) = matchArgPrivs aσs x
+                let ks = map snd ακs
+                case (ηks ≡ ks, aτs ≡ τs) of
+                  (True,True) → do
+                    each tell aps
+                    return τ₁
+                  _ → error $ "AppPE argument kind/type error" ⧺ pprender (ηks :* ks, aτs :* τs)
       _ → error $ "AppPE expected a function instead of" ⧺ pprender τ
   IfPE e₁ e₂ e₃ → do
     τ₁ ← pmFromSM $ inferSens e₁

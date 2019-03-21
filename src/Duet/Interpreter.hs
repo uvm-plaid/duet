@@ -4,11 +4,8 @@ import Duet.UVMHS
 
 import Duet.Pretty ()
 import Duet.Syntax
-import Duet.RNF
-import Duet.Quantity
 
 -- libraries
-import System.Random
 import System.Random.MWC
 import Data.Random.Normal
 
@@ -32,11 +29,6 @@ minElemPairs = minElem snd
 
 replicate :: ℕ → a → 𝐿 a
 replicate len v = list $ build len v (\ x → x)
-
-zipWith :: (a → b → c) → 𝐿 a → 𝐿 b → 𝐿 c
-zipWith _ Nil _ = Nil
-zipWith _ _ Nil = Nil
-zipWith f (x:&xs) (y:&ys) = f x y :& zipWith f xs ys
 
 -- vector/matrix ops
 
@@ -627,7 +619,7 @@ sampleHelper n xs ys x y e env = do
 
 randIndex ∷ GenIO → Sℕ32 m → IO (𝕀32 m)
 randIndex gen n = do
-  x ← uniformR (zero, unSℕ32 n) gen
+  x ← uniformR (zero, unSℕ32 n - 𝕟32 1) gen
   return $ d𝕟32 x $ \ x' → 𝕀32 x' TRUSTME_LT
 
 -- -- | Generates random indicies for sampling
