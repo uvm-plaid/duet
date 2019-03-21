@@ -32,8 +32,8 @@ replicate len v = list $ build len v (\ x → x)
 
 -- vector/matrix ops
 
-norm_2 :: DuetVector 𝔻 → 𝔻
-norm_2 = root ∘ sum ∘ map (\x → x×x)
+norm_2 :: Vᴍ 1 m 𝔻 → 𝔻
+norm_2 = root ∘ sum ∘ xmap (\x → x×x)
 
 cols :: ExMatrix a → ℕ
 cols (ExMatrix xs) = nat $ unSℕ32 $ xcols xs
@@ -362,10 +362,17 @@ seval env (IdxSE e) =
 
 -- clip operation for only L2 norm
 seval env (MClipSE norm e) =
-  case (norm, seval env (extract e)) of
-    (L2,   MatrixV v) →  MatrixV $ map RealV $ fromRows (map normalize $ toRows $ map urv v)
-    (LInf, MatrixV v) →  MatrixV $ map RealV $ fromRows (map normalize $ toRows $ map urv v)
-    (l, _) → error $ "Invalid norm for clip: " ⧺ (show𝕊 l)
+  case seval env $ extract e of
+    MatrixV (ExMatrix m) → 
+      MatrixV 
+      $ ExMatrix 
+      $ xmap RealV 
+      $ xmeld (xcols m) 
+      $ xmap (normalize norm) 
+      $ xsplit 
+      $ xmap urv m
+        -- _ → error $ "Invalid norm for clip: " ⧺ show𝕊 norm
+    _ → error $ "cannot mclip a not matrix"
 
 -- gradient
 seval env (MLipGradSE LR e₁ e₂ e₃) =
@@ -381,13 +388,13 @@ seval env (MLipGradSE LR e₁ e₂ e₃) =
     (a, b, c) → error $ "No pattern for " ⧺ (show𝕊 (a, b, c))
 
 -- create matrix
-seval env (MCreateSE l e₁ e₂ i j e₃) =
+seval env (MCreateSE l e₁ e₂ ix jx e₃) =
   case (seval env (extract e₁), seval env (extract e₂)) of
     (NatV v₁, NatV v₂) →
-      let row = replicate v₂ 0.0
-          m = replicate v₁ row
-          m₁ = fromRows m
-      in MatrixV (map RealV m₁)
+      d𝕟32 (natΩ32 v₁) $ \ (m ∷ Sℕ32 m) →
+      d𝕟32 (natΩ32 v₂) $ \ (n ∷ Sℕ32 n)  →
+      MatrixV $ ExMatrix $ matrix m n $ \ i j → 
+        seval ((ix ↦ NatV (nat $ un𝕀32 i)) ⩌ (jx ↦ NatV (nat $ un𝕀32 j)) ⩌ env) $ extract e₃
 
 -- matrix maps
 seval env (MMapSE e₁ x e₂) =
@@ -594,6 +601,7 @@ peval env e = error $ "Unknown expression: " ⧺ (show𝕊 e)
 iter₁ ∷ (PRIV_C p) ⇒ ℕ → Val → 𝕏 → 𝕏 → ℕ → PExp p → Env → IO (Val)
 iter₁ 0 v _ _ _ _ _ = return v
 iter₁ k v t x kp body env = do
+  traceM "in a loop…"
   newVal ← peval ((x ↦ v) ⩌ ((t ↦ (NatV $ nat kp)) ⩌ env)) body
   iter₁ (k - 1) newVal t x (kp+1) body env
 
@@ -651,10 +659,10 @@ ngrad θ x y =
   in (scale (neg one) avgGrad)
 
 -- | Obtains a vector in the same direction with L2-norm=1
-normalize :: DuetVector 𝔻 → DuetVector 𝔻
-normalize v
-  | r > 1.0     =  scale (1.0/r) v
-  | otherwise =  v
+normalize :: Norm → Vᴍ 1 m 𝔻 → Vᴍ 1 m 𝔻
+normalize ℓ v
+  | r > 1.0     =  xmap (\ x → x / r) v
+  | otherwise   =  v
   where
     r = norm_2 v
 
@@ -684,7 +692,8 @@ isCorrect (prediction :* actual) | prediction ≡ actual = (1 :* 0)
 
 -- | Calculates the accuracy of a model
 accuracy ∷ ExMatrix 𝔻 → DuetVector 𝔻 → Model → (ℕ ∧ ℕ)
-accuracy x y θ = let pairs ∷ 𝐿 (DuetVector 𝔻 ∧ 𝔻) = list $ zip (map normalize $ toRows x) (toList y)
-                     labels ∷ 𝐿 𝔻 = map (predict θ) pairs
-                     correct ∷ 𝐿 (ℕ ∧ ℕ) = map isCorrect $ list $ zip labels (toList y)
-                 in fold (0 :* 0) (\a b → ((fst a + fst b) :* (snd a + snd b))) correct
+accuracy x y θ = undefined
+                -- let pairs ∷ 𝐿 (DuetVector 𝔻 ∧ 𝔻) = list $ zip (map normalize $ toRows x) (toList y)
+                --      labels ∷ 𝐿 𝔻 = map (predict θ) pairs
+                --      correct ∷ 𝐿 (ℕ ∧ ℕ) = map isCorrect $ list $ zip labels (toList y)
+                --  in fold (0 :* 0) (\a b → ((fst a + fst b) :* (snd a + snd b))) correct
