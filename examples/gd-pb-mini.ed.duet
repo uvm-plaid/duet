@@ -20,10 +20,11 @@ let main = pλ m  : ℕ,
               ⇒
   let m₀ = mcreate[ L∞ | ℕ[1] , cols xs ] { i , j ⇒ 0.0 } in
   -- let b = ℕ[50] in
+  let c = box (mclip[L2] xs) in
   aloop[ δ′ ] k on m₀ <xs,ys> { t , θ ⇒
-    g ← sample[ b ] xs, ys {xs', ys' ⇒
+    g ← sample[ b ] (unbox c), ys {xs', ys' ⇒
         let s = ℝ⁺[1.0] / real (rows xs') in
-        mgauss[ s , ε , δ ] <xs',ys'> { ∇[ LR | θ ; mclip[L2] xs' , ys' ] } };
+        mgauss[ s , ε , δ ] <xs',ys'> { ∇[ LR | θ ; xs' , ys' ] } };
     return mmap θ , mmap g { x ⇒ η ⋅ x } { x , y ⇒ x - y }
   }
 in return main

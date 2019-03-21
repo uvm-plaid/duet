@@ -788,7 +788,7 @@ inferPriv eA = case extract eA of
   AppPE e ηs as → do
     τ ← pmFromSM $ inferSens e
     ηks ← pmFromSM $ mapM (inferKind ∘ extract) ηs
-    aστs ← pmFromSM $ mapM inferSens as
+    aστs ← pmFromSM $ mapM (hijack ∘ inferSens) as
     let aσs = map fst aστs
     let aτs = map snd aστs
     case τ of

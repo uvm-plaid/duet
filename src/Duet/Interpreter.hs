@@ -529,10 +529,10 @@ peval env (LaplacePE r (EpsLaplaceParams ε) vs e) =
 -- gaussian mechanism for matrices
 peval env (MGaussPE r (EDGaussParams ε δ) vs e) =
   case (seval env (extract r), seval env (extract ε), seval env (extract δ), seval env (extract e)) of
-    (RealV r', RealV ε', RealV δ', MatrixV mat) → do
+    (RealV r', RealV ε', RealV δ', MatrixV (ExMatrix mat)) → do
       let σ = (r' × (root $ 2.0 × (log $ 1.25/δ')) / ε')
-      mat' ← mapM (\row → mapM (\val → gaussianNoise val σ) row) $ toLists (map urv mat)
-      return $ MatrixV $ (map RealV (fromLists mat'))
+      mat' ← xbmapM (\val → gaussianNoise val σ) (map urv mat)
+      return $ MatrixV $ ExMatrix $ (map RealV $ xvirt mat')
     (a, b, c, d) → error $ "No pattern for: " ⧺ (show𝕊 (a,b,c,d))
 
 peval env (MGaussPE r (RenyiGaussParams α ϵ) vs e) =
