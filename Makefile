@@ -8,11 +8,11 @@ ARGS := check examples/gd-pb-mini.renyi.duet
 ARGS := run examples/gd-pb-mini.renyi.duet data_short/ffxs.csv data_short/ffys.csv 0.05 6 100 1 50
 ARGS := lr-accuracy data_long/adpxs.csv data_long/adpys.csv out/model.csv
 ARGS := check examples/gd-pb.ed.duet
-ARGS := run examples/gd-pb.ed.duet data_long/adpxs.csv data_long/adpys.csv 0.05 100 0.0001 0.0001 1
 ARGS := check examples/plambda-bad.eps.duet
 ARGS := run examples/gd-pb-mini.ed.duet data_short/xs.csv data_short/ys.csv 100000 100 0.0001 0.0001 1 50
 ARGS := run examples/gd-pb-mini.ed.duet data_long/adpxs.csv data_long/adpys.csv 100000 1000 0.0001 0.0001 1 50
 ARGS := run examples/gd-pb.ed.duet data_short/xs.csv data_short/ys.csv 0.05 100 0.0001 0.0001 1
+ARGS := run examples/gd-pb.ed.duet data_long/adpxs.csv data_long/adpys.csv 0.05 100 0.0001 0.0001 1
 
 # run examples/gd-pb-mini.ed.duet data_short/fbxs.csv data_short/fbys.csv 0.05 100 0.0001 0.0001 1 50
 # run examples/parallel-simple.ed.duet data_short/made_up.csv 0.05 0.0001 0 0 0 1

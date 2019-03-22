@@ -144,10 +144,10 @@ joinMatch₁ n₁ (ExMatrix row₁) ((ExMatrix row₂):&rows₂) n₂ =
     True →  (flatten (ExMatrix row₁)) ⧺ (flatten (ExMatrix row₂))
     False → joinMatch₁ n₁ (ExMatrix row₁) rows₂ n₂
 
-csvToMatrix ∷ 𝐿 (𝐿 𝕊) → Val
+csvToMatrix ∷ 𝐼 (𝐼 𝕊) → Val
 csvToMatrix sss =
-  let csvList ∷ 𝐿 (𝐿 𝔻) = mapp read𝕊 sss
-      m ∷ ExMatrix 𝔻 = fromLists csvList
+  let csvList ∷ 𝐼 (𝐼 𝔻) = mapp read𝕊 sss
+      m ∷ ExMatrix 𝔻 = fromLists $ list $ map list csvList
   in MatrixV $ map RealV m
 
 schemaToTypes :: MExp r → 𝐿 (Type r)
