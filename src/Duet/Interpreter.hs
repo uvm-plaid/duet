@@ -280,6 +280,27 @@ intDouble = dbl
 mkDouble ∷ ℕ → 𝔻
 mkDouble = dbl
 
+xgradient ∷ ∀ m n. Vᴍ 1 n 𝔻 → Vᴍ m n 𝔻 → Vᴍ m 1 𝔻 → Vᴍ 1 n 𝔻
+xgradient θ xs ys = unID $ do
+  traceM "xgradient BEGIN"
+  let θ' ∷ Vᴍ 1 n 𝔻
+      θ' = xvirt $ xbp θ
+  traceM "xgradient 1"
+  let exponent ∷ Vᴍ m 1 𝔻
+      exponent = trace "A" $ xvirt $ xbp $ xtranspose (θ' ✖ xtranspose xs) × ys
+  traceM "xgradient 2"
+  let scaled ∷ Vᴍ m 1 𝔻
+      scaled = ys × xmap (\ x → 1.0 / (exp x + 1.0)) exponent
+  traceM "xgradient 3"
+  let gradSum ∷ Vᴍ 1 n 𝔻
+      gradSum = xtranspose scaled ✖ xs
+  traceM "xgradient 4"
+  let r = neg $ dbl $ unSℕ32 $ xrows xs
+  let avgGrad ∷ Vᴍ 1 n 𝔻
+      avgGrad = xvirt $ xbp $ trace "B" $ xmap (\ x → x / r) gradSum
+  traceM "xgradient END"
+  return avgGrad
+
 -- | Evaluates an expression from the sensitivity language
 seval ∷ (PRIV_C p) ⇒ (Env) → (SExp p) → (Val)
 
@@ -377,15 +398,23 @@ seval env (MClipSE norm e) =
 -- gradient
 seval env (MLipGradSE LR e₁ e₂ e₃) =
   case (seval env (extract e₁), seval env (extract e₂), seval env (extract e₃)) of
-    (MatrixV θ, MatrixV xs, MatrixV ys) →
-      case ((rows θ ≡ 1) ⩓ (cols ys ≡ 1)) of
-        True →
-          let θ'  ∷ DuetVector 𝔻 = flatten (map urv θ)
-              ys' ∷ DuetVector 𝔻 = flatten (map urv ys)
-          in MatrixV $ map RealV $ asRow $ ngrad θ' (map urv xs) ys'
-        False →
-          error $ "Incorrect matrix dimensions for gradient: " ⧺ (show𝕊 (rows θ, cols ys))
-    (a, b, c) → error $ "No pattern for " ⧺ (show𝕊 (a, b, c))
+    (MatrixV (ExMatrix (θ ∷ Vᴍ m₁ n₁ Val)), MatrixV (ExMatrix (xs ∷ Vᴍ m₂ n₂ Val)), MatrixV (ExMatrix (ys ∷ Vᴍ m₃ n₃ Val))) →
+      case (compareTℕ @ m₁ @ 1,compareTℕ @ n₃ @ 1,compareTℕ @ n₁ @ n₂,compareTℕ @ m₂ @ m₃) of
+        (Some Refl,Some Refl,Some Refl,Some Refl) →
+          let θ' = map urv θ
+              xs' = map urv xs
+              ys' = map urv ys
+          in MatrixV $ ExMatrix $ map RealV $ xgradient θ' xs' ys'
+        _ → error "seval MLipGradSE : bad stuff happened"
+    --   
+    --   case ((rows θ ≡ 1) ⩓ (cols ys ≡ 1)) of
+    --     True →
+    --       let θ'  ∷ DuetVector 𝔻 = flatten (map urv θ)
+    --           ys' ∷ DuetVector 𝔻 = flatten (map urv ys)
+    --       in MatrixV $ map RealV $ asRow $ ngrad θ' (map urv xs) ys'
+    --     False →
+    --       error $ "Incorrect matrix dimensions for gradient: " ⧺ (show𝕊 (rows θ, cols ys))
+    -- (a, b, c) → error $ "No pattern for " ⧺ (show𝕊 (a, b, c))
 
 -- create matrix
 seval env (MCreateSE l e₁ e₂ ix jx e₃) =
@@ -529,9 +558,20 @@ peval env (LaplacePE r (EpsLaplaceParams ε) vs e) =
 peval env (MGaussPE r (EDGaussParams ε δ) vs e) =
   case (seval env (extract r), seval env (extract ε), seval env (extract δ), seval env (extract e)) of
     (RealV r', RealV ε', RealV δ', MatrixV (ExMatrix mat)) → do
+      traceM "MGauss BEGIN"
       let σ = (r' × (root $ 2.0 × (log $ 1.25/δ')) / ε')
-      mat' ← xbmapM (\val → gaussianNoise val σ) (map urv mat)
-      return $ MatrixV $ ExMatrix $ (map RealV $ xvirt mat')
+      let mat' = map urv mat
+      -- mat'' ← xbmapM (\val → gaussianNoise val σ) mat'
+      traceM "MGauss 1"
+      let matx = xbp mat'
+      traceM "MGauss 2"
+      traceM $ show𝕊 $ xlist2' $ xvirt matx
+      traceM "MGauss 3"
+      mat'' ← xbmapM' (\val → return val) (xvirt matx)
+      traceM "MGauss 4"
+      let r = MatrixV $ ExMatrix $ (map RealV $ xvirt mat'')
+      traceM "MGauss END"
+      return r
     (a, b, c, d) → error $ "No pattern for: " ⧺ (show𝕊 (a,b,c,d))
 
 peval env (MGaussPE r (RenyiGaussParams α ϵ) vs e) =
