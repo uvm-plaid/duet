@@ -384,13 +384,13 @@ seval env (IdxSE e) =
 -- clip operation for only L2 norm
 seval env (MClipSE norm e) =
   case seval env $ extract e of
-    MatrixV (ExMatrix m) → 
-      MatrixV 
-      $ ExMatrix 
-      $ xmap RealV 
-      $ xmeld (xcols m) 
-      $ xmap (normalize norm) 
-      $ xsplit 
+    MatrixV (ExMatrix m) →
+      MatrixV
+      $ ExMatrix
+      $ xmap RealV
+      $ xmeld (xcols m)
+      $ xmap normalize
+      $ xsplit
       $ xmap urv m
         -- _ → error $ "Invalid norm for clip: " ⧺ show𝕊 norm
     _ → error $ "cannot mclip a not matrix"
@@ -406,7 +406,7 @@ seval env (MLipGradSE LR e₁ e₂ e₃) =
               ys' = map urv ys
           in MatrixV $ ExMatrix $ map RealV $ xgradient θ' xs' ys'
         _ → error "seval MLipGradSE : bad stuff happened"
-    --   
+    --
     --   case ((rows θ ≡ 1) ⩓ (cols ys ≡ 1)) of
     --     True →
     --       let θ'  ∷ DuetVector 𝔻 = flatten (map urv θ)
@@ -422,7 +422,7 @@ seval env (MCreateSE l e₁ e₂ ix jx e₃) =
     (NatV v₁, NatV v₂) →
       d𝕟32 (natΩ32 v₁) $ \ (m ∷ Sℕ32 m) →
       d𝕟32 (natΩ32 v₂) $ \ (n ∷ Sℕ32 n)  →
-      MatrixV $ ExMatrix $ matrix m n $ \ i j → 
+      MatrixV $ ExMatrix $ matrix m n $ \ i j →
         seval ((ix ↦ NatV (nat $ un𝕀32 i)) ⩌ (jx ↦ NatV (nat $ un𝕀32 j)) ⩌ env) $ extract e₃
 
 -- matrix maps
@@ -699,8 +699,8 @@ ngrad θ x y =
   in (scale (neg one) avgGrad)
 
 -- | Obtains a vector in the same direction with L2-norm=1
-normalize :: Norm → Vᴍ 1 m 𝔻 → Vᴍ 1 m 𝔻
-normalize ℓ v
+normalize ::Vᴍ 1 m 𝔻 → Vᴍ 1 m 𝔻
+normalize v
   | r > 1.0     =  xmap (\ x → x / r) v
   | otherwise   =  v
   where
@@ -732,8 +732,9 @@ isCorrect (prediction :* actual) | prediction ≡ actual = (1 :* 0)
 
 -- | Calculates the accuracy of a model
 accuracy ∷ ExMatrix 𝔻 → DuetVector 𝔻 → Model → (ℕ ∧ ℕ)
-accuracy x y θ = undefined
-                -- let pairs ∷ 𝐿 (DuetVector 𝔻 ∧ 𝔻) = list $ zip (map normalize $ toRows x) (toList y)
-                --      labels ∷ 𝐿 𝔻 = map (predict θ) pairs
-                --      correct ∷ 𝐿 (ℕ ∧ ℕ) = map isCorrect $ list $ zip labels (toList y)
-                --  in fold (0 :* 0) (\a b → ((fst a + fst b) :* (snd a + snd b))) correct
+accuracy (ExMatrix x) y θ =
+  let x' = toLists $ ExMatrix $ xmeld (xcols x) $ xmap normalize $ xsplit x
+      pairs ∷ 𝐿 (DuetVector 𝔻 ∧ 𝔻) = list $ zip x' (toList y)
+      labels ∷ 𝐿 𝔻 = map (predict θ) pairs
+      correct ∷ 𝐿 (ℕ ∧ ℕ) = map isCorrect $ list $ zip labels (toList y)
+  in fold (0 :* 0) (\a b → ((fst a + fst b) :* (snd a + snd b))) correct
