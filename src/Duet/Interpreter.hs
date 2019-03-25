@@ -44,16 +44,16 @@ rows (ExMatrix xs) = nat $ unSℕ32 $ xrows xs
 tr :: ExMatrix 𝔻 → ExMatrix 𝔻
 tr (ExMatrix xs) = ExMatrix $ xtranspose xs
 
-(===) :: ExMatrix a → ExMatrix a → ExMatrix a
-(===) a b =
-  let a₁ = toRows a
-      b₁ = toRows b
-      c = a₁ ⧺ b₁
-  in fromRows c
+-- (===) :: ExMatrix a → ExMatrix a → ExMatrix a
+-- (===) a b =
+--   let a₁ = toRows a
+--       b₁ = toRows b
+--       c = a₁ ⧺ b₁
+--   in fromRows c
 
-ident :: ℕ → ExMatrix 𝔻
-ident n = let m = [ [boolCheck $ i ≡ j | i <- list $ upTo n] | j <- list $ upTo n] in
-  fromRows m
+-- ident :: ℕ → ExMatrix 𝔻
+-- ident n = let m = [ [boolCheck $ i ≡ j | i <- list $ upTo n] | j <- list $ upTo n] in
+--   fromRows m
 
 boolCheck :: 𝔹 → 𝔻
 boolCheck True = 1.0
@@ -86,16 +86,16 @@ fromLists = buildRows
 fromRows = fromLists
 
 -- creates a 1-column matrix from a vector
-asColumn :: DuetVector a → ExMatrix a
-asColumn vec = buildRows (map single𝐿 vec)
+-- asColumn :: DuetVector a → ExMatrix a
+-- asColumn vec = buildRows (map single𝐿 vec)
 
 -- really build a matrix
 buildRows :: 𝐿 (𝐿 a) → ExMatrix a
-buildRows ls = xb𝐿 ls $ \ xs → ExMatrix (xvirt xs)
+buildRows ls = xb ls $ \ xs → ExMatrix (xvirt xs)
 
 -- extract rows in N
-(?) :: ExMatrix 𝔻 → 𝐿 ℤ → ExMatrix 𝔻
-(?) m ns = buildRows (m ?? ns)
+-- (?) :: ExMatrix 𝔻 → 𝐿 ℤ → ExMatrix 𝔻
+-- (?) m ns = buildRows (m ?? ns)
 
 (??) :: ExMatrix 𝔻 → 𝐿 ℤ → 𝐿 (𝐿 𝔻)
 (??) (ExMatrix m) (n:&ns) = (xlist2 (xrow (n2i (xrows m) (natΩ n)) m)) ⧺ ((ExMatrix m) ?? ns)
@@ -113,9 +113,9 @@ toLists = toRows
 -- size :: ExMatrix Val → (ℕ, ℕ)
 -- size m = (xrows m, xcols m)
 
--- creates a 1-row matrix from a vector
-asRow :: DuetVector a → ExMatrix a
-asRow vec = fromLists $ list [vec]
+-- -- creates a 1-row matrix from a vector
+-- asRow :: DuetVector a → ExMatrix a
+-- asRow vec = fromLists $ list [vec]
 
 (+++) :: (Plus a) => ExMatrix a → ExMatrix a → ExMatrix a
 (+++) (ExMatrix a) (ExMatrix b) =
@@ -144,11 +144,11 @@ joinMatch₁ n₁ (ExMatrix row₁) ((ExMatrix row₂):&rows₂) n₂ =
     True →  (flatten (ExMatrix row₁)) ⧺ (flatten (ExMatrix row₂))
     False → joinMatch₁ n₁ (ExMatrix row₁) rows₂ n₂
 
-csvToMatrix ∷ 𝐼 (𝐼 𝕊) → Val
-csvToMatrix sss =
-  let csvList ∷ 𝐼 (𝐼 𝔻) = mapp read𝕊 sss
-      m ∷ ExMatrix 𝔻 = fromLists $ list $ map list csvList
-  in MatrixV $ map RealV m
+-- csvToMatrix ∷ 𝐼 (𝐼 𝕊) → Val
+-- csvToMatrix sss =
+--   let csvList ∷ 𝐼 (𝐼 𝔻) = mapp read𝕊 sss
+--       m ∷ ExMatrix 𝔻 = fromLists $ list $ map list csvList
+--   in MatrixV $ map RealV m
 
 schemaToTypes :: MExp r → 𝐿 (Type r)
 schemaToTypes me = case me of
@@ -176,12 +176,12 @@ rowToDFRow y z = error $ "rowToDFRow: arguments length mismatch" ⧺ (pprender (
 csvToDF ∷ (Pretty r) ⇒ 𝐿 (𝐿 𝕊) → 𝐿 (Type r) → Val
 csvToDF sss τs =
   let csvList ∷ 𝐿 (𝐿 Val) = map (rowToDFRow τs) sss
-  in MatrixV $ fromLists csvList
+  in xb csvList $ \ m → MatrixV $ ExMatrix $ xvirt m
 
-csvToMatrix𝔻 ∷ 𝐿 (𝐿 𝕊) → ExMatrix 𝔻
-csvToMatrix𝔻 sss =
-  let csvList ∷ 𝐿 (𝐿 𝔻) = mapp read𝕊 sss
-  in fromLists csvList
+-- csvToMatrix𝔻 ∷ 𝐿 (𝐿 𝕊) → ExMatrix 𝔻
+-- csvToMatrix𝔻 sss =
+--   let csvList ∷ 𝐿 (𝐿 𝔻) = mapp read𝕊 sss
+--   in fromLists csvList
 
 partition ∷ 𝐿 Val → 𝐿 (Val ∧ 𝐿 (𝐿 Val)) → 𝐿 (Val ∧ 𝐿 (𝐿 Val))
 partition _ Nil = Nil
@@ -284,10 +284,10 @@ xgradient ∷ ∀ m n. Vᴍ 1 n 𝔻 → Vᴍ m n 𝔻 → Vᴍ m 1 𝔻 → V�
 xgradient θ xs ys = unID $ do
   traceM "xgradient BEGIN"
   let θ' ∷ Vᴍ 1 n 𝔻
-      θ' = xvirt $ xbp θ
+      θ' = {- xvirt $ xup -} θ
   traceM "xgradient 1"
   let exponent ∷ Vᴍ m 1 𝔻
-      exponent = trace "A" $ xvirt $ xbp $ xtranspose (θ' ✖ xtranspose xs) × ys
+      exponent = xvirt $ xup $ xtranspose (θ' ✖ xtranspose xs) × ys
   traceM "xgradient 2"
   let scaled ∷ Vᴍ m 1 𝔻
       scaled = ys × xmap (\ x → 1.0 / (exp x + 1.0)) exponent
@@ -297,7 +297,7 @@ xgradient θ xs ys = unID $ do
   traceM "xgradient 4"
   let r = neg $ dbl $ unSℕ32 $ xrows xs
   let avgGrad ∷ Vᴍ 1 n 𝔻
-      avgGrad = xvirt $ xbp $ trace "B" $ xmap (\ x → x / r) gradSum
+      avgGrad = xvirt $ xup $ xmap (\ x → x / r) gradSum
   traceM "xgradient END"
   return avgGrad
 
@@ -373,10 +373,10 @@ seval env (MIndexSE e₁ e₂ e₃) =
 
 seval env (IdxSE e) =
   case (seval env (extract e)) of
-    (NatV d) →
-      let posMat ∷ ExMatrix 𝔻 = ident d
-          negMat ∷ ExMatrix 𝔻 = mscale (neg one) posMat
-      in MatrixV (map RealV (posMat === negMat))
+    (NatV d) → error "huH?? -DD"
+      -- let posMat ∷ ExMatrix 𝔻 = ident d
+      --     negMat ∷ ExMatrix 𝔻 = mscale (neg one) posMat
+      -- in MatrixV (map RealV (posMat === negMat))
 
 -- seval env (SMTrE e) =
 --   case seval env e of (MatrixV m) → MatrixV $ tr m
@@ -563,11 +563,11 @@ peval env (MGaussPE r (EDGaussParams ε δ) vs e) =
       let mat' = map urv mat
       -- mat'' ← xbmapM (\val → gaussianNoise val σ) mat'
       traceM "MGauss 1"
-      let matx = xbp mat'
+      let matx = xup mat'
       traceM "MGauss 2"
-      traceM $ show𝕊 $ xlist2' $ xvirt matx
+      traceM $ show𝕊 $ xlist2 $ xvirt matx
       traceM "MGauss 3"
-      mat'' ← xbmapM' (\val → return val) (xvirt matx)
+      mat'' ← xbmapM (\val → return val) (xvirt matx)
       traceM "MGauss 4"
       let r = MatrixV $ ExMatrix $ (map RealV $ xvirt mat'')
       traceM "MGauss END"
@@ -688,15 +688,15 @@ insertDataSet env (x :* y) (xs@(Vᴍ _ _ _) :* ys@(Vᴍ _ _ _)) =
 type Model = DuetVector 𝔻
 
 -- | Averages LR gradient over the whole matrix of examples
-ngrad ∷ Model → ExMatrix 𝔻 → DuetVector 𝔻 → DuetVector 𝔻
-ngrad θ x y =
-  let θ'       = asColumn θ
-      y'       = asColumn y
-      exponent = (x <> θ') <> y'
-      scaled   = y' <> (map (\x → 1.0/(exp(x)+1.0) ) exponent)
-      gradSum  = (tr x) <> scaled
-      avgGrad  ∷ DuetVector 𝔻 = flatten $ mscale (1.0/(dbl $ rows x)) gradSum
-  in (scale (neg one) avgGrad)
+-- ngrad ∷ Model → ExMatrix 𝔻 → DuetVector 𝔻 → DuetVector 𝔻
+-- ngrad θ x y =
+--   let θ'       = asColumn θ
+--       y'       = asColumn y
+--       exponent = (x <> θ') <> y'
+--       scaled   = y' <> (map (\x → 1.0/(exp(x)+1.0) ) exponent)
+--       gradSum  = (tr x) <> scaled
+--       avgGrad  ∷ DuetVector 𝔻 = flatten $ mscale (1.0/(dbl $ rows x)) gradSum
+--   in (scale (neg one) avgGrad)
 
 -- | Obtains a vector in the same direction with L2-norm=1
 normalize ::Vᴍ 1 m 𝔻 → Vᴍ 1 m 𝔻

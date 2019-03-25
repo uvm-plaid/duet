@@ -15,23 +15,29 @@ parseMode s = case list $ splitOn𝕊 "." s of
   _ :& "zcdp" :& "duet" :& Nil → Ex_C ZC_W
   _ → error "BAD FILE NAME"
 
+parseMatrix𝔻  ∷ 𝕊 → ExMatrix 𝔻
+parseMatrix𝔻 s = unID $ do
+  traceM "PARSING MATRIX…"
+  let dss ∷ 𝐼 (𝐼 𝔻)
+      dss = map (map read𝕊 ∘ iter ∘ splitOn𝕊 ",") $ filter (\x → not (isEmpty𝕊 x)) $ splitOn𝕊 "\n" s
+      dss' ∷ 𝐿 (𝐿 𝔻)
+      dss' = list $ map list dss
+  xu dss' $ \ m → do
+    traceM "DONE"
+    return $ ExMatrix $ xvirt m
+
 -- TODO: detect line endings or make an arg
 buildArgs ∷ (Pretty r) ⇒ 𝐿 (Type r) → 𝐿 𝕊 → IO (𝐿 Val)
 buildArgs Nil Nil = return Nil
 buildArgs (τ:&τs) (a:&as) = case τ of
   -- TODO: currently the assumption is to read in RealVs
   (𝕄T _ _ _ (RexpME r τ)) → do
-    traceM "A"
-    csvs ← read a
-    traceM "B"
-    let csvss ∷ 𝐼 (𝑆 𝕊)
-        csvss = map (splitOn𝕊 ",") $ filter (\x → not (isEmpty𝕊 x)) $ splitOn𝕊 "\n" csvs
-    traceM "C"
-    let csvm = csvToMatrix $ map iter csvss
-    traceM "D"
-    r ← buildArgs τs as
-    traceM "E"
-    return $ csvm :& r
+    s ← read a
+    case parseMatrix𝔻 s of
+      ExMatrix m →  do
+        let m' = MatrixV $ ExMatrix $ map RealV m
+        r ← buildArgs τs as
+        return $ m' :& r
   (𝕄T _ _ _ (ConsME τ m)) → do
     csvs ← read a
     let csvss = map (splitOn𝕊 ",") $ filter (\x → not (isEmpty𝕊 x)) $ splitOn𝕊 "\n" csvs
@@ -94,18 +100,20 @@ main = do
         do pprint r ; flushOut
     "lr-accuracy":xsfn:ysfn:mdfn:[] → do
       do pprint $ ppHeader "ACCURACY TEST" ; flushOut
-      csvs₁ ← read mdfn
-      let csvss₁ = map (splitOn𝕊 ",") $ filter (\x → not (isEmpty𝕊 x)) $ splitOn𝕊 "\n" csvs₁
-      let csvmd :: Model = flatten $ csvToMatrix𝔻 $ list $ map list csvss₁
-      csvs₂ ← read xsfn
-      let csvss₂ = map (splitOn𝕊 ",") $ filter (\x → not (isEmpty𝕊 x)) $ splitOn𝕊 "\n" csvs₂
-      let csvxs :: ExMatrix 𝔻 = csvToMatrix𝔻 $ list $ map list csvss₂
-      csvs₃ ← read ysfn
-      let csvss₃ = map (splitOn𝕊 ",") $ filter (\x → not (isEmpty𝕊 x)) $ splitOn𝕊 "\n" csvs₃
-      let csvys :: Model = flatten $ csvToMatrix𝔻 $ list $ map list csvss₃
-      let r = accuracy csvxs csvys csvmd
-      write "out/acc.csv" (intercalate "," (map show𝕊 (list [(fst r),(snd r)])))
-      pprint r
+      sxs ← read xsfn
+      sys ← read ysfn
+      smd ← read mdfn
+      case (parseMatrix𝔻 sxs,parseMatrix𝔻 sys,parseMatrix𝔻 smd) of
+        (ExMatrix mxs,ExMatrix mys,ExMatrix mmd) → do
+          let xs ∷ ExMatrix 𝔻
+              xs = ExMatrix mxs
+              ys ∷ DuetVector 𝔻
+              ys = list $ iter mys
+              md ∷ DuetVector 𝔻
+              md = list $ iter mmd
+              r = accuracy xs ys md
+          write "out/acc.csv" (intercalate "," (map show𝕊 (list [(fst r),(snd r)])))
+          pprint r
     "run":fn:_ → do
       -- make this spit out concrete privacy costs based on the input
       do pprint $ ppHeader "READING" ; flushOut
@@ -128,7 +136,6 @@ main = do
               _ :* (_ :* PArgs pargs) :⊸⋆: _ → do
                 let τs = map fst pargs
                 as ← buildArgs τs (list fnargs)
-                traceM "AA"
                 case r of
                   PFunV xs (ExPriv (Ex_C e₁)) γ → do
                     r' ← peval (assoc (zip xs as) ⩌ γ) e₁
