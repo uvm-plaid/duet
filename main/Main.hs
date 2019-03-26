@@ -108,12 +108,13 @@ main = do
           let xs ∷ ExMatrix 𝔻
               xs = ExMatrix mxs
               ys ∷ DuetVector 𝔻
-              ys = list $ iter mys
+              ys = list mys
               md ∷ DuetVector 𝔻
-              md = list $ iter mmd
-              r = accuracy xs ys md
-          write "out/acc.csv" (intercalate "," (map show𝕊 (list [(fst r),(snd r)])))
-          pprint r
+              md = list mmd
+              (r :* w) = accuracy xs ys md
+          write "out/acc.csv" (intercalate "," (map show𝕊 (list [r,w])))
+          pprint (r,w)
+          pprint $ concat [ pretty (100.0 × dbl r / dbl (r+w)) , ppText "%" ]
     "run":fn:_ → do
       -- make this spit out concrete privacy costs based on the input
       do pprint $ ppHeader "READING" ; flushOut

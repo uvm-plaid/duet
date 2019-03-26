@@ -701,7 +701,7 @@ type Model = DuetVector 𝔻
 -- | Obtains a vector in the same direction with L2-norm=1
 normalize ::Vᴍ 1 m 𝔻 → Vᴍ 1 m 𝔻
 normalize v
-  | r > 1.0     =  xmap (\ x → x / r) v
+  | r > 1000.0     =  xmap (\ x → x / r) v
   | otherwise   =  v
   where
     r = norm_2 v
@@ -727,14 +727,17 @@ abs x = case compare x zero of
   GT → x
 
 isCorrect ∷ (𝔻 ∧ 𝔻) → (ℕ ∧ ℕ)
-isCorrect (prediction :* actual) | prediction ≡ actual = (1 :* 0)
-                                 | otherwise = (0 :* 1)
+isCorrect (prediction :* actual) = unID $ do
+  traceM $ show𝕊 (prediction :* actual) ⧺ " " ⧺ show𝕊 (prediction ≡ actual)
+  return $ case prediction ≡ actual of
+    True → (1 :* 0)
+    False → (0 :* 1)
 
 -- | Calculates the accuracy of a model
 accuracy ∷ ExMatrix 𝔻 → DuetVector 𝔻 → Model → (ℕ ∧ ℕ)
 accuracy (ExMatrix x) y θ =
-  let x' = toLists $ ExMatrix $ xmeld (xcols x) $ xmap normalize $ xsplit x
-      pairs ∷ 𝐿 (DuetVector 𝔻 ∧ 𝔻) = list $ zip x' (toList y)
+  let x' = xlist2 $ xmeld (xcols x) $ xmap normalize $ xsplit x
+      pairs ∷ 𝐿 (DuetVector 𝔻 ∧ 𝔻) = list $ zip x' y
       labels ∷ 𝐿 𝔻 = map (predict θ) pairs
-      correct ∷ 𝐿 (ℕ ∧ ℕ) = map isCorrect $ list $ zip labels (toList y)
+      correct ∷ 𝐿 (ℕ ∧ ℕ) = map isCorrect $ list $ zip labels y
   in fold (0 :* 0) (\a b → ((fst a + fst b) :* (snd a + snd b))) correct
