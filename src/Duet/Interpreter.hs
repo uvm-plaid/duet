@@ -5,216 +5,14 @@ import Duet.UVMHS
 import Duet.Pretty ()
 import Duet.Syntax
 
--- libraries
+-- external libraries
 import System.Random.MWC
 import Data.Random.Normal
 
--- import qualified GHC.TypeLits as HS
--- import qualified Prelude as HS
--- import qualified Data.Type.Equality as HS
--- import qualified Data.Proxy as HS
-
 type Env = 𝕏 ⇰ Val
 type DuetVector a = 𝐿 a
+type Model = DuetVector 𝔻
 
--- helpers
-
--- TODO: eventually add this to UVMHS
-minElem ::  Ord b => (a → b) → 𝐿 a → a
-minElem f Nil = error "minElem on empty list"
-minElem f (x:&xs) = fold x (\ x₁ x₂ → case f x₁ < f x₂ of { True → x₁ ; False → x₂ }) xs
-
-minElemPairs :: Ord b => 𝐿 (a ∧ b) → a ∧ b
-minElemPairs = minElem snd
-
-replicate :: ℕ → a → 𝐿 a
-replicate len v = list $ build len v (\ x → x)
-
--- vector/matrix ops
-
-norm_2 :: Vᴍ 1 m 𝔻 → 𝔻
-norm_2 = root ∘ sum ∘ xmap (\x → x×x)
-
-cols :: ExMatrix a → ℕ
-cols (ExMatrix xs) = nat $ unSℕ32 $ xcols xs
-
-rows :: ExMatrix a → ℕ
-rows (ExMatrix xs) = nat $ unSℕ32 $ xrows xs
-
-tr :: ExMatrix 𝔻 → ExMatrix 𝔻
-tr (ExMatrix xs) = ExMatrix $ xtranspose xs
-
--- (===) :: ExMatrix a → ExMatrix a → ExMatrix a
--- (===) a b =
---   let a₁ = toRows a
---       b₁ = toRows b
---       c = a₁ ⧺ b₁
---   in fromRows c
-
--- ident :: ℕ → ExMatrix 𝔻
--- ident n = let m = [ [boolCheck $ i ≡ j | i <- list $ upTo n] | j <- list $ upTo n] in
---   fromRows m
-
-boolCheck :: 𝔹 → 𝔻
-boolCheck True = 1.0
-boolCheck False = 0.0
-
-flatten :: ExMatrix a → DuetVector a
-flatten m = fold Nil (⧺) (toRows m)
-
-(<>) :: ExMatrix 𝔻 → ExMatrix 𝔻 → ExMatrix 𝔻
-(<>) (ExMatrix a) (ExMatrix b) =
-  let b' = (xbp b) in
-  let b'' = matrix (xcols a) (xcols b) $ \ i j → b' 𝄪 ((n2i (xrows b) (nat (un𝕀32 i))),j) in
-    ExMatrix $ xproduct (xvirt (xbp a)) b''
-
-scale :: 𝔻 → DuetVector 𝔻 → Model
-scale r v = map (× r) v
-
-mscale :: 𝔻 → ExMatrix 𝔻 → ExMatrix 𝔻
-mscale r (ExMatrix m) = ExMatrix $ xmap (× r) m
-
-vector :: 𝐿 𝔻 → DuetVector 𝔻
-vector x = x
-
-fromList :: 𝐿 𝔻 → DuetVector 𝔻
-fromList x = x
-
-fromLists :: 𝐿 (𝐿 a) → ExMatrix a
-fromLists = buildRows
-
-fromRows = fromLists
-
--- creates a 1-column matrix from a vector
--- asColumn :: DuetVector a → ExMatrix a
--- asColumn vec = buildRows (map single𝐿 vec)
-
--- really build a matrix
-buildRows :: 𝐿 (𝐿 a) → ExMatrix a
-buildRows ls = xb ls $ \ xs → ExMatrix (xvirt xs)
-
--- extract rows in N
--- (?) :: ExMatrix 𝔻 → 𝐿 ℤ → ExMatrix 𝔻
--- (?) m ns = buildRows (m ?? ns)
-
-(??) :: ExMatrix 𝔻 → 𝐿 ℤ → 𝐿 (𝐿 𝔻)
-(??) (ExMatrix m) (n:&ns) = (xlist2 (xrow (n2i (xrows m) (natΩ n)) m)) ⧺ ((ExMatrix m) ?? ns)
-(??) m Nil = Nil
-
-toList :: DuetVector 𝔻 → 𝐿 𝔻
-toList x = x
-
--- extracts the rows of a matrix as a list of vectors
-toRows :: ExMatrix a → 𝐿 (𝐿 a)
-toRows (ExMatrix m) = xlist2 m
-
-toLists = toRows
-
--- size :: ExMatrix Val → (ℕ, ℕ)
--- size m = (xrows m, xcols m)
-
--- -- creates a 1-row matrix from a vector
--- asRow :: DuetVector a → ExMatrix a
--- asRow vec = fromLists $ list [vec]
-
-(+++) :: (Plus a) => ExMatrix a → ExMatrix a → ExMatrix a
-(+++) (ExMatrix a) (ExMatrix b) =
-  let b' = matrix (xrows a) (xcols a) $ \ i j → b 𝄪 ((n2i (xrows b) (nat (un𝕀32 i))),(n2i (xcols b) (nat (un𝕀32 j)))) in
-  ExMatrix $ xmap2 (+) a b'
-
-(-/) :: (Minus a) => ExMatrix a → ExMatrix a → ExMatrix a
-(-/) (ExMatrix a) (ExMatrix b) =
-  let b' = matrix (xrows a) (xcols a) $ \ i j → b 𝄪 ((n2i (xrows b) (nat (un𝕀32 i))),(n2i (xcols b) (nat (un𝕀32 j)))) in
-  ExMatrix $ xmap2 (-) a b'
-
-urv :: Val → 𝔻
-urv x = case x of
-  RealV d → d
-  _ → error $ "unpack real val failed" ⧺ pprender x
-
-arsinh ∷ 𝔻 → 𝔻
-arsinh x = log $ x + (root $ (x × x) + 1.0)
-
--- Nat, 1-row matrix (really a row), list of one row matrices, and so on
--- mostly because matrices are the only thing we can index
-joinMatch₁ ∷ ℕ → ExMatrix Val → 𝐿 (ExMatrix Val) → ℕ → 𝐿 Val
-joinMatch₁ n₁ row₁ Nil n₂ = Nil
-joinMatch₁ n₁ (ExMatrix row₁) ((ExMatrix row₂):&rows₂) n₂ =
-  case ((indexVᴍ (n2i (xrows row₁) 0) (n2i (xcols row₁) n₁) row₁) ≡ (indexVᴍ (n2i (xrows row₂) 0) (n2i (xcols row₂) n₂) row₂)) of
-    True →  (flatten (ExMatrix row₁)) ⧺ (flatten (ExMatrix row₂))
-    False → joinMatch₁ n₁ (ExMatrix row₁) rows₂ n₂
-
--- csvToMatrix ∷ 𝐼 (𝐼 𝕊) → Val
--- csvToMatrix sss =
---   let csvList ∷ 𝐼 (𝐼 𝔻) = mapp read𝕊 sss
---       m ∷ ExMatrix 𝔻 = fromLists $ list $ map list csvList
---   in MatrixV $ map RealV m
-
-schemaToTypes :: MExp r → 𝐿 (Type r)
-schemaToTypes me = case me of
-  (ConsME τ me') → schemaToTypes₁ me
-  _ → error "schemaToTypes expects a ConsME"
-
-schemaToTypes₁ :: MExp r → 𝐿 (Type r)
-schemaToTypes₁ me = case me of
-  (ConsME τ me') → τ :& schemaToTypes₁ me'
-  EmptyME → Nil
-  _ → error "schemaToTypes: unexpected MExp within ConsME"
-
-rowToDFRow :: (Pretty r) ⇒ 𝐿 (Type r) → 𝐿 𝕊 → 𝐿 Val
-rowToDFRow Nil Nil = Nil
-rowToDFRow (τ:&τs) (s:&ss) = case τ of
-  ℕT → NatV (read𝕊 s) :& rowToDFRow τs ss
-  ℕˢT _ → NatV (read𝕊 s) :& rowToDFRow τs ss
-  ℝT → RealV (read𝕊 s) :& rowToDFRow τs ss
-  ℝˢT _ → RealV (read𝕊 s) :& rowToDFRow τs ss
-  𝕊T → StrV (read𝕊 s) :& rowToDFRow τs ss
-  𝔻T τ' → rowToDFRow (τ':&τs) (s:&ss)
-  _ → error $ "rowToDFRow: type is currently not supported" ⧺ pprender τ
-rowToDFRow y z = error $ "rowToDFRow: arguments length mismatch" ⧺ (pprender (y :* z))
-
-csvToDF ∷ (Pretty r) ⇒ 𝐿 (𝐿 𝕊) → 𝐿 (Type r) → Val
-csvToDF sss τs =
-  let csvList ∷ 𝐿 (𝐿 Val) = map (rowToDFRow τs) sss
-  in xb csvList $ \ m → MatrixV $ ExMatrix $ xvirt m
-
--- csvToMatrix𝔻 ∷ 𝐿 (𝐿 𝕊) → ExMatrix 𝔻
--- csvToMatrix𝔻 sss =
---   let csvList ∷ 𝐿 (𝐿 𝔻) = mapp read𝕊 sss
---   in fromLists csvList
-
-partition ∷ 𝐿 Val → 𝐿 (Val ∧ 𝐿 (𝐿 Val)) → 𝐿 (Val ∧ 𝐿 (𝐿 Val))
-partition _ Nil = Nil
-partition Nil _ = Nil
-partition (k:&ks) (v:&vs) = (k :* partition₁ k (v:&vs)) :& partition ks (v:&vs)
-
-partition₁ ∷ Val → 𝐿 (Val ∧ 𝐿 (𝐿 Val)) → 𝐿 (𝐿 Val)
-partition₁ k Nil = Nil
-partition₁ k ((val:*llvals):&vs) = case k ≡ val of
-  True → llvals ⧺ partition₁ k vs
-  False → partition₁ k vs
-
-shapedExMatrix ∷ ∀ m n a. (Rℕ m,Rℕ n) ⇒ Sℕ32 m → Sℕ32 n → ExMatrix a → 𝑂 (Vᴍ m n a)
-shapedExMatrix m n (ExMatrix (xs ∷ Vᴍ m' n' a)) = do
-  Refl ← compareTℕ @ m @ m'
-  Refl ← compareTℕ @ n @ n'
-  return xs
-
--- this could be moved to Syntax.hs, and PArgs r (and its Eq and Ord instances)
--- could be derived using this type
-newtype ExPriv (e ∷ PRIV → ★) = ExPriv { unExPriv ∷ Ex_C PRIV_C e }
-
-deriving instance (∀ p. Show (e p)) ⇒ Show (ExPriv e)
-
-instance (∀ p. Eq (e p)) ⇒ Eq (ExPriv e) where
-  ExPriv (Ex_C (e₁ ∷ e p₁)) ==  ExPriv (Ex_C (e₂ ∷ e p₂)) = case eqPRIV (priv @ p₁) (priv @ p₂) of
-    Some (Refl ∷ p₁ ≟ p₂) → (e₁ ∷ e p₁) ≡ (e₂ ∷ e p₁)
-    None → False
-
-instance (∀ p. Eq (e p),∀ p. Ord (e p)) ⇒ Ord (ExPriv e) where
-  ExPriv (Ex_C (e₁ ∷ e p₁)) `compare`  ExPriv (Ex_C (e₂ ∷ e p₂)) = case eqPRIV (priv @ p₁) (priv @ p₂) of
-    Some (Refl ∷ p₁ ≟ p₂) → (e₁ ∷ e p₁) ⋚ (e₂ ∷ e p₁)
-    None → stripPRIV (priv @ p₁) ⋚ stripPRIV (priv @ p₂)
 
 -- | Defining Val algebraic data type
 data Val =
@@ -245,14 +43,6 @@ instance (Ord a) ⇒ Ord (ExMatrix a) where
 instance (Show a) ⇒ Show (ExMatrix a) where
   show (ExMatrix xs) = show $ xlist2 xs
 
-ex2m :: ExMatrix a → (∀ m n. Vᴍ m n a → b) → b
-ex2m (ExMatrix xs) f = f xs
-
-n2i :: Sℕ32 n → ℕ → 𝕀32 n
-n2i s n = case (d𝕚 s (𝕟32 n)) of
-  Some x → x
-  None → error "index out of bounds"
-
 instance Pretty Val where
   pretty = \case
     NatV n → pretty n
@@ -262,8 +52,8 @@ instance Pretty Val where
     ListV l → pretty l
     SetV s → pretty s
     PairV a → pretty a
-    SFunV x se e → ppKeyPun "<sλ value>"
-    PFunV xs pe e → ppKeyPun "<pλ value>"
+    SFunV _x _se _e → ppKeyPun "<sλ value>"
+    PFunV _xs _pe _e → ppKeyPun "<pλ value>"
     MatrixV m → ppVertical $ list [ppText "MATRIX VALUE:",pretty m]
 
 instance (Pretty a) ⇒ Pretty (ExMatrix a) where
@@ -272,34 +62,163 @@ instance (Pretty a) ⇒ Pretty (ExMatrix a) where
 instance (Pretty a) ⇒ Pretty (Vᴍ m n a) where
   pretty m = pretty $ xlist2 m
 
--- | Converts and integer to a 𝔻
-intDouble ∷ ℕ → 𝔻
-intDouble = dbl
+-- this could be moved to Syntax.hs, and PArgs r (and its Eq and Ord instances)
+-- could be derived using this type
+newtype ExPriv (e ∷ PRIV → ★) = ExPriv { unExPriv ∷ Ex_C PRIV_C e }
 
--- | Converts a natural number to a double
-mkDouble ∷ ℕ → 𝔻
-mkDouble = dbl
+deriving instance (∀ p. Show (e p)) ⇒ Show (ExPriv e)
+
+instance (∀ p. Eq (e p)) ⇒ Eq (ExPriv e) where
+  ExPriv (Ex_C (e₁ ∷ e p₁)) ==  ExPriv (Ex_C (e₂ ∷ e p₂)) = case eqPRIV (priv @ p₁) (priv @ p₂) of
+    Some (Refl ∷ p₁ ≟ p₂) → (e₁ ∷ e p₁) ≡ (e₂ ∷ e p₁)
+    None → False
+
+instance (∀ p. Eq (e p),∀ p. Ord (e p)) ⇒ Ord (ExPriv e) where
+  ExPriv (Ex_C (e₁ ∷ e p₁)) `compare`  ExPriv (Ex_C (e₂ ∷ e p₂)) = case eqPRIV (priv @ p₁) (priv @ p₂) of
+    Some (Refl ∷ p₁ ≟ p₂) → (e₁ ∷ e p₁) ⋚ (e₂ ∷ e p₁)
+    None → stripPRIV (priv @ p₁) ⋚ stripPRIV (priv @ p₂)
+
+ex2m :: ExMatrix a → (∀ m n. Vᴍ m n a → b) → b
+ex2m (ExMatrix xs) f = f xs
+
+n2i :: Sℕ32 n → ℕ → 𝕀32 n
+n2i s n = case (d𝕚 s (𝕟32 n)) of
+  Some x → x
+  None → error "index out of bounds"
+
+-- TODO: eventually add this to UVMHS
+minElem ::  Ord b => (a → b) → 𝐿 a → a
+minElem f Nil = error "minElem on empty list"
+minElem f (x:&xs) = fold x (\ x₁ x₂ → case f x₁ < f x₂ of { True → x₁ ; False → x₂ }) xs
+
+minElemPairs :: Ord b => 𝐿 (a ∧ b) → a ∧ b
+minElemPairs = minElem snd
+
+norm_2 :: Vᴍ 1 m 𝔻 → 𝔻
+norm_2 = root ∘ sum ∘ xmap (\x → x×x)
+
+cols :: ExMatrix a → ℕ
+cols (ExMatrix xs) = nat $ unSℕ32 $ xcols xs
+
+rows :: ExMatrix a → ℕ
+rows (ExMatrix xs) = nat $ unSℕ32 $ xrows xs
+
+tr :: ExMatrix 𝔻 → ExMatrix 𝔻
+tr (ExMatrix xs) = ExMatrix $ xtranspose xs
+
+boolCheck :: 𝔹 → 𝔻
+boolCheck True = 1.0
+boolCheck False = 0.0
+
+flatten :: ExMatrix a → DuetVector a
+flatten m = fold Nil (⧺) (toRows m)
+
+(<>) :: ExMatrix 𝔻 → ExMatrix 𝔻 → ExMatrix 𝔻
+(<>) (ExMatrix a) (ExMatrix b) =
+  let b' = (xbp b) in
+  let b'' = matrix (xcols a) (xcols b) $ \ i j → b' 𝄪 ((n2i (xrows b) (nat (un𝕀32 i))),j) in
+    ExMatrix $ xproduct (xvirt (xbp a)) b''
 
 xgradient ∷ ∀ m n. Vᴍ 1 n 𝔻 → Vᴍ m n 𝔻 → Vᴍ m 1 𝔻 → Vᴍ 1 n 𝔻
 xgradient θ xs ys = unID $ do
-  traceM "xgradient BEGIN"
   let θ' ∷ Vᴍ 1 n 𝔻
       θ' = {- xvirt $ xup -} θ
-  traceM "xgradient 1"
   let exponent ∷ Vᴍ m 1 𝔻
       exponent = xvirt $ xup $ xtranspose (θ' ✖ xtranspose xs) × ys
-  traceM "xgradient 2"
   let scaled ∷ Vᴍ m 1 𝔻
       scaled = ys × xmap (\ x → 1.0 / (exp x + 1.0)) exponent
-  traceM "xgradient 3"
   let gradSum ∷ Vᴍ 1 n 𝔻
       gradSum = xtranspose scaled ✖ xs
-  traceM "xgradient 4"
   let r = neg $ dbl $ unSℕ32 $ xrows xs
   let avgGrad ∷ Vᴍ 1 n 𝔻
       avgGrad = xvirt $ xup $ xmap (\ x → x / r) gradSum
-  traceM "xgradient END"
   return avgGrad
+
+scale :: 𝔻 → DuetVector 𝔻 → Model
+scale r v = map (× r) v
+
+mscale :: 𝔻 → ExMatrix 𝔻 → ExMatrix 𝔻
+mscale r (ExMatrix m) = ExMatrix $ xmap (× r) m
+
+-- build the rows of a matrix
+fromRows :: 𝐿 (𝐿 a) → ExMatrix a
+fromRows ls = xb ls $ \ xs → ExMatrix (xvirt xs)
+
+-- extracts the rows of a matrix as a list of vectors
+toRows :: ExMatrix a → 𝐿 (𝐿 a)
+toRows (ExMatrix m) = xlist2 m
+
+(+++) :: (Plus a) => ExMatrix a → ExMatrix a → ExMatrix a
+(+++) (ExMatrix a) (ExMatrix b) =
+  let b' = matrix (xrows a) (xcols a) $ \ i j → b 𝄪 ((n2i (xrows b) (nat (un𝕀32 i))),(n2i (xcols b) (nat (un𝕀32 j)))) in
+  ExMatrix $ xmap2 (+) a b'
+
+(-/) :: (Minus a) => ExMatrix a → ExMatrix a → ExMatrix a
+(-/) (ExMatrix a) (ExMatrix b) =
+  let b' = matrix (xrows a) (xcols a) $ \ i j → b 𝄪 ((n2i (xrows b) (nat (un𝕀32 i))),(n2i (xcols b) (nat (un𝕀32 j)))) in
+  ExMatrix $ xmap2 (-) a b'
+
+urv :: Val → 𝔻
+urv x = case x of
+  RealV d → d
+  _ → error $ "unpack real val failed" ⧺ pprender x
+
+arsinh ∷ 𝔻 → 𝔻
+arsinh x = log $ x + (root $ (x × x) + 1.0)
+
+-- Nat, 1-row matrix (really a row), list of one row matrices, and so on
+-- mostly because matrices are the only thing we can index
+joinMatch₁ ∷ ℕ → ExMatrix Val → 𝐿 (ExMatrix Val) → ℕ → 𝐿 Val
+joinMatch₁ n₁ row₁ Nil n₂ = Nil
+joinMatch₁ n₁ (ExMatrix row₁) ((ExMatrix row₂):&rows₂) n₂ =
+  case ((indexVᴍ (n2i (xrows row₁) 0) (n2i (xcols row₁) n₁) row₁) ≡ (indexVᴍ (n2i (xrows row₂) 0) (n2i (xcols row₂) n₂) row₂)) of
+    True →  (flatten (ExMatrix row₁)) ⧺ (flatten (ExMatrix row₂))
+    False → joinMatch₁ n₁ (ExMatrix row₁) rows₂ n₂
+
+schemaToTypes :: MExp r → 𝐿 (Type r)
+schemaToTypes me = case me of
+  (ConsME τ me') → schemaToTypes₁ me
+  _ → error "schemaToTypes expects a ConsME"
+
+schemaToTypes₁ :: MExp r → 𝐿 (Type r)
+schemaToTypes₁ me = case me of
+  (ConsME τ me') → τ :& schemaToTypes₁ me'
+  EmptyME → Nil
+  _ → error "schemaToTypes: unexpected MExp within ConsME"
+
+rowToDFRow :: (Pretty r) ⇒ 𝐿 (Type r) → 𝐿 𝕊 → 𝐿 Val
+rowToDFRow Nil Nil = Nil
+rowToDFRow (τ:&τs) (s:&ss) = case τ of
+  ℕT → NatV (read𝕊 s) :& rowToDFRow τs ss
+  ℕˢT _ → NatV (read𝕊 s) :& rowToDFRow τs ss
+  ℝT → RealV (read𝕊 s) :& rowToDFRow τs ss
+  ℝˢT _ → RealV (read𝕊 s) :& rowToDFRow τs ss
+  𝕊T → StrV (read𝕊 s) :& rowToDFRow τs ss
+  𝔻T τ' → rowToDFRow (τ':&τs) (s:&ss)
+  _ → error $ "rowToDFRow: type is currently not supported" ⧺ pprender τ
+rowToDFRow y z = error $ "rowToDFRow: arguments length mismatch" ⧺ (pprender (y :* z))
+
+csvToDF ∷ (Pretty r) ⇒ 𝐿 (𝐿 𝕊) → 𝐿 (Type r) → Val
+csvToDF sss τs =
+  let csvList ∷ 𝐿 (𝐿 Val) = map (rowToDFRow τs) sss
+  in xb csvList $ \ m → MatrixV $ ExMatrix $ xvirt m
+
+partition ∷ 𝐿 Val → 𝐿 (Val ∧ 𝐿 (𝐿 Val)) → 𝐿 (Val ∧ 𝐿 (𝐿 Val))
+partition _ Nil = Nil
+partition Nil _ = Nil
+partition (k:&ks) (v:&vs) = (k :* partition₁ k (v:&vs)) :& partition ks (v:&vs)
+
+partition₁ ∷ Val → 𝐿 (Val ∧ 𝐿 (𝐿 Val)) → 𝐿 (𝐿 Val)
+partition₁ k Nil = Nil
+partition₁ k ((val:*llvals):&vs) = case k ≡ val of
+  True → llvals ⧺ partition₁ k vs
+  False → partition₁ k vs
+
+shapedExMatrix ∷ ∀ m n a. (Rℕ m,Rℕ n) ⇒ Sℕ32 m → Sℕ32 n → ExMatrix a → 𝑂 (Vᴍ m n a)
+shapedExMatrix m n (ExMatrix (xs ∷ Vᴍ m' n' a)) = do
+  Refl ← compareTℕ @ m @ m'
+  Refl ← compareTℕ @ n @ n'
+  return xs
 
 -- | Evaluates an expression from the sensitivity language
 seval ∷ (PRIV_C p) ⇒ (Env) → (SExp p) → (Val)
@@ -311,12 +230,10 @@ seval _ (ℝˢSE n)       = RealV n
 seval _ (ℕˢSE n)       = NatV n
 seval env (RealSE e) =
   case (seval env $ extract e) of
-    (NatV n) → RealV $ mkDouble n
+    (NatV n) → RealV $ dbl n
 
 -- variables
 seval env (VarSE x) = env ⋕! x
--- | x ∈ env
--- | otherwise = error $ "Unknown variable: " ⧺ (show𝕊 x) ⧺ " in environment with bound vars " ⧺ (show𝕊 $ keys env)
 
 seval env (LetSE x e₁ e₂) = do
   let v₁ = seval env (extract e₁) in
@@ -366,20 +283,7 @@ seval env (MIndexSE e₁ e₂ e₃) =
     (MatrixV (ExMatrix v), NatV n₁, NatV n₂) →
       case (d𝕚 (xrows v) (natΩ32 n₁),d𝕚 (xcols v) (natΩ32 n₂)) of
         (Some (n₁' ∷ 𝕀32 m),Some (n₂' ∷ 𝕀32 n))  → v 𝄪 (n₁',n₂')
-        _ → error "index out of bounds"
-
---
-
-
-seval env (IdxSE e) =
-  case (seval env (extract e)) of
-    (NatV d) → error "huH?? -DD"
-      -- let posMat ∷ ExMatrix 𝔻 = ident d
-      --     negMat ∷ ExMatrix 𝔻 = mscale (neg one) posMat
-      -- in MatrixV (map RealV (posMat === negMat))
-
--- seval env (SMTrE e) =
---   case seval env e of (MatrixV m) → MatrixV $ tr m
+        _ → error "matrix index out of bounds"
 
 -- clip operation for only L2 norm
 seval env (MClipSE norm e) =
@@ -392,7 +296,6 @@ seval env (MClipSE norm e) =
       $ xmap normalize
       $ xsplit
       $ xmap urv m
-        -- _ → error $ "Invalid norm for clip: " ⧺ show𝕊 norm
     _ → error $ "cannot mclip a not matrix"
 
 -- gradient
@@ -406,15 +309,6 @@ seval env (MLipGradSE LR e₁ e₂ e₃) =
               ys' = map urv ys
           in MatrixV $ ExMatrix $ map RealV $ xgradient θ' xs' ys'
         _ → error "seval MLipGradSE : bad stuff happened"
-    --
-    --   case ((rows θ ≡ 1) ⩓ (cols ys ≡ 1)) of
-    --     True →
-    --       let θ'  ∷ DuetVector 𝔻 = flatten (map urv θ)
-    --           ys' ∷ DuetVector 𝔻 = flatten (map urv ys)
-    --       in MatrixV $ map RealV $ asRow $ ngrad θ' (map urv xs) ys'
-    --     False →
-    --       error $ "Incorrect matrix dimensions for gradient: " ⧺ (show𝕊 (rows θ, cols ys))
-    -- (a, b, c) → error $ "No pattern for " ⧺ (show𝕊 (a, b, c))
 
 -- create matrix
 seval env (MCreateSE l e₁ e₂ ix jx e₃) =
@@ -456,14 +350,6 @@ seval env TrueSE = BoolV True
 
 seval env FalseSE = BoolV False
 
--- TODO: this is supposed to clip the vector that e evaluates to such that the norm
--- of the ouptut vector is 1. (only do this if the norm is > 1)
-seval env (ClipSE e) = seval env (extract e)
-
-seval env (ConvSE e) = seval env (extract e)
-
-seval env (DiscSE e) = seval env (extract e)
-
 seval env (AppSE e₁ e₂) =
   case seval env (extract e₁) of
     (SFunV x (ExPriv (Ex_C body)) env') →
@@ -483,14 +369,9 @@ seval env (UnionAllSE e) = case (seval env (extract e)) of
 seval env (JoinSE e₁ e₂ e₃ e₄) =
   case (seval env (extract e₁),seval env (extract e₂),seval env (extract e₃),seval env (extract e₄)) of
     (MatrixV m₁, NatV n₁, MatrixV m₂, NatV n₂) →
-      let colmaps = map (\row₁ → joinMatch₁ n₁ (buildRows (list [row₁])) (map (\l → (buildRows (list [l]))) (toLists m₂)) n₂) (toLists m₁)
+      let colmaps = map (\row₁ → joinMatch₁ n₁ (fromRows (list [row₁])) (map (\l → (fromRows (list [l]))) (toRows m₂)) n₂) (toRows m₁)
           colmaps₁ = filter (\colmap → not (colmap ≡ Nil)) $ colmaps
-      in MatrixV $ buildRows $ list colmaps₁
-
--- seval env (CSVtoMatrixSE s _) =
---   let csvList ∷ 𝐿 (𝐿 𝔻) = mapp read𝕊 s
---       m ∷ ExMatrix 𝔻 = fromLists csvList
---   in MatrixV $ mapp RealV m
+      in MatrixV $ fromRows $ list colmaps₁
 
 seval env (EqualsSE e₁ e₂) =
   let v₁ = seval env $ extract e₁
@@ -512,13 +393,6 @@ peval env (IfPE e₁ e₂ e₃) = case seval env (extract e₁) of
   BoolV True → peval env (extract e₂)
   BoolV False → peval env (extract e₃)
 
--- peval env (AppPE f _ as) =
---   case seval env (extract f) of
---     (PFunV args body env') →
---       let vs    ∷ 𝐿 Val = map ((seval env) ∘ extract) as
---           env'' ∷ Env = fold env' (\(var :* val) → (⩌ (var ↦ val))) (zip args vs)
---       in peval env'' body
-
 -- sample on two matrices and compute on sample
 peval env (EDSamplePE size xs ys x y e) =
   case (seval env (extract size), seval env (extract xs), seval env (extract ys)) of
@@ -530,13 +404,19 @@ peval env (EDSamplePE size xs ys x y e) =
 
 peval env (TCSamplePE size xs ys x y e) =
   case (seval env (extract size), seval env (extract xs), seval env (extract ys)) of
-    (NatV n, MatrixV v1, MatrixV v2) → error "TODO"
-      -- sampleHelper n (map urv v1) (map urv v2) x y (extract e) env
+    (NatV n, MatrixV v1, MatrixV v2) → case v1 of
+      ExMatrix (xs ∷ Vᴍ m n Val) → case shapedExMatrix (xrows xs) (s𝕟32 @ 1) v2 of
+        None → error "bad dimensions"
+        Some (ys ∷ Vᴍ m 1 Val) →
+          (d𝕟32 (natΩ32 n) (\n₁ → sampleHelper n₁ (map urv xs) (map urv ys) x y (extract e) env))
 
 peval env (RenyiSamplePE size xs ys x y e) =
   case (seval env (extract size), seval env (extract xs), seval env (extract ys)) of
-    (NatV n, MatrixV v1, MatrixV v2) → error "TODO"
-      -- sampleHelper n (map urv v1) (map urv v2) x y (extract e) env
+    (NatV n, MatrixV v1, MatrixV v2) → case v1 of
+      ExMatrix (xs ∷ Vᴍ m n Val) → case shapedExMatrix (xrows xs) (s𝕟32 @ 1) v2 of
+        None → error "bad dimensions"
+        Some (ys ∷ Vᴍ m 1 Val) →
+          (d𝕟32 (natΩ32 n) (\n₁ → sampleHelper n₁ (map urv xs) (map urv ys) x y (extract e) env))
 
 -- gaussian mechanism for real numbers
 peval env (GaussPE r (EDGaussParams ε δ) vs e) =
@@ -558,19 +438,10 @@ peval env (LaplacePE r (EpsLaplaceParams ε) vs e) =
 peval env (MGaussPE r (EDGaussParams ε δ) vs e) =
   case (seval env (extract r), seval env (extract ε), seval env (extract δ), seval env (extract e)) of
     (RealV r', RealV ε', RealV δ', MatrixV (ExMatrix mat)) → do
-      traceM "MGauss BEGIN"
       let σ = (r' × (root $ 2.0 × (log $ 1.25/δ')) / ε')
       let mat' = map urv mat
-      -- mat'' ← xbmapM (\val → gaussianNoise val σ) mat'
-      traceM "MGauss 1"
-      let matx = xup mat'
-      traceM "MGauss 2"
-      traceM $ show𝕊 $ xlist2 $ xvirt matx
-      traceM "MGauss 3"
-      mat'' ← xbmapM (\val → return val) (xvirt matx)
-      traceM "MGauss 4"
+      mat'' ← xumapM (\val → gaussianNoise val σ) mat'
       let r = MatrixV $ ExMatrix $ (map RealV $ xvirt mat'')
-      traceM "MGauss END"
       return r
     (a, b, c, d) → error $ "No pattern for: " ⧺ (show𝕊 (a,b,c,d))
 
@@ -578,8 +449,8 @@ peval env (MGaussPE r (RenyiGaussParams α ϵ) vs e) =
   case (seval env (extract r), seval env (extract α), seval env (extract ϵ), seval env (extract e)) of
     (RealV r', NatV α', RealV ϵ', MatrixV mat) → do
       let σ = (r' × (root (dbl α'))) / (root (2.0 × ϵ'))
-      mat' ← mapM (\row → mapM (\val → gaussianNoise val σ) row) $ toLists (map urv mat)
-      return $ MatrixV $ (map RealV (fromLists mat'))
+      mat' ← mapM (\row → mapM (\val → gaussianNoise val σ) row) $ toRows (map urv mat)
+      return $ MatrixV $ (map RealV (fromRows mat'))
     (a, b, c, d) → error $ "No pattern for: " ⧺ (show𝕊 (a,b,c,d))
 
 peval env (MGaussPE r (TCGaussParams ρ ω) vs e) =
@@ -588,8 +459,8 @@ peval env (MGaussPE r (TCGaussParams ρ ω) vs e) =
       gn ← gaussianNoise 0.0 ((8.0 × r' × r') / ρ')
       let a = 8.0 × r' × (dbl ω')
       let σ =  a × (arsinh $ (1.0 / a) × gn)
-      mat' ← mapM (\row → mapM (\val → gaussianNoise val σ) row) $ toLists (map urv mat)
-      return $ MatrixV $ (map RealV (fromLists mat'))
+      mat' ← mapM (\row → mapM (\val → gaussianNoise val σ) row) $ toRows (map urv mat)
+      return $ MatrixV $ (map RealV (fromRows mat'))
     (a, b, c, d) → error $ "No pattern for: " ⧺ (show𝕊 (a,b,c,d))
 
 -- evaluate finite iteration
@@ -606,7 +477,7 @@ peval env (EDLoopPE _ k init xs x₁ x₂ e) =
 peval env (ParallelPE e₀ e₁ x₂ e₂ x₃ x₄ e₃) =
   case (seval env (extract e₀), seval env (extract e₁)) of
     (MatrixV m, SetV p) → do
-      let candidates ∷ 𝐿 (Val ∧ 𝐿 (𝐿 Val)) = map (\row → (seval ((x₂ ↦ MatrixV (fromRows (list [row]))) ⩌ env) (extract e₂)) :* (list [row])) (toLists m)
+      let candidates ∷ 𝐿 (Val ∧ 𝐿 (𝐿 Val)) = map (\row → (seval ((x₂ ↦ MatrixV (fromRows (list [row]))) ⩌ env) (extract e₂)) :* (list [row])) (toRows m)
       let parts ∷ 𝐿 (Val ∧ 𝐿 (𝐿 Val)) = partition (list (uniques p)) $ list $ filter (\x → (fst x) ∈ p) candidates
       let parts₁ = filter (\(v:*llvs) → not (llvs ≡ Nil)) parts
       r ← pow ^$ mapM (\(v :* llvals) → (peval ((x₃ ↦ v) ⩌ (x₄ ↦ MatrixV (fromRows llvals)) ⩌ env) (extract e₃))) parts₁
@@ -616,38 +487,15 @@ peval env (ParallelPE e₀ e₁ x₂ e₂ x₃ x₄ e₃) =
 peval env (ReturnPE e) =
   return $ seval env (extract e)
 
--- exponential mechanism
--- peval env (ExponentialPE s ε xs _ x body) =
---   case (seval env s, seval env ε, seval env xs) of
---     (RealV s', RealV ε', MatrixV xs') →
---       let xs''     = map (\row' → fromLists [row']) $ toLists xs'
---           envs     = map (\m → (x ↦ (MatrixV m)) ⩌ env) xs''
---           getScore = \env1 → case seval env1 (extract body) of
---             (RealV   r) → r
---             (MatrixV m) | size m == (1, 1) → head $ head $ toLists m
---             a → error $ "Invalid score: " ⧺ (chars $ show𝕊 a)
---           scores   = map getScore envs
---           δ'       = 1e-5
---           σ        = (s' × (root $ 2.0 × (log $ 1.25/δ')) / ε')
---       in do
---         scores' ← mapM (\score → gaussianNoise score σ) scores
---         return $ MatrixV $ minElem (zip xs'' scores')
-
 -- error
 peval env e = error $ "Unknown expression: " ⧺ (show𝕊 e)
-
 
 -- | Helper function for loop expressions
 iter₁ ∷ (PRIV_C p) ⇒ ℕ → Val → 𝕏 → 𝕏 → ℕ → PExp p → Env → IO (Val)
 iter₁ 0 v _ _ _ _ _ = return v
 iter₁ k v t x kp body env = do
-  traceM "in a loop…"
   newVal ← peval ((x ↦ v) ⩌ ((t ↦ (NatV $ nat kp)) ⩌ env)) body
   iter₁ (k - 1) newVal t x (kp+1) body env
-
--- | Empty environment
-emptyEnv ∷ Env
-emptyEnv = dø
 
 -- | Samples a normal distribution and returns a single value
 gaussianNoise ∷ 𝔻 → 𝔻 → IO 𝔻
@@ -685,30 +533,17 @@ insertDataSet ∷ Env → (𝕏 ∧ 𝕏) → (Vᴍ o n 𝔻 ∧ Vᴍ o 1 𝔻) 
 insertDataSet env (x :* y) (xs@(Vᴍ _ _ _) :* ys@(Vᴍ _ _ _)) =
   (x ↦ (MatrixV $ ExMatrix $ map RealV xs)) ⩌ (y ↦ (MatrixV $ ExMatrix $ map RealV ys)) ⩌ env
 
-type Model = DuetVector 𝔻
-
--- | Averages LR gradient over the whole matrix of examples
--- ngrad ∷ Model → ExMatrix 𝔻 → DuetVector 𝔻 → DuetVector 𝔻
--- ngrad θ x y =
---   let θ'       = asColumn θ
---       y'       = asColumn y
---       exponent = (x <> θ') <> y'
---       scaled   = y' <> (map (\x → 1.0/(exp(x)+1.0) ) exponent)
---       gradSum  = (tr x) <> scaled
---       avgGrad  ∷ DuetVector 𝔻 = flatten $ mscale (1.0/(dbl $ rows x)) gradSum
---   in (scale (neg one) avgGrad)
-
 -- | Obtains a vector in the same direction with L2-norm=1
 normalize ::Vᴍ 1 m 𝔻 → Vᴍ 1 m 𝔻
 normalize v
-  | r > 1000.0     =  xmap (\ x → x / r) v
+  | r > 1.0     =  xmap (\ x → x / r) v
   | otherwise   =  v
   where
     r = norm_2 v
 
 -- | Makes a single prediction
 predict ∷ Model → (DuetVector 𝔻 ∧ 𝔻) → 𝔻
-predict θ (x :* y) = signum $ x <.> θ
+predict θ (x :* _y) = signum $ x <.> θ
 
 -- dot product
 (<.>) :: DuetVector 𝔻 → DuetVector 𝔻 → 𝔻
@@ -728,7 +563,6 @@ abs x = case compare x zero of
 
 isCorrect ∷ (𝔻 ∧ 𝔻) → (ℕ ∧ ℕ)
 isCorrect (prediction :* actual) = unID $ do
-  traceM $ show𝕊 (prediction :* actual) ⧺ " " ⧺ show𝕊 (prediction ≡ actual)
   return $ case prediction ≡ actual of
     True → (1 :* 0)
     False → (0 :* 1)

@@ -143,7 +143,7 @@ main = do
                     case r' of
                       MatrixV m → do
                         pprint r'
-                        write "out/model.csv" (intercalate "\n" (map (intercalate ",") (mapp (show𝕊 ∘ urv) (toLists m))))
+                        write "out/model.csv" (intercalate "\n" (map (intercalate ",") (mapp (show𝕊 ∘ urv) (toRows m))))
                       _ → do pprint r'
                     pprint $ ppHeader "DONE" ; flushOut
                   _ → error "expected pλ at top level"

@@ -11,7 +11,7 @@ ARGS := check examples/plambda-bad.eps.duet
 ARGS := run examples/gd-pb-mini.ed.duet data_short/xs.csv data_short/ys.csv 100000 100 0.0001 0.0001 1 50
 ARGS := run examples/gd-pb.ed.duet data_short/xs.csv data_short/ys.csv 0.05 100 0.0001 0.0001 1
 ARGS := run examples/gd-pb.ed.duet data_long/adpxs.csv data_long/adpys.csv 0.05 100 0.0001 0.0001 1
-ARGS := run examples/gd-pb-mini.ed.duet data_long/adpxs.csv data_long/adpys.csv 100000 100 0.0001 0.0001 1 50
+ARGS := run examples/gd-pb-mini.ed.duet data_long/adpxs.csv data_long/adpys.csv 10000 100 0.0001 0.0001 1 50
 ARGS := lr-accuracy data_long/adpxs.csv data_long/adpys.csv out/model.csv
 
 # run examples/gd-pb-mini.ed.duet data_short/fbxs.csv data_short/fbys.csv 0.05 100 0.0001 0.0001 1 50
