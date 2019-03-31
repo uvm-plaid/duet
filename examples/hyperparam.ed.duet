@@ -1,0 +1,109 @@
+-- hyperparameter tuning
+let mscale = sλ m : ℕ,
+                n : ℕ
+                .
+                s   : ℝ,
+                mat : 𝕄 [L∞, U|m, n⋅𝔻 ]
+                ⇒ 
+   mmap mat { x ⇒ s ⋅ x }
+in
+
+let msub = sλ m : ℕ,
+              n : ℕ
+              .
+              m1 : 𝕄 [L∞, U|m, n⋅𝔻 ],
+              m2 : 𝕄 [L∞, U|m, n⋅𝔻 ]
+              ⇒ 
+   mmap m1, m2 { x , y ⇒ x - y }
+in
+
+let mzeros = sλ m : ℕ
+                n : ℕ
+                .
+                nr : ℕ[m],
+                nc : ℕ[n]
+                ⇒
+  mcreate[ L∞ | nr , nc ] { i , j ⇒ 0.0 }
+in
+
+let predict = sλ m : ℕ, n : ℕ .
+                 xs : 𝕄 [L∞, U|m, n⋅𝔻], 
+                 θ : 𝕄 [L∞, U|1, n⋅𝔻]
+                 ⇒
+  mmap (xs × (tr θ)) { x ⇒ sign x }
+in
+
+let correct = sλ m : ℕ, n : ℕ .
+                 xs : 𝕄 [L∞, U|m, n⋅𝔻], 
+                 ys : 𝕄 [L∞, U|m, 1⋅𝔻 ],
+                 θ : 𝕄 [L∞, U|1, n⋅𝔻]
+                 ⇒
+  count (mmap ys, (predict xs θ) { y₁, y₂ ⇒ y₁ ≡ y₂ })
+in
+
+let noisy_sgd = pλ m  : ℕ,
+                   n  : ℕ,
+                   o  : ℕ,
+                   k  : ℕ,
+                   ε  : ℝ⁺,
+                   δ  : ℝ⁺,
+                   .
+                   xs : 𝕄 [L∞, U|m, n⋅𝔻 ] ,
+                   ys : 𝕄 [L∞, U|m, 1⋅𝔻 ] ,
+                   k  : ℕ[k],
+                   ε  : ℝ⁺[ε],
+                   δ  : ℝ⁺[δ],
+                   η  : ℝ
+                   ⇒
+  let m₀ = mzeros@[ℕT[1], n. ℕ[1], cols xs] in
+  let c = box (mclip[L2] xs) in
+  aloop[ δ′ ] k on m₀ <xs,ys> { a, θ ⇒
+    let s = ℝ⁺[1.0] / real (rows xs) in
+    g ← mgauss[ s , ε , δ ] <xs,ys> { ∇[ LR | θ ; unbox c , ys ] } ;
+    return msub@[m, n. θ, scale@[m, n. η, g]]
+  }
+in
+
+let pick_η = pλ m  : ℕ,
+                n  : ℕ,
+                o  : ℕ,
+                k  : ℕ,
+                ε  : ℝ⁺,
+                δ  : ℝ⁺,
+                .
+                xs : 𝕄 [L∞, U|m, n⋅𝔻 ] ,
+                ys : 𝕄 [L∞, U|m, 1⋅𝔻 ] ,
+                k  : ℕ[k],
+                ε  : ℝ⁺[ε],
+                δ  : ℝ⁺[δ],
+                ηs : 𝕄 [L∞, U|1, o⋅𝔻 ]
+                ⇒
+  θs ← mmap ηs { η ⇒ noisy_sgd@[m, n, o, k, ε, δ. xs, ys, k, ε, δ, η] };
+  η ← exponential[ℝ⁺[1.0], ε] θs <xs, ys> { θ ⇒
+    correct@[m, n. xs, ys, θ]
+  };
+  return η
+  
+in
+
+
+let main = pλ m  : ℕ,
+              n  : ℕ,
+              o  : ℕ,
+              k  : ℕ,
+              ε  : ℝ⁺,
+              δ  : ℝ⁺,
+              .
+              xs : 𝕄 [L∞, U|m, n⋅𝔻 ] ,
+              ys : 𝕄 [L∞, U|m, 1⋅𝔻 ] ,
+              k  : ℕ[k],
+              ε  : ℝ⁺[ε],
+              δ  : ℝ⁺[δ],
+              ηs : 𝕄 [L∞, U|1, o⋅𝔻 ]
+              ⇒
+  η ← pick_η@[m, n, o, k, ε, δ. xs, ys, k, ε, δ, ηs];
+  θ ← noisy_sgd@[m, n, o, k, ε, δ. xs, ys, k, ε, δ, η];
+  return θ
+
+in return main
+
