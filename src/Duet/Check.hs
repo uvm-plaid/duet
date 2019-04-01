@@ -754,31 +754,46 @@ inferSens eA = case extract eA of
             , "\n"
             , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
             ]
-  -- ChunksSE e₁ e₂ e₃ → do
-  --   -- TODO: this case
-  -- -- TODO: this is very wrong
-  -- MFoldSE e₁ e₂ x₁ x₂ x₃ e₃ → do
-  --   σ₁ :* τ₁ ← hijack $ inferSens e₁
-  --   σ₂ :* τ₂ ← hijack $ inferSens e₂
-  --   case (τ₁,τ₂) of
-  --     (𝕄T ℓ₁ _c₁ (RexpRT r₁) (RexpME r₂ τ₁'),𝕄T ℓ₂ _c₂ (RexpRT r₁') (RexpME r₂' τ₂'))
-  --       | meets
-  --         [ ℓ₁ ≡ ℓ₂
-  --         , r₁ ≡ r₁'
-  --         , r₂ ≡ r₂'
-  --         , τ₁' ≡ τ₂'
-  --         ]
-  --       → do σ₃ :* τ₃ ←
-  --              hijack $
-  --              mapEnvL contextTypeL (\ γ → dict [x₁ ↦ τ₁',x₂ ↦ τ₂'] ⩌ γ) $
-  --              inferSens e₃
-  --            let (ς₁ :* σ₃') = ifNone (zero :* σ₃) $ dview x₁ σ₃
-  --                (ς₂ :* σ₃'') = ifNone (zero :* σ₃') $ dview x₂ σ₃'
-  --            tell $ ς₁ ⨵ σ₁
-  --            tell $ ς₂ ⨵ σ₂
-  --            tell $ ι (r₁ × r₂) ⨵ σ₃''
-  --            return $ 𝕄T ℓ₁ UClip (RexpRT r₁) (RexpME r₂ τ₃)
-  --     _ → error $ "Map2 error: " ⧺ (pprender $ (τ₁ :* τ₂))
+  ChunksSE e₁ e₂ e₃ → do
+    τ₁ ← inferSens e₁
+    τ₂ ← inferSens e₂
+    τ₃ ← inferSens e₃
+    case (τ₁, τ₂, τ₃) of
+      (ℕˢT ηb, 𝕄T ℓ₁ c₁ r₁₁ s₁, 𝕄T ℓ₂ c₂ r₁₂ s₂) | r₁₁ ≡ r₁₂ → do
+        let s = ConsME (𝕄T ℓ₁ c₁ (RexpRT ηb) s₁) (ConsME (𝕄T ℓ₂ c₂ (RexpRT ηb) s₂) EmptyME)
+        return $ 𝕄T LInf UClip (RexpRT ηb) s -- TODO: ηb is wrong here
+      _ → error $ concat
+            [ "Chunks error: "
+            , (pprender $ (τ₁ :* τ₂ :* τ₃))
+            , "\n"
+            , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
+            ]
+
+  MFoldSE e₁ e₂ x₁ x₂ x₃ e₃ → do
+    τ₁ ← inferSens e₁
+    τ₂ ← inferSens e₂
+    case τ₂ of
+      𝕄T LInf UClip (RexpRT r₁) s →
+        undefined
+      _ → error $ concat
+            [ "MFold error: "
+            , (pprender $ (τ₁ :* τ₂))
+            , "\n"
+            , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
+            ]
+    -- σ₄ :* τ₄ ← hijack $ mapEnvL contextTypeL (\ γ → dict [x₁ ↦ ℕT,x₂ ↦ τ₃] ⩌ γ) $ inferSens e₄
+    -- let σ₄' = without (pow [x₁,x₂]) σ₄
+    -- case τ₂ of
+    --   ℕˢT ηₙ | τ₄ ≡ τ₃ → do
+    --     -- tell $ map (Sens ∘ truncate Inf ∘ unSens) σ₄ -- wrong - want to multiply by ηₙ
+    --     tell $ (Sens (Quantity ηₙ)) ⨵ σ₄'
+    --     return τ₃
+    --   _ → error $ concat
+    --         [ "Loop error: "
+    --         , (pprender $ (τ₂ :* τ₃ :* τ₄ :* σ₄))
+    --         , "\n"
+    --         , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
+    --         ]
 
   _ → error $ concat
         [ "inferSens unknown expression type: "
