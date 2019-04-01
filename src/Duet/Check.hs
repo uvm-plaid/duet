@@ -26,7 +26,7 @@ freeBvs (𝔻T τ) = freeBvs τ
 freeBvs (τ₁ :+: τ₂) = freeBvs τ₁ ∪ freeBvs τ₂
 freeBvs (τ₁ :×: τ₂) = freeBvs τ₁ ∪ freeBvs τ₂
 freeBvs (τ₁ :&: τ₂) = freeBvs τ₁ ∪ freeBvs τ₂
-freeBvs (τ₁ :⊸: (_ :* τ₂)) = freeBvs τ₁ ∪ freeBvs τ₂
+freeBvs ((_ :* τ₁) :⊸: (_ :* τ₂)) = freeBvs τ₁ ∪ freeBvs τ₂
 freeBvs (pargs :⊸⋆: τ) = freeBlpargvs pargs ∪ freeBvs τ
 freeBvs (BoxedT σ τ) = keys σ ∪ freeBvs τ
 
@@ -226,7 +226,7 @@ checkType τA = case τA of
     a ← checkType τ₁
     b ← checkType τ₂
     return $ a ⩓ b
-  τ₁ :⊸: (s :* τ₂) → do
+  (ακs :* τ₁) :⊸: (s :* τ₂) → do
     a ← checkType τ₁
     b ← checkType τ₂
     let c = a ⩓ b
@@ -585,7 +585,7 @@ inferSens eA = case extract eA of
         tell $ ς ⨵ σ₁
         tell σ₂'
         return τ₂
-  SFunSE x τ e → do
+  SFunSE ακs x τ e → do
     a ← checkType $ extract τ
     when (not a) $ throw (error "kinding error in sfun" ∷ TypeError)
     let τ' = map normalizeRExp $ extract τ
@@ -597,12 +597,12 @@ inferSens eA = case extract eA of
       False → error $ "Lambda type/scoping error in return expression of type: " ⧺ (pprender τ'')
       True → do
         tell σ'
-        return $ τ' :⊸: (ς :* τ'')
-  AppSE e₁ e₂ → do
+        return $ (ακs :* τ') :⊸: (ς :* τ'')
+  AppSE e₁ ηs e₂ → do
     τ₁ ← inferSens e₁
     σ₂ :* τ₂ ← hijack $ inferSens e₂
     case τ₁ of
-      τ₁' :⊸: (ς :* τ₂') | τ₁' ≡ τ₂ → do
+      (ακs :* τ₁') :⊸: (ς :* τ₂') | τ₁' ≡ τ₂ → do
         tell $ ς ⨵ σ₂
         return τ₂'
       _ → error $ "Application error: " ⧺ (pprender $ (τ₁ :* τ₂)) -- TypeSource Error
@@ -1267,6 +1267,29 @@ fac n = n × (fac (n - one))
 
 choose :: RNF → RNF → RNF
 choose n k = (fac n) / ((fac k) × (fac (n - k)))
+
+substType ∷ 𝑃 𝕏 → 𝕏 → RNF → 𝑃 𝕏 → Type RNF → Type RNF
+substType 𝓈 x r' fv = \case
+  ℕˢT r → ℕˢT $ substRNF x (renameRNF (renaming 𝓈 fv) r') r
+  ℝˢT r → ℝˢT $ substRNF x (renameRNF (renaming 𝓈 fv) r') r
+  ℕT → ℕT
+  ℝT → ℝT
+  𝕀T r → 𝕀T $ substRNF x (renameRNF (renaming 𝓈 fv) r') r
+  𝔹T → 𝔹T
+  𝕊T → 𝕊T
+  BagT ℓ c τ → BagT ℓ c $ substType 𝓈 x r' fv τ
+  -- | BagT Norm Clip (Type r)
+  -- | SetT (Type r)
+  -- | RecordT (𝐿 (𝕊 ∧ Type r))
+  -- | 𝕄T Norm Clip (RowsT r) (MExp r)
+  -- | 𝔻T (Type r)
+  -- | Type r :+: Type r
+  -- | Type r :×: Type r
+  -- | Type r :&: Type r
+  -- | Type r :⊸: (Sens r ∧ Type r)
+  -- | (𝐿 (𝕏 ∧ Kind) ∧ PArgs r) :⊸⋆: Type r
+  -- | BoxedT (𝕏 ⇰ Sens r) (Type r)
+  
 
 -- infraRed :: PExp -> KEnv → TEnv -> (TypeSource RNF, PEnv)
 --

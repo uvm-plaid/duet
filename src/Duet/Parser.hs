@@ -267,12 +267,20 @@ parType mode = mixfixParser $ concat
   , mix $ MixInfixL 3 $ const (:+:) ^$ parLit "+"
   , mix $ MixInfixL 4 $ const (:×:) ^$ parLit "×"
   , mix $ MixInfixL 4 $ const (:&:) ^$ parLit "&"
-  , mix $ MixInfixR 2 $ do
+  , mix $ MixPrefix 2 $ do
+      parLit "∀"
+      ακs ← pOneOrMoreSepBy (parLit ",") $ do
+        α ← parVar
+        parLit ":"
+        κ ← parKind
+        return $ α :* κ
+      parLit "."
+      τ₁ ← parType mode
       parLit "⊸"
       parLit "["
       s ← parSens
       parLit "]"
-      return $ \ τ₁ τ₂ → τ₁ :⊸: (s :* τ₂)
+      return $ \ τ₂ → (ακs :* τ₁) :⊸: (s :* τ₂)
   , mix $ MixPrefix 2 $ do
       parLit "∀"
       ακs ← pOneOrMoreSepBy (parLit ",") $ do
@@ -547,14 +555,27 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
              parLit "in"
              return $ \ e₂ → UntupSE x y e₁ e₂
         ]
-  , mixF $ MixFInfixL 10 $ const AppSE ^$ parSpace
+  , mixF $ MixFInfixL 10 $ const (\ e₁ e₂ → AppSE e₁ Nil e₂) ^$ parSpace
+  , mixF $ MixFInfixL 10 $ do
+       parLit "@"
+       parLit "["
+       ks ← pManySepBy (parLit ",") $ parRExp
+       parLit "]"
+       parSpace
+       return $ \ e₁ e₂ → AppSE e₁ ks e₂
   , mixF $ MixFPrefix 1 $ do
       parLit "sλ"
+      ακs ← pManySepBy (parLit ",") $ do
+        α ← parVar
+        parLit ":"
+        κ ← parKind
+        return $ α :* κ
+      parLit "."
       x ← parVar
       parLit ":"
       τ ← parTypeSource p
       parLit "⇒"
-      return $ \ e → SFunSE x τ e
+      return $ \ e → SFunSE ακs x τ e
   , mixF $ MixFTerminal $ do
       parLit "pλ"
       ακs ← pManySepBy (parLit ",") $ do

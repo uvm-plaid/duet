@@ -204,7 +204,7 @@ data Type r =
   | Type r :+: Type r
   | Type r :×: Type r
   | Type r :&: Type r
-  | Type r :⊸: (Sens r ∧ Type r)
+  | (𝐿 (𝕏 ∧ Kind) ∧ Type r) :⊸: (Sens r ∧ Type r)
   | (𝐿 (𝕏 ∧ Kind) ∧ PArgs r) :⊸⋆: Type r
   | BoxedT (𝕏 ⇰ Sens r) (Type r)
   deriving (Eq,Ord,Show)
@@ -228,7 +228,7 @@ instance Functor Type where
     τ₁ :+: τ₂ → map f τ₁ :+: map f τ₂
     τ₁ :×: τ₂ → map f τ₁ :×: map f τ₂
     τ₁ :&: τ₂ → map f τ₁ :&: map f τ₂
-    τ₁ :⊸: (s :* τ₂) → map f τ₁ :⊸: (map f s :*  map f τ₂)
+    (αks :* τ₁) :⊸: (s :* τ₂) → (αks :* map f τ₁) :⊸: (map f s :*  map f τ₂)
     (αks :* PArgs xτs) :⊸⋆: τ → (αks :* PArgs (map (mapPair (map f) (map f)) xτs)) :⊸⋆: map f τ
     BoxedT σ τ → BoxedT (map (map f) σ) (map f τ)
 
@@ -300,8 +300,8 @@ data SExp (p ∷ PRIV) where
   LoopSE ∷ SExpSource p → SExpSource p → 𝕏 → 𝕏 → SExpSource p → SExp p
   VarSE ∷ 𝕏 → SExp p
   LetSE ∷ 𝕏  → SExpSource p → SExpSource p → SExp p
-  SFunSE ∷ 𝕏  → TypeSource RExp → SExpSource p → SExp p
-  AppSE ∷ SExpSource p → SExpSource p → SExp p
+  SFunSE ∷ 𝐿 (𝕏 ∧ Kind) → 𝕏  → TypeSource RExp → SExpSource p → SExp p
+  AppSE ∷ SExpSource p → 𝐿 RExp → SExpSource p → SExp p
   PFunSE ∷ 𝐿 (𝕏 ∧ Kind) → 𝐿 (𝕏 ∧ TypeSource RExp) → PExpSource p → SExp p
   InlSE ∷ TypeSource RExp → SExpSource p → SExp p
   InrSE ∷ TypeSource RExp → SExpSource p → SExp p

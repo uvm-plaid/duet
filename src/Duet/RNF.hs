@@ -345,3 +345,79 @@ normalizeRExpPre (MinusRE e₁ e₂) = minusRNF (normalizeRExpPre $ extract e₁
 
 normalizeRExp ∷ RExp → RNF
 normalizeRExp = normalizeRExpPre ∘ extract
+
+-- RENAMING AND SUBSTITUTION --
+
+-- Renaming Variables --
+
+renaming ∷ 𝑃 𝕏 → 𝑃 𝕏 → 𝕏 ⇰ 𝕏
+renaming 𝓈 fv = 
+  let xs = 𝓈 ∩ fv
+      mn = fold None (⩎) $ map 𝕩Gen $ iter xs
+      mn' = elim𝑂 0 (+1) mn
+      ns = map (\ x → x + mn') $ naturals
+  in assoc $ zip xs $ zipWith (\ (𝕏 x _) n → 𝕏 x $ Some n) xs ns
+
+renameRNF ∷ 𝕏 ⇰ 𝕏 → RNF → RNF
+renameRNF ρ = foldFrom ρ $ \ (x :* x') → substRNF x (varRNF x')
+
+-- Free variables --
+
+fvRAtom ∷ RAtom → 𝑃 𝕏
+fvRAtom = \case
+  VarRA x → single x
+  NNRealRA _ → pø
+  InvRA xs² → fvRSP xs²
+  RootRA xs² → fvRSP xs²
+  ExpRA xs² ys² → fvRSP xs² ∪ fvRSP ys²
+  LogRA xs² → fvRSP xs²
+  ExpFnRA xs² → fvRSP xs²
+  MinusRA xs⁴ ys⁴ → fvRNF xs⁴ ∪ fvRNF ys⁴
+
+fvRSP ∷ RSP → 𝑃 𝕏
+fvRSP xs² = pow $ do
+  (xs :* _) ← list $ unRSP xs²
+  (a :* _) ← list xs
+  list $ fvRAtom a
+  
+fvRNF ∷ RNF → 𝑃 𝕏
+fvRNF = \case
+  NatRNF _ → pø
+  NNRealRNF _ → pø
+  SymRNF xs⁴ → pow $ do
+    xs³ ← list xs⁴
+    xs² ← list xs³
+    list $ fvRSP xs²
+
+-- Substitution --
+
+substRAtom ∷ 𝕏 → RNF → RAtom → RNF
+substRAtom x r' = \case
+  VarRA y → case x ≡ y of
+    True → r'
+    False → varRNF y
+  NNRealRA r → NNRealRNF r
+  InvRA xs² → invRNF $ substRSP x r' xs²
+  RootRA xs² → rootRNF $ substRSP x r' xs²
+  ExpRA xs² ys² → expRNF (substRSP x r' xs²) (substRSP x r' ys²)
+  LogRA xs² → logRNF $ substRSP x r' xs²
+  ExpFnRA xs² → expFnRNF $ substRSP x r' xs²
+  MinusRA xs⁴ ys⁴ → minusRNF (substRNF x r' xs⁴) (substRNF x r' ys⁴)
+
+substRSP ∷ 𝕏 → RNF → RSP → RNF
+substRSP x r' xs² = 
+  fold (NatRNF 0) plusRNF $ do
+    (xs :* m) ← list $ unRSP xs²
+    return $ (NatRNF m `timesRNF`) $ fold (NatRNF 1) timesRNF $ do
+      (a :* n) ← list xs
+      return $ substRAtom x r' a `expRNF` NatRNF n
+
+substRNF ∷ 𝕏 → RNF → RNF → RNF
+substRNF x r' = \case
+  NatRNF n → NatRNF n
+  NNRealRNF r → NNRealRNF r
+  SymRNF xs⁴ → fold (NatRNF 0) maxRNF $ do
+    xs³ ← list xs⁴
+    return $ fold (NNRealRNF (1.0/0.0)) minRNF $ do
+      xs² ← list xs³
+      return $ substRSP x r' xs²

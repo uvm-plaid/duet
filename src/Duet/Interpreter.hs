@@ -339,7 +339,7 @@ seval env (MMap2SE e₁ e₂ x₁ x₂ e₃) =
 seval env (PFunSE _ args body) =
   PFunV (map fst args) (ExPriv (Ex_C (extract body))) env
 
-seval env (SFunSE x _ body) =
+seval env (SFunSE _ x _ body) =
   SFunV x (ExPriv (Ex_C (extract body))) env
 
 seval env (BoxSE e) = seval env (extract e)
@@ -350,7 +350,7 @@ seval env TrueSE = BoolV True
 
 seval env FalseSE = BoolV False
 
-seval env (AppSE e₁ e₂) =
+seval env (AppSE e₁ _ e₂) =
   case seval env (extract e₁) of
     (SFunV x (ExPriv (Ex_C body)) env') →
       let env'' = (x ↦ (seval env (extract e₂))) ⩌ env'

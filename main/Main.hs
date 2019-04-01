@@ -3,7 +3,7 @@ module Main where
 import Duet
 
 initEnv ∷ 𝕏 ⇰ Type RNF
-initEnv = dict [ var "sign" ↦ (ℝT :⊸: (ι 1 :* ℝT))
+initEnv = dict [ var "sign" ↦ ((Nil :* ℝT) :⊸: (ι 1 :* ℝT))
                ] ⩌ dø
 
 parseMode ∷ 𝕊 → Ex_C PRIV_C PRIV_W
