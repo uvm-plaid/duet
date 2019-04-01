@@ -2,6 +2,8 @@
 -- output perturbation
 -- a la Wu et al.
 -- per-iteration bound
+-- https://arxiv.org/abs/1606.04722
+
 let main = pλ m  : ℕ,
               n  : ℕ,
               ε  : ℝ⁺,

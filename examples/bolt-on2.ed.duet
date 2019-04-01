@@ -2,6 +2,8 @@
 -- output perturbation
 -- a la Wu et al.
 -- per-iteration bound
+-- https://arxiv.org/abs/1606.04722
+
 let main = pλ m  : ℕ,
               n  : ℕ,
               ε  : ℝ⁺,
@@ -19,12 +21,14 @@ let main = pλ m  : ℕ,
               ⇒
   let m₀ = mcreate[ L2 | ℕ[1] , cols xs ] { i , j ⇒ 0.0 } in
   let c = box (mclip[L2] xs) in
-  let s = (real k) / real (rows xs) in
+  let s = real k / real b in
   g ← mgauss[ s , ε , δ ] <xs,ys> {
-        let batches = chunks[b, unbox c, ys] in
-        mfold m₀, batches { θ, xs₁, ys₁ ⇒
-          let g = ∇[ LR | θ ; xs₁ , ys₁ ] in
-          mmap θ , mmap g { x ⇒ η ⋅ x } { x , y ⇒ x - y }
+        loop k on m₀ { a, θ ⇒
+          let batches = chunks[b, unbox c, ys] in
+          mfold θ, batches { θ, xs₁, ys₁ ⇒
+            let g = ∇[ LR | θ ; xs₁ , ys₁ ] in
+            mmap θ , mmap g { x ⇒ η ⋅ x } { x , y ⇒ x - y }
+          }
         }
       };
   return g

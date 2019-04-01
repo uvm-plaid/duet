@@ -789,12 +789,22 @@ inferSens eA = case extract eA of
             , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
             ]
 
+
+--𝕄 [L∞,U|b,(𝕄 [L∞,L2|b,(n ⋅ 𝔻 )] ∷ 𝕄 [L∞,U|b,(1 ⋅ 𝔻 )] ∷ [])]
+
   MFoldSE e₁ e₂ x₁ x₂ x₃ e₃ → do
-    τ₁ ← inferSens e₁
-    τ₂ ← inferSens e₂
+    σ₁ :* τ₁ ← hijack $ inferSens e₁
+    σ₂ :* τ₂ ← hijack $ inferSens e₂
     case τ₂ of
-      𝕄T LInf UClip (RexpRT r₁) s →
-        undefined
+      𝕄T LInf UClip (RexpRT r₁) (ConsME τ₃ (ConsME τ₄ EmptyME)) → do
+        σ₃ :* τ₃ ← hijack $ mapEnvL contextTypeL (\ γ → dict [x₁ ↦ τ₁,x₂ ↦ τ₃,x₃ ↦ τ₄] ⩌ γ) $
+                     inferSens e₃
+        let (ς₁ :* σ₃')  = ifNone (zero :* σ₃)  $ dview x₂ σ₃
+            (ς₂ :* σ₃'') = ifNone (zero :* σ₃') $ dview x₃ σ₃'
+        tell $ map (Sens ∘ truncate Inf ∘ unSens) σ₁
+        tell $ (ς₁ ⊔ ς₂) ⨵ σ₂
+        tell $ ι r₁ ⨵ σ₃''
+        return τ₃
       _ → error $ concat
             [ "MFold error: "
             , (pprender $ (τ₁ :* τ₂))
