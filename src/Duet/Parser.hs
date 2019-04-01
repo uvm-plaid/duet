@@ -560,6 +560,19 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
        e₂ ← parSExp p
        parLit "⟩"
        return $ TupSE e₁ e₂
+  , mixF $ MixFTerminal $ do
+       parLit "loop"
+       e₂ ← parSExp p
+       parLit "on"
+       e₃ ← parSExp p
+       parLit "{"
+       x₁ ← parVar
+       parLit ","
+       x₂ ← parVar
+       parLit "⇒"
+       e₄ ← parSExp p
+       parLit "}"
+       return $ LoopSE e₂ e₃ x₁ x₂ e₄
   , mixF $ MixFPrefix 10 $ const BoxSE ^$ parLit "box"
   , mixF $ MixFPrefix 10 $ const UnboxSE ^$ parLit "unbox"
   , mixF $ MixFPrefix 10 $ const ClipSE ^$ parLit "clip"

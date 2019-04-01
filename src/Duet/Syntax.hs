@@ -295,7 +295,7 @@ data SExp (p ∷ PRIV) where
   -- | MFoldRowSE (SExpSource p) (SExpSource p) 𝕏 𝕏 (SExpSource p)
   -- connectives
   -- | SLoopSE (SExpSource p) (SExpSource p) 𝕏 (SExpSource p)
-  -- | LoopSE (SExpSource p) (SExpSource p) 𝕏 (SExpSource p)
+  LoopSE ∷ SExpSource p → SExpSource p → 𝕏 → 𝕏 → SExpSource p → SExp p
   VarSE ∷ 𝕏 → SExp p
   LetSE ∷ 𝕏  → SExpSource p → SExpSource p → SExp p
   SFunSE ∷ 𝕏  → TypeSource RExp → SExpSource p → SExp p

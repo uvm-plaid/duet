@@ -738,6 +738,28 @@ inferSens eA = case extract eA of
     σ :* τ ← hijack $ inferSens e
     tell $ map (Sens ∘ truncate (Quantity (NatRNF 1)) ∘ unSens) σ
     return $ 𝔻T τ
+  LoopSE e₂ e₃ x₁ x₂ e₄ → do
+    τ₂ ← inferSens e₂
+    τ₃ ← inferSens e₃
+    σ₄ :* τ₄ ← hijack $ mapEnvL contextTypeL (\ γ → dict [x₁ ↦ ℕT,x₂ ↦ τ₃] ⩌ γ) $ inferSens e₄
+    let σ₄' = without (pow [x₁,x₂]) σ₄
+    case τ₂ of
+      ℕˢT ηₙ | τ₄ ≡ τ₃ → do
+        -- tell $ map (Sens ∘ truncate Inf ∘ unSens) σ₄ -- wrong - want to multiply by ηₙ
+        tell $ (Sens (Quantity ηₙ)) ⨵ σ₄'
+        return τ₃
+      _ → error $ concat
+            [ "Loop error: "
+            , (pprender $ (τ₂ :* τ₃ :* τ₄ :* σ₄))
+            , "\n"
+            , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
+            ]
+  _ → error $ concat
+        [ "inferSens unknown expression type: "
+        , "\n"
+        , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
+        ]
+
   e → error $ fromString $ show e
 
 isRealMExp ∷ MExp RNF → PM p 𝔹
@@ -934,12 +956,21 @@ inferPriv eA = case extract eA of
           tell $ map (Priv ∘ truncate (Quantity $ EDPriv ηᵋ ηᵟ) ∘ unSens) σ₄Keep
           tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
           return $ 𝕄T LInf UClip ηₘ ηₙ
+      (ℝˢT ηₛ,ℝˢT ηᵋ,ℝˢT ηᵟ,𝕄T ℓ _c ηₘ ηₙ) | (ℓ ≢ LInf) →
+          error $ concat
+            [ "MGauss error: "
+            , "Claimed sensitivity bound (" ⧺ (pprender ηₛ) ⧺ ") is less than actual sensitivity bound (" ⧺ (pprender σ₄KeepMax) ⧺ ")\n"
+            , "Debug info: " 
+            , pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄ :* ιview @ RNF σ₄KeepMax)
+            , "\n"
+            , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
+            ]
       _ → error $ concat
-        [ "MGauss error: "
-        , pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄ :* ιview @ RNF σ₄KeepMax)
-        , "\n"
-        , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
-        ]
+            [ "MGauss error: "
+            , pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄ :* ιview @ RNF σ₄KeepMax)
+            , "\n"
+            , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
+            ]
   MGaussPE e₁ (ZCGaussParams e₂) xs e₄ → do
     let xs' = pow xs
     τ₁ ← pmFromSM $ inferSens e₁
