@@ -283,6 +283,7 @@ data SExp (p ∷ PRIV) where
   MClipSE ∷ Norm → SExpSource p → SExp p
   MConvertSE ∷ SExpSource p → SExp p
   MLipGradSE ∷ Grad → SExpSource p → SExpSource p → SExpSource p → SExp p
+  MUnbGradSE ∷ Grad → SExpSource p → SExpSource p → SExpSource p → SExp p
   -- | MUnbGradSE (SExpSource p) (SExpSource p) (SExpSource p)
   MMapSE ∷ SExpSource p → 𝕏  → SExpSource p → SExp p
   MMap2SE ∷ SExpSource p → SExpSource p → 𝕏 → 𝕏 → SExpSource p → SExp p

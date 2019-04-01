@@ -477,6 +477,26 @@ inferSens eA = case extract eA of
         → do tell $ ι (ι 1 / rₘ₂) ⨵ (σ₂ ⧺ σ₃)
              return $ 𝕄T ℓ UClip (RexpRT one) (RexpME r₁ ℝT)
       _ → undefined -- TypeSource Error
+  MUnbGradSE _g e₁ e₂ e₃ → do
+    σ₁ :* τ₁ ← hijack $ inferSens e₁
+    tell $ top ⨵ σ₁
+    σ₂ :* τ₂ ← hijack $ inferSens e₂
+    σ₃ :* τ₃ ← hijack $ inferSens e₃
+    case (τ₁,τ₂,τ₃) of
+      -- _ → error "TODO"
+      (𝕄T _ℓ₁ _c₁ ( RexpRT rₘ₁ ) (RexpME r₁ τ₁'),𝕄T _ℓ₂ _c₂ ( RexpRT rₘ₂ ) (RexpME r₂ τ₂'),𝕄T _ℓ₃ _c₃ ( RexpRT rₘ₃ ) (RexpME r₃ τ₃'))
+        | meets
+          [ τ₁' ≡ ℝT
+          , τ₂' ≡ 𝔻T ℝT
+          , τ₃' ≡ 𝔻T ℝT
+          , rₘ₁ ≡ one
+          , r₃ ≡ one
+          , r₁ ≡ r₂
+          , rₘ₂ ≡ rₘ₃
+          ]
+        → do tell $ ι (ι 1 / rₘ₂) ⨵ (σ₂ ⧺ σ₃)
+             return $ 𝕄T LInf UClip (RexpRT one) (RexpME r₁ $ 𝔻T ℝT)
+      _ → undefined -- TypeSource Error
   MMapSE e₁ x e₂ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
     case τ₁ of
