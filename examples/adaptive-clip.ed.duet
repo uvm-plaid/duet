@@ -18,4 +18,4 @@ let main = pλ m  : ℕ,
       real (rows filtered)
     }
   }
-in return main
+in main

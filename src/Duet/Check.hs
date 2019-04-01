@@ -1097,7 +1097,7 @@ inferPriv eA = case extract eA of
         ⩓ (ℓ ≢ LInf)
         → do
           b ← isRealMExp ηₙ
-          when (not b) $ error $ "MGauss error isRealMExp check failed " ⧺ (pprender τ₄)
+          when (not b) $ throw (error "MGauss error isRealMExp check failed " ∷ TypeError)
           tell $ map (Priv ∘ truncate (Quantity $ EDPriv ηᵋ ηᵟ) ∘ unSens) σ₄Keep
           tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
           return $ 𝕄T LInf UClip ηₘ ηₙ
