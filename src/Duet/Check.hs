@@ -754,13 +754,37 @@ inferSens eA = case extract eA of
             , "\n"
             , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
             ]
+  -- ChunksSE e₁ e₂ e₃ → do
+  --   -- TODO: this case
+  -- -- TODO: this is very wrong
+  -- MFoldSE e₁ e₂ x₁ x₂ x₃ e₃ → do
+  --   σ₁ :* τ₁ ← hijack $ inferSens e₁
+  --   σ₂ :* τ₂ ← hijack $ inferSens e₂
+  --   case (τ₁,τ₂) of
+  --     (𝕄T ℓ₁ _c₁ (RexpRT r₁) (RexpME r₂ τ₁'),𝕄T ℓ₂ _c₂ (RexpRT r₁') (RexpME r₂' τ₂'))
+  --       | meets
+  --         [ ℓ₁ ≡ ℓ₂
+  --         , r₁ ≡ r₁'
+  --         , r₂ ≡ r₂'
+  --         , τ₁' ≡ τ₂'
+  --         ]
+  --       → do σ₃ :* τ₃ ←
+  --              hijack $
+  --              mapEnvL contextTypeL (\ γ → dict [x₁ ↦ τ₁',x₂ ↦ τ₂'] ⩌ γ) $
+  --              inferSens e₃
+  --            let (ς₁ :* σ₃') = ifNone (zero :* σ₃) $ dview x₁ σ₃
+  --                (ς₂ :* σ₃'') = ifNone (zero :* σ₃') $ dview x₂ σ₃'
+  --            tell $ ς₁ ⨵ σ₁
+  --            tell $ ς₂ ⨵ σ₂
+  --            tell $ ι (r₁ × r₂) ⨵ σ₃''
+  --            return $ 𝕄T ℓ₁ UClip (RexpRT r₁) (RexpME r₂ τ₃)
+  --     _ → error $ "Map2 error: " ⧺ (pprender $ (τ₁ :* τ₂))
+
   _ → error $ concat
         [ "inferSens unknown expression type: "
         , "\n"
         , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
         ]
-
-  e → error $ fromString $ show e
 
 isRealMExp ∷ MExp RNF → PM p 𝔹
 isRealMExp me = case me of

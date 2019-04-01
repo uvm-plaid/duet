@@ -1,0 +1,37 @@
+-- gradient descent
+-- output perturbation
+-- a la Wu et al.
+-- per-iteration bound
+let main = pλ m  : ℕ,
+              n  : ℕ,
+              ε  : ℝ⁺,
+              k  : ℕ,
+              δ  : ℝ⁺,
+              b  : ℕ
+              .
+              xs : 𝕄 [L∞, U|m, n⋅𝔻 ] ,
+              ys : 𝕄 [L∞, U|m, 1⋅𝔻 ] ,
+              ε  : ℝ⁺[ε],
+              k  : ℕ[k],
+              δ  : ℝ⁺[δ],
+              η  : ℝ,
+              b  : ℕ[b]
+              ⇒
+  let m₀ = mcreate[ L2 | ℕ[1] , cols xs ] { i , j ⇒ 0.0 } in
+  let c = box (mclip[L2] xs) in
+  let s = (real k) / real (rows xs) in
+  g ← mgauss[ s , ε , δ ] <xs,ys> {
+        let batches = chunks[b, unbox c, ys] in
+        mfold m₀, batches { θ, xs₁, ys₁ ⇒
+          let g = ∇[ LR | θ ; xs₁ , ys₁ ] in
+          mmap θ , mmap g { x ⇒ η ⋅ x } { x , y ⇒ x - y }
+        }
+      };
+  return g
+
+in return main
+
+-- Γ₁ ⊢ b ⦂ ℕ[b]
+-- Γ₂ ⊢ e ⦂ 𝕄 [ℓ, c|m, n⋅𝔻 ]
+-- -------------------------------------
+-- ⊢ chunks[b, e] ⦂ 𝕄 [L∞, U|⸤m/b⸥, 𝕄 [ℓ, c|b, n⋅𝔻 ] ]
