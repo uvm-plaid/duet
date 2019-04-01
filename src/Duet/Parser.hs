@@ -25,8 +25,8 @@ tokKeywords = list
   ,"real","bag","set","record", "unionAll"
   ,"countBag","filterBag","partitionDF","addColDF","mapDF","join₁","joinDF₁","parallel"
   ,"chunks","mfold"
-  ,"matrix","mcreate","mclip","clip","∇","mmap","bmap","idx","℘","𝐝","conv","disc","∈"
-  ,"aloop","loop","gauss","mgauss","bgauss","laplace","mlaplace"
+  ,"matrix","mcreate","mclip","clip","∇","U∇","mmap","bmap","idx","℘","𝐝","conv","disc","∈"
+  ,"aloop","loop","gauss","mgauss","bgauss","laplace","mlaplace","mconv"
   ,"rows","cols","exponential","rand-resp"
   ,"sample","rand-nat"
   ,"L1","L2","L∞","U"
@@ -460,6 +460,18 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
       parLit "]"
       return $ MLipGradSE g e₁ e₂ e₃
   , mixF $ MixFTerminal $ do
+      parLit "U∇"
+      parLit "["
+      g ← parGrad
+      parLit "|"
+      e₁ ← parSExp p
+      parLit ";"
+      e₂ ← parSExp p
+      parLit ","
+      e₃ ← parSExp p
+      parLit "]"
+      return $ MUnbGradSE g e₁ e₂ e₃
+  , mixF $ MixFTerminal $ do
       parLit "mmap"
       e₁ ← parSExp p
       e₂O ← pOptional $ do
@@ -603,6 +615,7 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
   , mixF $ MixFPrefix 10 $ const UnboxSE ^$ parLit "unbox"
   , mixF $ MixFPrefix 10 $ const ClipSE ^$ parLit "clip"
   , mixF $ MixFPrefix 10 $ const ConvSE ^$ parLit "conv"
+  , mixF $ MixFPrefix 10 $ const MConvertSE ^$ parLit "mconv"
   , mixF $ MixFPrefix 10 $ const DiscSE ^$ parLit "disc"
   ]
 
