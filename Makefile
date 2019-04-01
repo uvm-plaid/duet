@@ -14,7 +14,7 @@ ARGS := run examples/gd-pb-mini.ed.duet data_long/adpxs.csv data_long/adpys.csv 
 ARGS := lr-accuracy data_long/adpxs.csv data_long/adpys.csv out/model.csv
 ARGS := check examples/fw.ed.duet
 ARGS := check examples/gd-unbounded-pb.ed.duet
-ARGS := check examples/gd-pb.ed.duet
+ARGS := check examples/baby-map-s.ed.duet
 
 
 # run examples/gd-pb-mini.ed.duet data_short/fbxs.csv data_short/fbys.csv 0.05 100 0.0001 0.0001 1 50
