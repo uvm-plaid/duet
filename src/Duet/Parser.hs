@@ -571,8 +571,16 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
       x ← parVar
       parLit ":"
       τ ← parTypeSource p
+      xτs ← pMany $ do
+        parLit ","
+        x' ← parVar
+        parLit ":"
+        τ' ← parTypeSource p
+        return $ x' :* τ'
       parLit "⇒"
-      return $ \ e → SFunSE ακs x τ e
+      return $ \ e →
+        let ecxt = annotatedTag e
+        in SFunSE ακs x τ $ foldr e (\ (x' :* τ') e' → Annotated ecxt $ SFunSE Nil x' τ' e') xτs
   , mixF $ MixFTerminal $ do
       parLit "pλ"
       ακs ← pManySepBy (parLit ",") $ do
