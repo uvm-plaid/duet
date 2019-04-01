@@ -147,8 +147,14 @@ instance (Pretty r) ⇒ Pretty (Type r) where
       , ppPun "&"
       , ppBump $ pretty τ₂
       ]
-    τ₁ :⊸: (ς :* τ₂) → ppAtLevel 2 $ ppSeparated $ list
-      [ ppBump $ pretty τ₁
+    (ακs :* τ₁) :⊸: (ς :* τ₂) → ppAtLevel 2 $ ppSeparated $ list
+      [ concat
+        [ ppPun "∀"
+        , ppSpace 1
+        , ppAlign $ ppSeparated $ list $ inbetween (ppPun ",") $ mapOn ακs $ \ (α :* κ) →
+            ppBotLevel $ concat [ppAlign $ pretty α,ppPun ":",ppAlign $ pretty κ]
+        ]
+      , ppBump $ pretty τ₁
       , ppBotLevel $ concat [ppPun "⊸[",ppAlign $ pretty ς,ppPun "]"]
       , pretty τ₂
       ]
