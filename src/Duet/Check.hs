@@ -364,7 +364,7 @@ inferSens eA = case extract eA of
   LogSE e → do
     σ :* τ ← hijack $ inferSens e
     case τ of
-      ℝˢT η → do tell σ ; return $ ℝˢT $ rootRNF η
+      ℝˢT η → do tell σ ; return $ ℝˢT $ logRNF η
       ℝT → do tell $ top ⨵ σ ; return ℝT
       𝔻T ℝT → return $ 𝔻T ℝT
       _ → undefined -- TypeError
@@ -476,6 +476,26 @@ inferSens eA = case extract eA of
           ]
         → do tell $ ι (ι 1 / rₘ₂) ⨵ (σ₂ ⧺ σ₃)
              return $ 𝕄T ℓ UClip (RexpRT one) (RexpME r₁ ℝT)
+      _ → undefined -- TypeSource Error
+  MUnbGradSE _g e₁ e₂ e₃ → do
+    σ₁ :* τ₁ ← hijack $ inferSens e₁
+    tell $ top ⨵ σ₁
+    σ₂ :* τ₂ ← hijack $ inferSens e₂
+    σ₃ :* τ₃ ← hijack $ inferSens e₃
+    case (τ₁,τ₂,τ₃) of
+      -- _ → error "TODO"
+      (𝕄T _ℓ₁ _c₁ ( RexpRT rₘ₁ ) (RexpME r₁ τ₁'),𝕄T _ℓ₂ _c₂ ( RexpRT rₘ₂ ) (RexpME r₂ τ₂'),𝕄T _ℓ₃ _c₃ ( RexpRT rₘ₃ ) (RexpME r₃ τ₃'))
+        | meets
+          [ τ₁' ≡ ℝT
+          , τ₂' ≡ 𝔻T ℝT
+          , τ₃' ≡ 𝔻T ℝT
+          , rₘ₁ ≡ one
+          , r₃ ≡ one
+          , r₁ ≡ r₂
+          , rₘ₂ ≡ rₘ₃
+          ]
+        → do tell $ ι (ι 1 / rₘ₂) ⨵ (σ₂ ⧺ σ₃)
+             return $ 𝕄T LInf UClip (RexpRT one) (RexpME r₁ $ 𝔻T ℝT)
       _ → undefined -- TypeSource Error
   MMapSE e₁ x e₂ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
@@ -738,7 +758,68 @@ inferSens eA = case extract eA of
     σ :* τ ← hijack $ inferSens e
     tell $ map (Sens ∘ truncate (Quantity (NatRNF 1)) ∘ unSens) σ
     return $ 𝔻T τ
-  e → error $ fromString $ show e
+  LoopSE e₂ e₃ x₁ x₂ e₄ → do
+    τ₂ ← inferSens e₂
+    τ₃ ← inferSens e₃
+    σ₄ :* τ₄ ← hijack $ mapEnvL contextTypeL (\ γ → dict [x₁ ↦ ℕT,x₂ ↦ τ₃] ⩌ γ) $ inferSens e₄
+    let σ₄' = without (pow [x₁,x₂]) σ₄
+    case τ₂ of
+      ℕˢT ηₙ | τ₄ ≡ τ₃ → do
+        -- tell $ map (Sens ∘ truncate Inf ∘ unSens) σ₄ -- wrong - want to multiply by ηₙ
+        tell $ (Sens (Quantity ηₙ)) ⨵ σ₄'
+        return τ₃
+      _ → error $ concat
+            [ "Loop error: "
+            , (pprender $ (τ₂ :* τ₃ :* τ₄ :* σ₄))
+            , "\n"
+            , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
+            ]
+  ChunksSE e₁ e₂ e₃ → do
+    τ₁ ← inferSens e₁
+    τ₂ ← inferSens e₂
+    τ₃ ← inferSens e₃
+    case (τ₁, τ₂, τ₃) of
+      (ℕˢT ηb, 𝕄T ℓ₁ c₁ r₁₁ s₁, 𝕄T ℓ₂ c₂ r₁₂ s₂) | r₁₁ ≡ r₁₂ → do
+        let s = ConsME (𝕄T ℓ₁ c₁ (RexpRT ηb) s₁) (ConsME (𝕄T ℓ₂ c₂ (RexpRT ηb) s₂) EmptyME)
+        return $ 𝕄T LInf UClip (RexpRT ηb) s -- TODO: ηb is wrong here
+      _ → error $ concat
+            [ "Chunks error: "
+            , (pprender $ (τ₁ :* τ₂ :* τ₃))
+            , "\n"
+            , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
+            ]
+
+  MFoldSE e₁ e₂ x₁ x₂ x₃ e₃ → do
+    τ₁ ← inferSens e₁
+    τ₂ ← inferSens e₂
+    case τ₂ of
+      𝕄T LInf UClip (RexpRT r₁) s →
+        undefined
+      _ → error $ concat
+            [ "MFold error: "
+            , (pprender $ (τ₁ :* τ₂))
+            , "\n"
+            , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
+            ]
+    -- σ₄ :* τ₄ ← hijack $ mapEnvL contextTypeL (\ γ → dict [x₁ ↦ ℕT,x₂ ↦ τ₃] ⩌ γ) $ inferSens e₄
+    -- let σ₄' = without (pow [x₁,x₂]) σ₄
+    -- case τ₂ of
+    --   ℕˢT ηₙ | τ₄ ≡ τ₃ → do
+    --     -- tell $ map (Sens ∘ truncate Inf ∘ unSens) σ₄ -- wrong - want to multiply by ηₙ
+    --     tell $ (Sens (Quantity ηₙ)) ⨵ σ₄'
+    --     return τ₃
+    --   _ → error $ concat
+    --         [ "Loop error: "
+    --         , (pprender $ (τ₂ :* τ₃ :* τ₄ :* σ₄))
+    --         , "\n"
+    --         , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
+    --         ]
+
+  _ → error $ concat
+        [ "inferSens unknown expression type: "
+        , "\n"
+        , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
+        ]
 
 isRealMExp ∷ MExp RNF → PM p 𝔹
 isRealMExp me = case me of
@@ -934,12 +1015,21 @@ inferPriv eA = case extract eA of
           tell $ map (Priv ∘ truncate (Quantity $ EDPriv ηᵋ ηᵟ) ∘ unSens) σ₄Keep
           tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
           return $ 𝕄T LInf UClip ηₘ ηₙ
+      (ℝˢT ηₛ,ℝˢT ηᵋ,ℝˢT ηᵟ,𝕄T ℓ _c ηₘ ηₙ) | (ℓ ≢ LInf) →
+          error $ concat
+            [ "MGauss error: "
+            , "Claimed sensitivity bound (" ⧺ (pprender ηₛ) ⧺ ") is less than actual sensitivity bound (" ⧺ (pprender σ₄KeepMax) ⧺ ")\n"
+            , "Debug info: " 
+            , pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄ :* ιview @ RNF σ₄KeepMax)
+            , "\n"
+            , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
+            ]
       _ → error $ concat
-        [ "MGauss error: "
-        , pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄ :* ιview @ RNF σ₄KeepMax)
-        , "\n"
-        , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
-        ]
+            [ "MGauss error: "
+            , pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄ :* ιview @ RNF σ₄KeepMax)
+            , "\n"
+            , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
+            ]
   MGaussPE e₁ (ZCGaussParams e₂) xs e₄ → do
     let xs' = pow xs
     τ₁ ← pmFromSM $ inferSens e₁

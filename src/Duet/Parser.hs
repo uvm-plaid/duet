@@ -24,6 +24,7 @@ tokKeywords = list
   ,"LR","L2","U"
   ,"real","bag","set","record", "unionAll"
   ,"countBag","filterBag","partitionDF","addColDF","mapDF","join₁","joinDF₁","parallel"
+  ,"chunks","mfold"
   ,"matrix","mcreate","mclip","clip","∇","mmap","bmap","idx","℘","𝐝","conv","disc","∈"
   ,"aloop","loop","gauss","mgauss","bgauss","laplace","mlaplace"
   ,"rows","cols","exponential","rand-resp"
@@ -480,6 +481,21 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
         None → MMapSE e₁ x₁ e₃
         Some (e₂ :* x₂) → MMap2SE e₁ e₂ x₁ x₂ e₃
   , mixF $ MixFTerminal $ do
+      parLit "mfold"
+      e₁ ← parSExp p
+      parLit ","
+      e₂ ← parSExp p
+      parLit "{"
+      x₁ ← parVar
+      parLit ","
+      x₂ ← parVar
+      parLit ","
+      x₃ ← parVar
+      parLit "⇒"
+      e₃ ← parSExp p
+      parLit "}"
+      return $ MFoldSE e₁ e₂ x₁ x₂ x₃ e₃
+  , mixF $ MixFTerminal $ do
       parLit "bmap"
       e₁ ← parSExp p
       e₂O ← pOptional $ do
@@ -560,6 +576,29 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
        e₂ ← parSExp p
        parLit "⟩"
        return $ TupSE e₁ e₂
+  , mixF $ MixFTerminal $ do
+       parLit "loop"
+       e₂ ← parSExp p
+       parLit "on"
+       e₃ ← parSExp p
+       parLit "{"
+       x₁ ← parVar
+       parLit ","
+       x₂ ← parVar
+       parLit "⇒"
+       e₄ ← parSExp p
+       parLit "}"
+       return $ LoopSE e₂ e₃ x₁ x₂ e₄
+  , mixF $ MixFTerminal $ do
+       parLit "chunks"
+       parLit "["
+       e₁ ← parSExp p
+       parLit ","
+       e₂ ← parSExp p
+       parLit ","
+       e₃ ← parSExp p
+       parLit "]"
+       return $ ChunksSE e₁ e₂ e₃
   , mixF $ MixFPrefix 10 $ const BoxSE ^$ parLit "box"
   , mixF $ MixFPrefix 10 $ const UnboxSE ^$ parLit "unbox"
   , mixF $ MixFPrefix 10 $ const ClipSE ^$ parLit "clip"

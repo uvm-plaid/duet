@@ -1,0 +1,26 @@
+-- gradient descent
+-- unbounded gradient
+-- per-iteration bound
+let main = pλ m  : ℕ,
+              n  : ℕ,
+              ε  : ℝ⁺,
+              k  : ℕ,
+              δ  : ℝ⁺,
+              δ′ : ℝ⁺
+              .
+              xs : 𝕄 [L∞, U|m, n⋅𝔻 ] ,
+              ys : 𝕄 [L∞, U|m, 1⋅𝔻 ] ,
+              ε  : ℝ⁺[ε],
+              k  : ℕ[k],
+              δ  : ℝ⁺[δ],
+              δ′ : ℝ⁺[δ′],
+              η  : ℝ
+              ⇒
+  let m₀ = mcreate[ L∞ | ℕ[1] , cols xs ] { i , j ⇒ 0.0 } in
+  aloop[ δ′ ] k on m₀ <xs,ys> { a, θ ⇒
+    let s = ℝ⁺[1.0] / real (rows xs) in
+    g ← mgauss[ s , ε , δ ] <xs,ys> { conv (mclip[L2] U∇[ LR | θ ; xs , ys ]) } ;
+    return mmap θ , mmap g { x ⇒ η ⋅ x } { x , y ⇒ x - y }
+  }
+
+in return main

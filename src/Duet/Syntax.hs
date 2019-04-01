@@ -283,9 +283,11 @@ data SExp (p ∷ PRIV) where
   MClipSE ∷ Norm → SExpSource p → SExp p
   MConvertSE ∷ SExpSource p → SExp p
   MLipGradSE ∷ Grad → SExpSource p → SExpSource p → SExpSource p → SExp p
+  MUnbGradSE ∷ Grad → SExpSource p → SExpSource p → SExpSource p → SExp p
   -- | MUnbGradSE (SExpSource p) (SExpSource p) (SExpSource p)
   MMapSE ∷ SExpSource p → 𝕏  → SExpSource p → SExp p
   MMap2SE ∷ SExpSource p → SExpSource p → 𝕏 → 𝕏 → SExpSource p → SExp p
+  MFoldSE ∷ SExpSource p → SExpSource p → 𝕏 → 𝕏 → 𝕏 → SExpSource p → SExp p
   JoinSE ∷ SExpSource p → SExpSource p → SExpSource p → SExpSource p → SExp p
   -- CSVtoMatrixSE :: 𝐿 (𝐿 𝕊) → TypeSource RExp → SExp p
   BMapSE ∷ SExpSource p → 𝕏  → SExpSource p → SExp p
@@ -295,7 +297,7 @@ data SExp (p ∷ PRIV) where
   -- | MFoldRowSE (SExpSource p) (SExpSource p) 𝕏 𝕏 (SExpSource p)
   -- connectives
   -- | SLoopSE (SExpSource p) (SExpSource p) 𝕏 (SExpSource p)
-  -- | LoopSE (SExpSource p) (SExpSource p) 𝕏 (SExpSource p)
+  LoopSE ∷ SExpSource p → SExpSource p → 𝕏 → 𝕏 → SExpSource p → SExp p
   VarSE ∷ 𝕏 → SExp p
   LetSE ∷ 𝕏  → SExpSource p → SExpSource p → SExp p
   SFunSE ∷ 𝕏  → TypeSource RExp → SExpSource p → SExp p
@@ -317,6 +319,7 @@ data SExp (p ∷ PRIV) where
   ClipSE ∷ SExpSource p → SExp p
   ConvSE ∷ SExpSource p → SExp p
   DiscSE ∷ SExpSource p → SExp p
+  ChunksSE ∷ SExpSource p → SExpSource p → SExpSource p → SExp p
   deriving (Eq,Ord,Show)
 
 data GaussParams (p ∷ PRIV) where
