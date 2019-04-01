@@ -586,18 +586,19 @@ inferSens eA = case extract eA of
         tell σ₂'
         return τ₂
   SFunSE ακs x τ e → do
-    a ← checkType $ extract τ
-    when (not a) $ throw (error "kinding error in sfun" ∷ TypeError)
-    let τ' = map normalizeRExp $ extract τ
-    σ :* τ'' ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ') ⩌ γ) $ inferSens e
-    let (ς :* σ') = ifNone (zero :* σ) $ dview x σ
-    let fvs = freeBvs τ''
-    let isClosed = (fvs ∩ single𝑃 x) ≡ pø
-    case isClosed of
-      False → error $ "Lambda type/scoping error in return expression of type: " ⧺ (pprender τ'')
-      True → do
-        tell σ'
-        return $ (ακs :* τ') :⊸: (ς :* τ'')
+    mapEnvL contextKindL (\ δ → assoc ακs ⩌ δ) $ do
+      a ← checkType $ extract τ
+      when (not a) $ throw (error "kinding error in sfun" ∷ TypeError)
+      let τ' = map normalizeRExp $ extract τ
+      σ :* τ'' ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ') ⩌ γ) $ inferSens e
+      let (ς :* σ') = ifNone (zero :* σ) $ dview x σ
+      let fvs = freeBvs τ''
+      let isClosed = (fvs ∩ single𝑃 x) ≡ pø
+      case isClosed of
+        False → error $ "Lambda type/scoping error in return expression of type: " ⧺ (pprender τ'')
+        True → do
+          tell σ'
+          return $ (ακs :* τ') :⊸: (ς :* τ'')
   AppSE e₁ ηs e₂ → do
     τ₁ ← inferSens e₁
     σ₂ :* τ₂ ← hijack $ inferSens e₂
@@ -1029,7 +1030,7 @@ inferPriv eA = case extract eA of
           error $ concat
             [ "MGauss error: "
             , "Claimed sensitivity bound (" ⧺ (pprender ηₛ) ⧺ ") is less than actual sensitivity bound (" ⧺ (pprender σ₄KeepMax) ⧺ ")\n"
-            , "Debug info: " 
+            , "Debug info: "
             , pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄ :* ιview @ RNF σ₄KeepMax)
             , "\n"
             , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
@@ -1289,7 +1290,7 @@ substType 𝓈 x r' fv = \case
   -- | Type r :⊸: (Sens r ∧ Type r)
   -- | (𝐿 (𝕏 ∧ Kind) ∧ PArgs r) :⊸⋆: Type r
   -- | BoxedT (𝕏 ⇰ Sens r) (Type r)
-  
+
 
 -- infraRed :: PExp -> KEnv → TEnv -> (TypeSource RNF, PEnv)
 --
