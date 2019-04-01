@@ -1,0 +1,7 @@
+let f = 
+  pλ m : ℕ . m : ℕ[ m ] ⇒ 
+    return pλ n : ℕ . n : ℕ[ n ] ⇒
+      return (m + n)
+in pλ . x : ℕ ⇒
+  f' ← f@[1.ℕ[1]] ;
+  f'@[2.ℕ[2]]

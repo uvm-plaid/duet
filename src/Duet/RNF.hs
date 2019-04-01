@@ -391,6 +391,11 @@ fvRNF = \case
 
 -- Substitution --
 
+natExpRNF ∷ RNF → ℕ → RNF
+natExpRNF e n 
+  | n ≡ 0 = NatRNF 1
+  | otherwise = e `timesRNF` natExpRNF e (n - 1)
+
 substRAtom ∷ 𝕏 → RNF → RAtom → RNF
 substRAtom x r' = \case
   VarRA y → case x ≡ y of
@@ -410,7 +415,7 @@ substRSP x r' xs² =
     (xs :* m) ← list $ unRSP xs²
     return $ (NatRNF m `timesRNF`) $ fold (NatRNF 1) timesRNF $ do
       (a :* n) ← list xs
-      return $ substRAtom x r' a `expRNF` NatRNF n
+      return $ substRAtom x r' a `natExpRNF` n
 
 substRNF ∷ 𝕏 → RNF → RNF → RNF
 substRNF x r' = \case
@@ -418,6 +423,8 @@ substRNF x r' = \case
   NNRealRNF r → NNRealRNF r
   SymRNF xs⁴ → fold (NatRNF 0) maxRNF $ do
     xs³ ← list xs⁴
-    return $ fold (NNRealRNF (1.0/0.0)) minRNF $ do
-      xs² ← list xs³
-      return $ substRSP x r' xs²
+    case list xs³ of
+      Nil → return $ NNRealRNF (1.0/0.0)
+      xs² :& xs³' → return $ fold (substRSP x r' xs²) minRNF $ do
+        xs²' ← list xs³'
+        return $ substRSP x r' xs²'

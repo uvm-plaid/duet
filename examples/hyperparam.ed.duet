@@ -1,10 +1,9 @@
 -- hyperparameter tuning
-let mscale = sλ m : ℕ,
-                n : ℕ
-                .
-                s   : ℝ,
-                mat : 𝕄 [L∞, U|m, n⋅𝔻 ]
-                ⇒ 
+let mscale = sλ 
+              . s : ℝ ⇒
+             sλ m : ℕ 
+              , n : ℕ
+              . mat : 𝕄 [L∞, U|m, n⋅ℝ ] ⇒
    mmap mat { x ⇒ s ⋅ x }
 in
 
@@ -16,7 +15,9 @@ let msub = sλ m : ℕ,
               ⇒ 
    mmap m1, m2 { x , y ⇒ x - y }
 in
+msub
 
+{-
 let mzeros = sλ m : ℕ
                 n : ℕ
                 .
@@ -105,5 +106,5 @@ let main = pλ m  : ℕ,
   θ ← noisy_sgd@[m, n, o, k, ε, δ. xs, ys, k, ε, δ, η];
   return θ
 
-in return main
-
+in main
+-}

@@ -1,3 +1,5 @@
+{-# LANGUAGE PartialTypeSignatures #-}
+
 module Duet.Check where
 
 import Duet.UVMHS
@@ -599,13 +601,59 @@ inferSens eA = case extract eA of
         True → do
           tell σ'
           return $ (ακs :* τ') :⊸: (ς :* τ'')
+  -- AppPE e ηs as → do
+  --   let η's = map normalizeRExp ηs
+  --   τ ← pmFromSM $ inferSens e
+  --   ηκs ← pmFromSM $ mapM (inferKind ∘ extract) ηs
+  --   aστs ← pmFromSM $ mapM (hijack ∘ inferSens) as
+  --   let aσs = map fst aστs
+  --   let aτs = map snd aστs
+  --   case τ of
+  --     ((ακs :* PArgs (τps ∷ 𝐿 (_ ∧ Priv p' RNF))) :⊸⋆: τ₁) 
+  --       | (joins (values (joins aσs)) ⊑ ι 1)
+  --       ⩓ (count ηs ≡ count ακs)
+  --       ⩓ (count as ≡ count τps)
+  --       → case eqPRIV (priv @ p) (priv @ p') of
+  --           None → error "privacy variants dont match"
+  --           Some Refl → do
+  --             let fαs = map fst ακs
+  --                 fκs = map snd ακs
+  --                 αηs = zip fαs η's
+  --                 subT ∷ Type RNF → Type RNF
+  --                 subT τ' = fold τ' (\ (α :* η) τ'' → substType α η τ'') αηs
+  --                 subP ∷ Priv p' RNF → Priv p' RNF
+  --                 subP p = fold p (\ (α :* η) p' → map (substRNF α η) p') αηs
+  --                 τps' = mapOn τps $ \ (τ' :* p) → (subT τ' :* subP p)
+  --                 τs' = map fst τps'
+  --                 ps' = map snd τps'
+  --             case (ηκs ≡ fκs) ⩓ (aτs ≡ τs') of
+  --               True → do
+  --                 eachWith (zip aσs ps') $ \ (σ :* p) →
+  --                   tell $ map (Priv ∘ truncate (unPriv p) ∘ unSens) σ
+  --                 return τ₁
+  --               False → error $ "type error in AppPE" ⧺ show𝕊 (ηκs,fκs,aτs,τs')
+  --     _ → error $ "AppPE expected a function instead of" ⧺ pprender τ
   AppSE e₁ ηs e₂ → do
+    let η's = map normalizeRExp ηs
     τ₁ ← inferSens e₁
+    ηκs ← mapM (inferKind ∘ extract) ηs
     σ₂ :* τ₂ ← hijack $ inferSens e₂
     case τ₁ of
-      (ακs :* τ₁') :⊸: (ς :* τ₂') | τ₁' ≡ τ₂ → do
-        tell $ ς ⨵ σ₂
-        return τ₂'
+      (ακs :* τ₁₁) :⊸: (ς :* τ₁₂) → do
+        let fαs = map fst ακs
+            fκs = map snd ακs
+            αηs = zip fαs η's
+            subT ∷ Type RNF → Type RNF
+            subT τ' = fold τ' (\ (α :* η) τ'' → substType α η τ'') αηs
+            subS ∷ Sens RNF → Sens RNF
+            subS p = fold p (\ (α :* η) p' → map (substRNF α η) p') αηs
+            τ₁₁' = subT τ₁₁
+            ς' = subS ς
+        case (ηκs ≡ fκs) ⩓ (τ₂ ≡ τ₁₁') of
+          True → do
+            tell $ ς' ⨵ σ₂
+            return $ subT τ₁₂
+          False → error $ "AppSE Error" ⧺ show𝕊 (τ₂,τ₁₁')
       _ → error $ "Application error: " ⧺ (pprender $ (τ₁ :* τ₂)) -- TypeSource Error
   PFunSE ακs xτs e → do
     let xτs' = map (mapSnd (map normalizeRExp ∘ extract)) xτs
@@ -880,28 +928,46 @@ inferPriv eA = case extract eA of
     tell $ delete x σ₂
     return τ₂
   AppPE e ηs as → do
+    let η's = map normalizeRExp ηs
     τ ← pmFromSM $ inferSens e
-    ηks ← pmFromSM $ mapM (inferKind ∘ extract) ηs
+    ηκs ← pmFromSM $ mapM (inferKind ∘ extract) ηs
     aστs ← pmFromSM $ mapM (hijack ∘ inferSens) as
     let aσs = map fst aστs
     let aτs = map snd aστs
     case τ of
-      ((ακs :* xτs) :⊸⋆: τ₁) | joins (values (joins aσs)) ⊑ ι 1 → do
-        case xτs of
-          PArgs (xτs' :: 𝐿 (Type RNF ∧ Priv p' RNF)) → do
-            case eqPRIV (priv @ p) (priv @ p') of
-              None → error "privacy variants dont match"
-              Some Refl → do
-                let x' :: 𝐿 (Type RNF ∧ Priv p RNF) = xτs'
-                let τs = map fst x'
-                let x :: 𝐿 (Priv p RNF) = (map snd x')
-                let aps ∷ 𝐿 (𝕏 ⇰ Priv p RNF) = matchArgPrivs aσs x
-                let ks = map snd ακs
-                case (ηks ≡ ks, aτs ≡ τs) of
-                  (True,True) → do
-                    each tell aps
-                    return τ₁
-                  _ → error $ "AppPE argument kind/type error" ⧺ pprender (ηks :* ks, aτs :* τs)
+      ((ακs :* PArgs (τps ∷ 𝐿 (_ ∧ Priv p' RNF))) :⊸⋆: τ₁) 
+        | (joins (values (joins aσs)) ⊑ ι 1)
+        ⩓ (count ηs ≡ count ακs)
+        ⩓ (count as ≡ count τps)
+        → case eqPRIV (priv @ p) (priv @ p') of
+            None → error "privacy variants dont match"
+            Some Refl → do
+              let fαs = map fst ακs
+                  fκs = map snd ακs
+                  αηs = zip fαs η's
+                  subT ∷ Type RNF → Type RNF
+                  subT τ' = fold τ' (\ (α :* η) τ'' → substType α η τ'') αηs
+                  subP ∷ Priv p' RNF → Priv p' RNF
+                  subP p = fold p (\ (α :* η) p' → map (substRNF α η) p') αηs
+                  τps' = mapOn τps $ \ (τ' :* p) → (subT τ' :* subP p)
+                  τs' = map fst τps'
+                  ps' = map snd τps'
+              case (ηκs ≡ fκs) ⩓ (aτs ≡ τs') of
+                True → do
+                  eachWith (zip aσs ps') $ \ (σ :* p) →
+                    tell $ map (Priv ∘ truncate (unPriv p) ∘ unSens) σ
+                  return $ subT τ₁
+                False → error $ concat
+                  [ "type error in AppPE" 
+                  , concat $ inbetween "\n" 
+                      [ show𝕊 (ηκs ≡ fκs)
+                      , show𝕊 (aτs ≡ τs')
+                      , show𝕊 ηκs
+                      , show𝕊 fκs
+                      , show𝕊 aτs
+                      , show𝕊 τs'
+                      ]
+                  ]
       _ → error $ "AppPE expected a function instead of" ⧺ pprender τ
   IfPE e₁ e₂ e₃ → do
     τ₁ ← pmFromSM $ inferSens e₁
@@ -1269,8 +1335,19 @@ fac n = n × (fac (n - one))
 choose :: RNF → RNF → RNF
 choose n k = (fac n) / ((fac k) × (fac (n - k)))
 
-substType ∷ 𝑃 𝕏 → 𝕏 → RNF → 𝑃 𝕏 → Type RNF → Type RNF
-substType 𝓈 x r' fv = \case
+substType ∷ 𝕏 → RNF → Type RNF → Type RNF
+substType x r τ = substTypeR pø x r (fvRNF r) τ
+
+substMExpR ∷ 𝑃 𝕏 → 𝕏 → RNF → 𝑃 𝕏 → MExp RNF → MExp RNF
+substMExpR 𝓈 x r' fv = \case
+  EmptyME → EmptyME
+  VarME x' → VarME x'
+  ConsME τ me → ConsME (substTypeR 𝓈 x r' fv τ) (substMExpR 𝓈 x r' fv me)
+  AppendME me₁ me₂ → AppendME (substMExpR 𝓈 x r' fv me₁) (substMExpR 𝓈 x r' fv me₂)
+  RexpME r τ → RexpME (substRNF x (renameRNF (renaming 𝓈 fv) r') r) (substTypeR 𝓈 x r' fv τ)
+
+substTypeR ∷ 𝑃 𝕏 → 𝕏 → RNF → 𝑃 𝕏 → Type RNF → Type RNF
+substTypeR 𝓈 x r' fv = \case
   ℕˢT r → ℕˢT $ substRNF x (renameRNF (renaming 𝓈 fv) r') r
   ℝˢT r → ℝˢT $ substRNF x (renameRNF (renaming 𝓈 fv) r') r
   ℕT → ℕT
@@ -1278,19 +1355,23 @@ substType 𝓈 x r' fv = \case
   𝕀T r → 𝕀T $ substRNF x (renameRNF (renaming 𝓈 fv) r') r
   𝔹T → 𝔹T
   𝕊T → 𝕊T
-  BagT ℓ c τ → BagT ℓ c $ substType 𝓈 x r' fv τ
-  -- | BagT Norm Clip (Type r)
-  -- | SetT (Type r)
-  -- | RecordT (𝐿 (𝕊 ∧ Type r))
-  -- | 𝕄T Norm Clip (RowsT r) (MExp r)
-  -- | 𝔻T (Type r)
-  -- | Type r :+: Type r
-  -- | Type r :×: Type r
-  -- | Type r :&: Type r
-  -- | Type r :⊸: (Sens r ∧ Type r)
-  -- | (𝐿 (𝕏 ∧ Kind) ∧ PArgs r) :⊸⋆: Type r
-  -- | BoxedT (𝕏 ⇰ Sens r) (Type r)
-
+  SetT τ → SetT $ substTypeR 𝓈 x r' fv τ
+  𝕄T ℓ c rs me →
+    let rs' = case rs of
+          RexpRT r → RexpRT $ substRNF x (renameRNF (renaming 𝓈 fv) r') r
+          StarRT → StarRT
+    in 𝕄T ℓ c rs' $ substMExpR 𝓈 x r' fv me
+  𝔻T τ → 𝔻T $ substTypeR 𝓈 x r' fv τ
+  τ₁ :+: τ₂ → substTypeR 𝓈 x r' fv τ₁ :+: substTypeR 𝓈 x r' fv τ₂
+  τ₁ :×: τ₂ → substTypeR 𝓈 x r' fv τ₁ :×: substTypeR 𝓈 x r' fv τ₂
+  τ₁ :&: τ₂ → substTypeR 𝓈 x r' fv τ₁ :&: substTypeR 𝓈 x r' fv τ₂
+  (ακs :* τ₁) :⊸: (s :* τ₂) →
+    let 𝓈' = joins [𝓈,pow $ map fst ακs]
+    in (ακs :* substTypeR 𝓈' x r' fv τ₁) :⊸: (map (substRNF x (renameRNF (renaming 𝓈' fv) r')) s :* substTypeR 𝓈' x r' fv τ₂)
+  (ακs :* PArgs args) :⊸⋆: τ → 
+    let 𝓈' = joins [𝓈,pow $ map fst ακs]
+    in (ακs :* PArgs (mapOn args $ \ (τ' :* p) → substTypeR 𝓈' x r' fv τ' :* p)) :⊸⋆: substTypeR 𝓈' x r' fv τ
+  BoxedT γ τ → BoxedT (mapp (substRNF x (renameRNF (renaming 𝓈 fv) r')) γ) (substTypeR 𝓈 x r' fv τ)
 
 -- infraRed :: PExp -> KEnv → TEnv -> (TypeSource RNF, PEnv)
 --

@@ -27,7 +27,7 @@ let main = pλ m  : ℕ,
     return mmap θ , mmap g { x ⇒ η ⋅ x } { x , y ⇒ x - y }
   }
 -- in main
-in return main
+in main
 -- in return (pλ . 
 --               xs : 𝕄 [L∞, U|1000, 10⋅𝔻 ] ,
 --               ys : 𝕄 [L∞, U|1000, 10⋅𝔻 ] ,

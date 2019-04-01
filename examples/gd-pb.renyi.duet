@@ -22,4 +22,4 @@ let main = pλ m  : ℕ,
     g ← mgauss[ s , α, ε ] <xs,ys> { ∇[ LR | θ ; mclip[L2] xs, ys ] } ;
     return mmap θ , mmap g { x ⇒ η ⋅ x } { x , y ⇒ x - y }
   }
-in return main
+in main

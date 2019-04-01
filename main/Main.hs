@@ -93,9 +93,9 @@ main = do
       ts ← tokenizeIO tokDuet $ stream $ list $ tokens s
       do pprint $ ppHeader "PARSING" ; flushOut
       unpack_C (parseMode fn) $ \ mode → do
-        e ← parseIO (pSkip tokSkip $ pFinal $ parPExp mode) $ stream ts
+        e ← parseIO (pSkip tokSkip $ pFinal $ parSExp mode) $ stream ts
         do pprint $ ppHeader "TYPE CHECKING" ; flushOut
-        let r = runPM dø initEnv dø $ inferPriv e
+        let r = runSM dø initEnv dø $ inferSens e
         do pprint $ ppHeader "DONE" ; flushOut
         do pprint r ; flushOut
     "lr-accuracy":xsfn:ysfn:mdfn:[] → do
@@ -123,12 +123,12 @@ main = do
       ts ← tokenizeIO tokDuet $ stream $ list $ tokens s
       do pprint $ ppHeader "PARSING" ; flushOut
       unpack_C (parseMode fn) $ \ mode → do
-        e ← parseIO (pSkip tokSkip $ pFinal $ parPExp mode) $ stream ts
+        e ← parseIO (pSkip tokSkip $ pFinal $ parSExp mode) $ stream ts
         do pprint $ ppHeader "TYPE CHECKING" ; flushOut
-        let τ = runPM dø initEnv dø $ inferPriv e
+        let τ = runSM dø initEnv dø $ inferSens e
         do pprint τ ; flushOut
         do pprint $ ppHeader "RUNNING" ; flushOut
-        r ← peval dø (extract e)
+        let r = seval dø (extract e)
         do pprint r ; flushOut
         fnargs ← drop 2 args
         case τ of

@@ -3,7 +3,6 @@ let main = pλ ε : ℝ⁺
               m : 𝕄 [L∞ , U | ★ , 𝐝 ℕ ∷ [] ],
               ε : ℝ⁺[ε]
               ⇒
-
   let query01 = pλ ε : ℝ⁺
               .
               m : 𝕄 [L∞ , U | ★ , 𝐝 ℕ ∷ [] ],
@@ -12,5 +11,4 @@ let main = pλ ε : ℝ⁺
     laplace[ℝ⁺[1.0], ε] <m> { real (rows m) }
   in
   query01@[ε . m, ε]
-
-in return main
+in main
