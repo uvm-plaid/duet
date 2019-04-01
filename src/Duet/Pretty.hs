@@ -154,6 +154,7 @@ instance (Pretty r) ⇒ Pretty (Type r) where
         , ppAlign $ ppSeparated $ list $ inbetween (ppPun ",") $ mapOn ακs $ \ (α :* κ) →
             ppBotLevel $ concat [ppAlign $ pretty α,ppPun ":",ppAlign $ pretty κ]
         ]
+      , ppPun "."
       , ppBump $ pretty τ₁
       , ppBotLevel $ concat [ppPun "⊸[",ppAlign $ pretty ς,ppPun "]"]
       , pretty τ₂
