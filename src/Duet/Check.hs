@@ -571,7 +571,12 @@ inferSens eA = case extract eA of
   VarSE x → do
     γ ← askL contextTypeL
     case γ ⋕? x of
-      None → error $ fromString (show x) -- TypeSource Error
+      None → error $ concat
+            [ "Variable lookup error: failed to find " ⧺ (pprender x) ⧺ " in the environment:\n"
+            , pprender γ
+            , "\n"
+            , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
+            ]
       Some τ → do
         tell (x ↦ ι 1)
         return τ
