@@ -25,8 +25,9 @@ let main = pλ m  : ℕ,
   g ← mgauss[ s , ε , δ ] <xs,ys> {
         loop k on m₀ { a, θ ⇒
           let batches = chunks[b, unbox c, ys] in
-          mfold θ, batches { θ, xs₁, ys₁ ⇒
-            let g = ∇[ LR | θ ; xs₁ , ys₁ ] in
+          mfold-row θ, batches { θ, p ⇒
+            let ⟨xs, ys⟩ = p#[ℕ[0],ℕ[0]] in
+            let g = ∇[ LR | θ ; xs , ys ] in
             mmap θ , mmap g { x ⇒ η ⋅ x } { x , y ⇒ x - y }
           }
         }

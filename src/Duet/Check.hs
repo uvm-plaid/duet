@@ -578,7 +578,7 @@ inferSens eA = case extract eA of
             , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
             ]
       Some τ → do
-        tell (x ↦ ι 1)
+        tell (x ↦ ι 1.0)
         return τ
   LetSE x e₁ e₂ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
@@ -722,24 +722,6 @@ inferSens eA = case extract eA of
     case τ of
       ℕˢT η → do tell σ ; return $ 𝕀T η
       _ → undefined -- TypeError
-  BagCountSE e → do
-    τ ← inferSens e
-    case τ of
-      (BagT _ℓ _c _τ) → return ℕT
-      _ → error $ "BagCountSE error: " ⧺ (pprender τ)
-  -- TODO: not sure about this case..
-  BagFilterSE e₁ x e₂ → do
-    σ₁ :* τ₁ ← hijack $ inferSens e₁
-    case τ₁ of
-      BagT _ℓ _c τ₁' → do
-        σ₂ :* τ₂ ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ₁') ⩌ γ) $ inferSens e₂
-        let (ς :* σ₂') = ifNone (zero :* σ₂) $ dview x σ₂
-        tell $ ς ⨵ σ₁
-        tell $ σ₂' -- TODO: scale to ∞
-        case τ₂ of
-          𝔹T → return τ₁
-          _  → error $ "BagFilter error: " ⧺ (pprender (τ₁, τ₂))
-      _  → error $ "BagFilter error: " ⧺ (pprender τ₁)
   RecordColSE a₁ e → do
     τ ← inferSens e
     case τ of
@@ -828,14 +810,32 @@ inferSens eA = case extract eA of
             , "\n"
             , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
             ]
+
+  MZipSE e₁ e₂ → do
+    τ₁ ← inferSens e₁
+    τ₂ ← inferSens e₂
+    case (τ₁, τ₂) of
+      (𝕄T ℓ₁ c₁ r₁ s₁, 𝕄T ℓ₂ c₂ r₂ s₂) | r₁ ≡ r₂ → do
+        let m₁ = 𝕄T ℓ₁ c₁ (RexpRT one) s₁
+            m₂ = 𝕄T ℓ₂ c₂ (RexpRT one) s₂
+        return $ 𝕄T LInf UClip r₁ $ ConsME (m₁ :×: m₂) EmptyME
+      _ → error $ concat
+            [ "Zip error: "
+            , (pprender $ (τ₁ :* τ₂))
+            , "\n"
+            , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
+            ]
+                                               
   ChunksSE e₁ e₂ e₃ → do
     τ₁ ← inferSens e₁
     τ₂ ← inferSens e₂
     τ₃ ← inferSens e₃
     case (τ₁, τ₂, τ₃) of
       (ℕˢT ηb, 𝕄T ℓ₁ c₁ r₁₁ s₁, 𝕄T ℓ₂ c₂ r₁₂ s₂) | r₁₁ ≡ r₁₂ → do
-        let s = ConsME (𝕄T ℓ₁ c₁ (RexpRT ηb) s₁) (ConsME (𝕄T ℓ₂ c₂ (RexpRT ηb) s₂) EmptyME)
-        return $ 𝕄T LInf UClip (RexpRT ηb) s -- TODO: ηb is wrong here
+        let mt₁ = 𝕄T ℓ₁ c₁ (RexpRT ηb) s₁
+            mt₂ = 𝕄T ℓ₂ c₂ (RexpRT ηb) s₂
+            s   = ConsME (mt₁ :×: mt₂) EmptyME
+        return $ 𝕄T LInf UClip (RexpRT ηb) s -- TODO: ηb is wrong here, but doesn't affect sens.
       _ → error $ concat
             [ "Chunks error: "
             , (pprender $ (τ₁ :* τ₂ :* τ₃))
@@ -843,20 +843,37 @@ inferSens eA = case extract eA of
             , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
             ]
 
+  MFilterSE e₁ x e₂ → do
+    σ₁ :* τ₁ ← hijack $ inferSens e₁
+    case τ₁ of
+      𝕄T ℓ c r s → do
+        let m = 𝕄T ℓ c (RexpRT one) s
+        σ₂ :* τ₂ ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ m) ⩌ γ) $ inferSens e₂
+        let (ς :* σ₂') = ifNone (zero :* σ₂) $ dview x σ₂
+        tell $ ς ⨵ σ₁
+        tell $ map (Sens ∘ truncate Inf ∘ unSens) σ₂'
+        case τ₂ of
+          𝔹T → return $ 𝕄T ℓ c StarRT s
+          _  → error $ "MFilter error: " ⧺ (pprender (τ₁, τ₂))
+      _ → error $ concat
+            [ "MFilter error: "
+            , (pprender $ (τ₁))
+            , "\n"
+            , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
+            ]
 
---𝕄 [L∞,U|b,(𝕄 [L∞,L2|b,(n ⋅ 𝔻 )] ∷ 𝕄 [L∞,U|b,(1 ⋅ 𝔻 )] ∷ [])]
-
-  MFoldSE e₁ e₂ x₁ x₂ x₃ e₃ → do
+  MFoldSE e₁ e₂ x₁ x₂ e₃ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
     σ₂ :* τ₂ ← hijack $ inferSens e₂
     case τ₂ of
-      𝕄T LInf UClip (RexpRT r₁) (ConsME τ₃ (ConsME τ₄ EmptyME)) → do
-        σ₃ :* τ₃ ← hijack $ mapEnvL contextTypeL (\ γ → dict [x₁ ↦ τ₁,x₂ ↦ τ₃,x₃ ↦ τ₄] ⩌ γ) $
+      𝕄T LInf UClip (RexpRT r₁) s → do
+        let τᵢ = 𝕄T LInf UClip (RexpRT one) s
+        σ₃ :* τ₃ ← hijack $ mapEnvL contextTypeL (\ γ → dict [x₁ ↦ τ₁,x₂ ↦ τᵢ] ⩌ γ) $
                      inferSens e₃
-        let (ς₁ :* σ₃')  = ifNone (zero :* σ₃)  $ dview x₂ σ₃
-            (ς₂ :* σ₃'') = ifNone (zero :* σ₃') $ dview x₃ σ₃'
+        let (_ :* σ₃')  = ifNone (zero :* σ₃)  $ dview x₁ σ₃
+            (ς₂ :* σ₃'') = ifNone (zero :* σ₃') $ dview x₂ σ₃'
         tell $ map (Sens ∘ truncate Inf ∘ unSens) σ₁
-        tell $ (ς₁ ⊔ ς₂) ⨵ σ₂
+        tell $ ς₂ ⨵ σ₂
         tell $ ι r₁ ⨵ σ₃''
         return τ₃
       _ → error $ concat
@@ -865,19 +882,6 @@ inferSens eA = case extract eA of
             , "\n"
             , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
             ]
-    -- σ₄ :* τ₄ ← hijack $ mapEnvL contextTypeL (\ γ → dict [x₁ ↦ ℕT,x₂ ↦ τ₃] ⩌ γ) $ inferSens e₄
-    -- let σ₄' = without (pow [x₁,x₂]) σ₄
-    -- case τ₂ of
-    --   ℕˢT ηₙ | τ₄ ≡ τ₃ → do
-    --     -- tell $ map (Sens ∘ truncate Inf ∘ unSens) σ₄ -- wrong - want to multiply by ηₙ
-    --     tell $ (Sens (Quantity ηₙ)) ⨵ σ₄'
-    --     return τ₃
-    --   _ → error $ concat
-    --         [ "Loop error: "
-    --         , (pprender $ (τ₂ :* τ₃ :* τ₄ :* σ₄))
-    --         , "\n"
-    --         , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
-    --         ]
 
   _ → error $ concat
         [ "inferSens unknown expression type: "
@@ -1093,7 +1097,7 @@ inferPriv eA = case extract eA of
         ⩓ (ℓ ≢ LInf)
         → do
           b ← isRealMExp ηₙ
-          when (not b) $ throw (error "MGauss error isRealMExp check failed" ∷ TypeError)
+          when (not b) $ error $ "MGauss error isRealMExp check failed " ⧺ (pprender τ₄)
           tell $ map (Priv ∘ truncate (Quantity $ EDPriv ηᵋ ηᵟ) ∘ unSens) σ₄Keep
           tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
           return $ 𝕄T LInf UClip ηₘ ηₙ
@@ -1103,6 +1107,7 @@ inferPriv eA = case extract eA of
             , "Claimed sensitivity bound (" ⧺ (pprender ηₛ) ⧺ ") is less than actual sensitivity bound (" ⧺ (pprender σ₄KeepMax) ⧺ ")\n"
             , "Debug info: "
             , pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄ :* ιview @ RNF σ₄KeepMax)
+            , pprender σ₄
             , "\n"
             , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
             ]

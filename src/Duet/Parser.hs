@@ -23,8 +23,8 @@ tokKeywords = list
   ,"ℕ","ℝ","ℝ⁺","𝔻","𝕀","𝕄","𝔻𝔽","𝔹","𝕊","★","∷","⋅","[]","⧺"
   ,"LR","L2","U"
   ,"real","bag","set","record", "unionAll"
-  ,"countBag","filterBag","partitionDF","addColDF","mapDF","join₁","joinDF₁","parallel"
-  ,"chunks","mfold"
+  ,"partitionDF","addColDF","mapDF","join₁","joinDF₁","parallel"
+  ,"chunks","mfold-row","mfilter","zip"
   ,"matrix","mcreate","mclip","clip","∇","U∇","mmap","bmap","idx","℘","𝐝","conv","disc","∈"
   ,"aloop","loop","gauss","mgauss","bgauss","laplace","mlaplace","mconv"
   ,"rows","cols","exponential","rand-resp"
@@ -345,21 +345,20 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
   , mixF $ MixFInfixL 2 $ const MemberSE ^$ parLit "∈"
   , mixF $ MixFInfixL 1 $ const AndSE ^$ parLit "∧"
   , mixF $ MixFInfixL 1 $ const OrSE ^$ parLit "∨"
-  , mixF $ MixFPrefix 10 $ const BagCountSE ^$ parLit "countBag"
   , mixF $ MixFPostfix 10 $ do
       parLit "⧼"
       a ← parName
       parLit "⧽"
       return $ RecordColSE a
   , mixF $ MixFTerminal $ do
-      parLit "filterBag"
+      parLit "mfilter"
       e₁ ← parSExp p
       parLit "{"
       x ← parVar
       parLit "⇒"
       e₂ ← parSExp p
       parLit "}"
-      return $ BagFilterSE e₁ x e₂
+      return $ MFilterSE e₁ x e₂
   , mixF $ MixFTerminal $ do
       parLit "mapDF"
       e₁ ← parSExp p
@@ -501,7 +500,7 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
         None → MMapSE e₁ x₁ e₃
         Some (e₂ :* x₂) → MMap2SE e₁ e₂ x₁ x₂ e₃
   , mixF $ MixFTerminal $ do
-      parLit "mfold"
+      parLit "mfold-row"
       e₁ ← parSExp p
       parLit ","
       e₂ ← parSExp p
@@ -509,12 +508,10 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
       x₁ ← parVar
       parLit ","
       x₂ ← parVar
-      parLit ","
-      x₃ ← parVar
       parLit "⇒"
       e₃ ← parSExp p
       parLit "}"
-      return $ MFoldSE e₁ e₂ x₁ x₂ x₃ e₃
+      return $ MFoldSE e₁ e₂ x₁ x₂ e₃
   , mixF $ MixFTerminal $ do
       parLit "bmap"
       e₁ ← parSExp p
@@ -632,6 +629,14 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
        e₃ ← parSExp p
        parLit "]"
        return $ ChunksSE e₁ e₂ e₃
+  , mixF $ MixFTerminal $ do
+       parLit "zip"
+       parLit "["
+       e₁ ← parSExp p
+       parLit ","
+       e₂ ← parSExp p
+       parLit "]"
+       return $ MZipSE e₁ e₂
   , mixF $ MixFPrefix 10 $ const BoxSE ^$ parLit "box"
   , mixF $ MixFPrefix 10 $ const UnboxSE ^$ parLit "unbox"
   , mixF $ MixFPrefix 10 $ const ClipSE ^$ parLit "clip"

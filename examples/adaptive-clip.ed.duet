@@ -1,0 +1,21 @@
+let main = pλ m  : ℕ,
+              n  : ℕ,
+              ε  : ℝ⁺,
+              k  : ℕ
+              .
+              xs : 𝕄 [L∞, U|m, n⋅𝔻 ] ,
+              ε  : ℝ⁺[ε],
+              k  : ℕ[k],
+              bs : 𝕄 [L1, U|1, k⋅𝔻 ]
+              ⇒
+  mgauss[ℝ⁺[2.0] ⋅ real k, ε, ℝ⁺[0.001]] <xs> {
+    mmap bs { b ⇒
+      let scaled   = mmap xs { x ⇒ b ⋅ x } in
+      let clipped  = mmap (mclip[L2] scaled) { x ⇒ x } in
+      let filtered = mfilter zip[clipped, xs] { row  ⇒ 
+                       let ⟨clipped, orig⟩ = row#[ℕ[0], ℕ[0]] in
+                       clipped ≡ orig } in
+      real (rows filtered)
+    }
+  }
+in return main

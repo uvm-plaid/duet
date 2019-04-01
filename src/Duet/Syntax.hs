@@ -267,8 +267,6 @@ data SExp (p ∷ PRIV) where
   OrSE ∷ SExpSource p → SExpSource p → SExp p
   -- dataframe operations
   RecordColSE ∷ 𝕊 → SExpSource p → SExp p
-  BagCountSE ∷ SExpSource p → SExp p
-  BagFilterSE ∷ SExpSource p → 𝕏 → SExpSource p → SExp p
   DFPartitionSE ∷ SExpSource p → 𝕊 → SExpSource p → SExp p
   DFMapSE ∷ SExpSource p → 𝕏  → SExpSource p → SExp p
   DFAddColSE ∷ 𝕊 → SExpSource p → SExp p
@@ -277,6 +275,8 @@ data SExp (p ∷ PRIV) where
   MCreateSE ∷ Norm  → SExpSource p → SExpSource p → 𝕏 → 𝕏 → SExpSource p → SExp p
   MIndexSE ∷ SExpSource p → SExpSource p → SExpSource p → SExp p
   MUpdateSE ∷ SExpSource p → SExpSource p → SExpSource p → SExpSource p → SExp p
+  MFilterSE ∷ SExpSource p → 𝕏 → SExpSource p → SExp p
+  MZipSE ∷ SExpSource p → SExpSource p → SExp p
   MRowsSE ∷ SExpSource p → SExp p
   MColsSE ∷ SExpSource p → SExp p
   IdxSE ∷ SExpSource p → SExp p
@@ -287,7 +287,7 @@ data SExp (p ∷ PRIV) where
   -- | MUnbGradSE (SExpSource p) (SExpSource p) (SExpSource p)
   MMapSE ∷ SExpSource p → 𝕏  → SExpSource p → SExp p
   MMap2SE ∷ SExpSource p → SExpSource p → 𝕏 → 𝕏 → SExpSource p → SExp p
-  MFoldSE ∷ SExpSource p → SExpSource p → 𝕏 → 𝕏 → 𝕏 → SExpSource p → SExp p
+  MFoldSE ∷ SExpSource p → SExpSource p → 𝕏 → 𝕏 → SExpSource p → SExp p
   JoinSE ∷ SExpSource p → SExpSource p → SExpSource p → SExpSource p → SExp p
   -- CSVtoMatrixSE :: 𝐿 (𝐿 𝕊) → TypeSource RExp → SExp p
   BMapSE ∷ SExpSource p → 𝕏  → SExpSource p → SExp p
