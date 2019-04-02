@@ -901,7 +901,8 @@ inferSens eA = case extract eA of
         case τ₂ of
           𝕄T ℓ₂ c₂ (RexpRT ηₘ₂) (RexpME one τ₂') → 
             return $ 𝕄T ℓ₂ c₂ (RexpRT ηₘ₂) (RexpME r τ₂')
-          _ → undefined
+          _ → return $ 𝕄T LInf UClip (RexpRT one) (RexpME r τ₂)
+--          _ → error $ pprender τ₂
       _  → undefined -- TypeSource Error
 
 

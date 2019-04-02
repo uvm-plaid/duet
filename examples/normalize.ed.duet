@@ -1,4 +1,4 @@
-let query = sλ .
+let testClippingParam = sλ .
                b: 𝔻
                ⇒
                sλ m  : ℕ,
@@ -42,8 +42,21 @@ let colMeans = sλ m : ℕ, n : ℕ
                   mat : 𝕄 [L∞, U|m, n⋅𝔻 ],
                   b   : 𝔻
                   ⇒
-  mmap-col mat { col ⇒ clippedMeanCol@[m.col] b }
+  mmap-col mat { col ⇒ clippedMeanCol@[m] col b }
 in
+
+-- let pColMeans = pλ m  : ℕ,
+--                    n  : ℕ,
+--                    ε  : ℝ⁺,
+--                    δ  : ℝ⁺
+--                    .
+--                    xs : 𝕄 [L∞, U|m, n⋅𝔻 ] ,
+--                    ε  : ℝ⁺[ε],
+--                    δ  : ℝ⁺[δ],
+--                    b  : 𝔻
+--                    ⇒
+--   mgauss [(real (cols xs)) / (real (rows xs)), ε, δ] <xs> { colMeans@[m,n] xs b }
+-- in
 
 let clippedMean = pλ m  : ℕ,
                      n  : ℕ,
@@ -59,7 +72,7 @@ let clippedMean = pλ m  : ℕ,
   -- mfold-col (mconv (scaleClip@[m, n . xs] b))
   --   { col ⇒ mfold-row 0 col { a, r ⇒ a + r#[0,0] } / (rows xs) }
   -- but picking the scaling parameter for each column separately
-  mgauss [ℝ⁺[1.0], ε, δ] <xs> { mconv (scaleClip@[m, n . xs] b) }
+  mgauss [ℝ⁺[1.0], ε, δ] <xs> { mconv (scaleClip@[m, n] xs b) }
 in
 
 
@@ -75,7 +88,7 @@ let main = pλ m  : ℕ,
               bs : 𝕄 [L1, U|1, k⋅𝔻 ]
               ⇒
   let target = 0.9 ⋅ real (rows xs) in
-  let fs = mmap bs { b ⇒ query b } in
+  let fs = mmap bs { b ⇒ testClippingParam b } in
   bIDX ← AboveThreshold [ ε, fs, target ] <xs> { xs };
   mean ← clippedMean@[m, n, ε, δ . xs, ε, δ, bs#[idx ℕ[0], bIDX]];
   return ⟨bIDX, mean⟩
