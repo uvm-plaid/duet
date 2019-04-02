@@ -255,6 +255,7 @@ data SExp (p ∷ PRIV) where
   MinSE ∷ SExpSource p → SExpSource p → SExp p
   PlusSE ∷ SExpSource p → SExpSource p → SExp p
   TimesSE ∷ SExpSource p → SExpSource p → SExp p
+  MTimesSE ∷ SExpSource p → SExpSource p → SExp p
   DivSE ∷ SExpSource p → SExpSource p → SExp p
   RootSE ∷ SExpSource p → SExp p
   LogSE ∷ SExpSource p → SExp p
@@ -279,6 +280,7 @@ data SExp (p ∷ PRIV) where
   MZipSE ∷ SExpSource p → SExpSource p → SExp p
   MRowsSE ∷ SExpSource p → SExp p
   MColsSE ∷ SExpSource p → SExp p
+  MTransposeSE ∷ SExpSource p → SExp p
   IdxSE ∷ SExpSource p → SExp p
   MClipSE ∷ Norm → SExpSource p → SExp p
   MConvertSE ∷ SExpSource p → SExp p

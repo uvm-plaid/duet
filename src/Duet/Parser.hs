@@ -26,7 +26,7 @@ tokKeywords = list
   ,"partitionDF","addColDF","mapDF","join₁","joinDF₁","parallel"
   ,"chunks","mfold-row","mfilter","zip"
   ,"matrix","mcreate","mclip","clip","∇","U∇","mmap","bmap","idx","℘","𝐝","conv","disc","∈"
-  ,"aloop","loop","gauss","mgauss","bgauss","laplace","mlaplace","mconv"
+  ,"aloop","loop","gauss","mgauss","bgauss","laplace","mlaplace","mconv","×","tr"
   ,"rows","cols","exponential","rand-resp"
   ,"sample","rand-nat"
   ,"L1","L2","L∞","U"
@@ -335,6 +335,7 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
   , mixF $ MixFInfixL 4 $ const MinSE ^$ parLit "⊓"
   , mixF $ MixFInfixL 5 $ const PlusSE ^$ parLit "+"
   , mixF $ MixFInfixL 6 $ const TimesSE ^$ parLit "⋅"
+  , mixF $ MixFInfixL 6 $ const MTimesSE ^$ parLit "×"
   , mixF $ MixFInfixL 7 $ const DivSE ^$ parLit "/"
   , mixF $ MixFPrefix 8 $ const RootSE ^$ parLit "√"
   , mixF $ MixFPrefix 8 $ const LogSE ^$ parLit "㏒"
@@ -447,6 +448,7 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
         Some e₄ → \ e₁ → MUpdateSE e₁ e₂ e₃ e₄
   , mixF $ MixFPrefix 10 $ const MRowsSE ^$ parLit "rows"
   , mixF $ MixFPrefix 10 $ const MColsSE ^$ parLit "cols"
+  , mixF $ MixFPrefix 10 $ const MTransposeSE ^$ parLit "tr"
   , mixF $ MixFPrefix 10 $ const IdxSE ^$ parLit "idx"
   , mixF $ MixFPrefix 10 $ do
       parLit "mclip"
@@ -553,13 +555,15 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
              return $ \ e₂ → UntupSE x y e₁ e₂
         ]
   , mixF $ MixFInfixL 10 $ const (\ e₁ e₂ → AppSE e₁ Nil e₂) ^$ parSpace
-  , mixF $ MixFInfixL 10 $ do
+  , mixF $ MixFTerminal $ do
+       e₁ ← parSExp p
        parLit "@"
        parLit "["
        ks ← pManySepBy (parLit ",") $ parRExp
+       parLit "."
+       e₂ ← parSExp p
        parLit "]"
-       parSpace
-       return $ \ e₁ e₂ → AppSE e₁ ks e₂
+       return $ AppSE e₁ ks e₂
   , mixF $ MixFPrefix 1 $ do
       parLit "sλ"
       ακs ← pManySepBy (parLit ",") $ do

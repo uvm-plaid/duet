@@ -509,6 +509,20 @@ inferSens eA = case extract eA of
         tell $ ι (ηₘ × r) ⨵ σ₂'
         return $ 𝕄T ℓ UClip (RexpRT ηₘ) (RexpME r τ₂)
       _  → undefined -- TypeSource Error
+  MTimesSE e₁ e₂ → do
+    τ₁ ← inferSens e₁
+    τ₂ ← inferSens e₂
+    case (τ₁,τ₂) of
+      (𝕄T ℓ c (RexpRT η₁) (RexpME r₁ τ₁'),𝕄T _ _ (RexpRT η₂) (RexpME r₂ τ₂'))
+        | (τ₁' ≡ τ₂') ⩓ (r₁ ≡ η₂) → do
+          return $ 𝕄T ℓ c (RexpRT η₁) (RexpME r₂ τ₁')
+      _  → error $ "matrix multiplication error"
+  MTransposeSE e₁ → do
+    τ₁ ← inferSens e₁
+    case τ₁ of
+      𝕄T ℓ c (RexpRT η₁) (RexpME r₁ τ₁') → do
+        return $ 𝕄T ℓ c (RexpRT r₁) (RexpME η₁ τ₁')
+      _  → error $ "matrix transpose error"
   JoinSE e₁ e₂ e₃ e₄ → do
     τ₁ ← inferSens e₁
     τ₂ ← inferSens e₂
@@ -614,7 +628,7 @@ inferSens eA = case extract eA of
   --   let aσs = map fst aστs
   --   let aτs = map snd aστs
   --   case τ of
-  --     ((ακs :* PArgs (τps ∷ 𝐿 (_ ∧ Priv p' RNF))) :⊸⋆: τ₁) 
+  --     ((ακs :* PArgs (τps ∷ 𝐿 (_ ∧ Priv p' RNF))) :⊸⋆: τ₁)
   --       | (joins (values (joins aσs)) ⊑ ι 1)
   --       ⩓ (count ηs ≡ count ακs)
   --       ⩓ (count as ≡ count τps)
@@ -825,7 +839,7 @@ inferSens eA = case extract eA of
             , "\n"
             , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
             ]
-                                               
+
   ChunksSE e₁ e₂ e₃ → do
     τ₁ ← inferSens e₁
     τ₂ ← inferSens e₂
@@ -944,7 +958,7 @@ inferPriv eA = case extract eA of
     let aσs = map fst aστs
     let aτs = map snd aστs
     case τ of
-      ((ακs :* PArgs (τps ∷ 𝐿 (_ ∧ Priv p' RNF))) :⊸⋆: τ₁) 
+      ((ακs :* PArgs (τps ∷ 𝐿 (_ ∧ Priv p' RNF))) :⊸⋆: τ₁)
         | (joins (values (joins aσs)) ⊑ ι 1)
         ⩓ (count ηs ≡ count ακs)
         ⩓ (count as ≡ count τps)
@@ -967,8 +981,8 @@ inferPriv eA = case extract eA of
                     tell $ map (Priv ∘ truncate (unPriv p) ∘ unSens) σ
                   return $ subT τ₁
                 False → error $ concat
-                  [ "type error in AppPE" 
-                  , concat $ inbetween "\n" 
+                  [ "type error in AppPE"
+                  , concat $ inbetween "\n"
                       [ show𝕊 (ηκs ≡ fκs)
                       , show𝕊 (aτs ≡ τs')
                       , show𝕊 ηκs
@@ -1378,7 +1392,7 @@ substTypeR 𝓈 x r' fv = \case
   (ακs :* τ₁) :⊸: (s :* τ₂) →
     let 𝓈' = joins [𝓈,pow $ map fst ακs]
     in (ακs :* substTypeR 𝓈' x r' fv τ₁) :⊸: (map (substRNF x (renameRNF (renaming 𝓈' fv) r')) s :* substTypeR 𝓈' x r' fv τ₂)
-  (ακs :* PArgs args) :⊸⋆: τ → 
+  (ακs :* PArgs args) :⊸⋆: τ →
     let 𝓈' = joins [𝓈,pow $ map fst ακs]
     in (ακs :* PArgs (mapOn args $ \ (τ' :* p) → substTypeR 𝓈' x r' fv τ' :* p)) :⊸⋆: substTypeR 𝓈' x r' fv τ
   BoxedT γ τ → BoxedT (mapp (substRNF x (renameRNF (renaming 𝓈 fv) r')) γ) (substTypeR 𝓈 x r' fv τ)

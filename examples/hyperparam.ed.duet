@@ -1,9 +1,10 @@
 -- hyperparameter tuning
-let mscale = sλ 
-              . s : ℝ ⇒
-             sλ m : ℕ 
-              , n : ℕ
-              . mat : 𝕄 [L∞, U|m, n⋅ℝ ] ⇒
+let mscale = sλ m : ℕ,
+                n : ℕ
+                .
+                s   : ℝ,
+                mat : 𝕄 [L∞, U|m, n⋅𝔻 ]
+                ⇒
    mmap mat { x ⇒ s ⋅ x }
 in
 
@@ -12,13 +13,11 @@ let msub = sλ m : ℕ,
               .
               m1 : 𝕄 [L∞, U|m, n⋅𝔻 ],
               m2 : 𝕄 [L∞, U|m, n⋅𝔻 ]
-              ⇒ 
+              ⇒
    mmap m1, m2 { x , y ⇒ x - y }
 in
-msub
 
-{-
-let mzeros = sλ m : ℕ
+let mzeros = sλ m : ℕ,
                 n : ℕ
                 .
                 nr : ℕ[m],
@@ -28,14 +27,14 @@ let mzeros = sλ m : ℕ
 in
 
 let predict = sλ m : ℕ, n : ℕ .
-                 xs : 𝕄 [L∞, U|m, n⋅𝔻], 
+                 xs : 𝕄 [L∞, U|m, n⋅𝔻],
                  θ : 𝕄 [L∞, U|1, n⋅𝔻]
                  ⇒
   mmap (xs × (tr θ)) { x ⇒ sign x }
 in
 
 let correct = sλ m : ℕ, n : ℕ .
-                 xs : 𝕄 [L∞, U|m, n⋅𝔻], 
+                 xs : 𝕄 [L∞, U|m, n⋅𝔻],
                  ys : 𝕄 [L∞, U|m, 1⋅𝔻 ],
                  θ : 𝕄 [L∞, U|1, n⋅𝔻]
                  ⇒
@@ -47,7 +46,7 @@ let noisy_sgd = pλ m  : ℕ,
                    o  : ℕ,
                    k  : ℕ,
                    ε  : ℝ⁺,
-                   δ  : ℝ⁺,
+                   δ  : ℝ⁺
                    .
                    xs : 𝕄 [L∞, U|m, n⋅𝔻 ] ,
                    ys : 𝕄 [L∞, U|m, 1⋅𝔻 ] ,
@@ -56,7 +55,7 @@ let noisy_sgd = pλ m  : ℕ,
                    δ  : ℝ⁺[δ],
                    η  : ℝ
                    ⇒
-  let m₀ = mzeros@[ℕT[1], n. ℕ[1], cols xs] in
+  let m₀ = mzeros@[1, n. ℕ[1], cols xs] in
   let c = box (mclip[L2] xs) in
   aloop[ δ′ ] k on m₀ <xs,ys> { a, θ ⇒
     let s = ℝ⁺[1.0] / real (rows xs) in
@@ -84,7 +83,7 @@ let pick_η = pλ m  : ℕ,
     correct@[m, n. xs, ys, θ]
   };
   return η
-  
+
 in
 
 
@@ -107,4 +106,3 @@ let main = pλ m  : ℕ,
   return θ
 
 in main
--}
