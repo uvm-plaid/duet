@@ -25,6 +25,26 @@ let scaleClip = sλ m  : ℕ,
   clipped
 in
 
+let clippedMeanCol = sλ m   : ℕ
+                        .
+                        mat : 𝕄 [L∞, U|m, 1⋅𝔻 ],
+                        b   : 𝔻
+                        ⇒
+  let scaled   = mmap mat { x ⇒ b ⋅ x } in
+  let clipped  = mconv (mclip[L1] scaled) in
+  let sum      = mfold-row 0.0, clipped { a, r ⇒
+                   a + r#[idx ℕ[0], idx ℕ[0]] } in
+  sum / (real (rows mat))
+in
+
+let colMeans = sλ m : ℕ, n : ℕ
+                  .
+                  mat : 𝕄 [L∞, U|m, n⋅𝔻 ],
+                  b   : 𝔻
+                  ⇒
+  mmap-col mat { col ⇒ clippedMeanCol@[m.col] b }
+in
+
 let clippedMean = pλ m  : ℕ,
                      n  : ℕ,
                      ε  : ℝ⁺,
@@ -59,4 +79,4 @@ let main = pλ m  : ℕ,
   bIDX ← AboveThreshold [ ε, fs, target ] <xs> { xs };
   mean ← clippedMean@[m, n, ε, δ . xs, ε, δ, bs#[idx ℕ[0], bIDX]];
   return ⟨bIDX, mean⟩
-in main
+in colMeans

@@ -312,7 +312,13 @@ inferSens eA = case extract eA of
       (ℕT,ℕT) → return ℕT
       (ℝT,ℝT) → return ℝT
       (𝔻T ℝT,𝔻T ℝT) → return $ 𝔻T ℝT
-      _ → undefined -- TypeError
+      _ → error $ concat
+            [ "Plus error: "
+            , pprender $ (τ₁ :* τ₂)
+            , "\n"
+            , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
+            ]
+
   TimesSE e₁ e₂ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
     σ₂ :* τ₂ ← hijack $ inferSens e₂
@@ -883,12 +889,28 @@ inferSens eA = case extract eA of
             , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
             ]
 
+  MMapColSE e₁ x e₂ → do
+    σ₁ :* τ₁ ← hijack $ inferSens e₁
+    case τ₁ of
+      𝕄T ℓ c (RexpRT ηₘ) (RexpME r τ₁') → do
+        let m = 𝕄T ℓ c (RexpRT ηₘ) (RexpME one τ₁')
+        σ₂ :* τ₂ ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ m) ⩌ γ) $ inferSens e₂
+        let (ς :* σ₂') = ifNone (zero :* σ₂) $ dview x σ₂
+        tell $ (r × ς) ⨵ σ₁
+        tell $ ι (ηₘ × r) ⨵ σ₂'
+        case τ₂ of
+          𝕄T ℓ₂ c₂ (RexpRT ηₘ₂) (RexpME one τ₂') → 
+            return $ 𝕄T ℓ₂ c₂ (RexpRT ηₘ₂) (RexpME r τ₂')
+          _ → undefined
+      _  → undefined -- TypeSource Error
+
+
   MFoldSE e₁ e₂ x₁ x₂ e₃ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
     σ₂ :* τ₂ ← hijack $ inferSens e₂
     case τ₂ of
-      𝕄T LInf UClip (RexpRT r₁) s → do
-        let τᵢ = 𝕄T LInf UClip (RexpRT one) s
+      𝕄T ℓ c (RexpRT r₁) s → do
+        let τᵢ = 𝕄T ℓ c (RexpRT one) s
         σ₃ :* τ₃ ← hijack $ mapEnvL contextTypeL (\ γ → dict [x₁ ↦ τ₁,x₂ ↦ τᵢ] ⩌ γ) $
                      inferSens e₃
         let (_ :* σ₃')  = ifNone (zero :* σ₃)  $ dview x₁ σ₃

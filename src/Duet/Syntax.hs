@@ -288,6 +288,7 @@ data SExp (p ∷ PRIV) where
   MUnbGradSE ∷ Grad → SExpSource p → SExpSource p → SExpSource p → SExp p
   -- | MUnbGradSE (SExpSource p) (SExpSource p) (SExpSource p)
   MMapSE ∷ SExpSource p → 𝕏  → SExpSource p → SExp p
+  MMapColSE ∷ SExpSource p → 𝕏  → SExpSource p → SExp p
   MMap2SE ∷ SExpSource p → SExpSource p → 𝕏 → 𝕏 → SExpSource p → SExp p
   MFoldSE ∷ SExpSource p → SExpSource p → 𝕏 → 𝕏 → SExpSource p → SExp p
   JoinSE ∷ SExpSource p → SExpSource p → SExpSource p → SExpSource p → SExp p
