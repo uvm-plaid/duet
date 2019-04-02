@@ -1097,16 +1097,17 @@ inferPriv eA = case extract eA of
           _ → error $ "℘ expected in second argument of ParallelPE" ⧺ (pprender τ₁)
       _ → error $ "𝕄T type expected in first argument of ParallelPE" ⧺ (pprender τ₀)
 
-  SVTPE (EDSVTParams e₂) xs e₃ e₄ → do
+  SVTPE (EDSVTParams e₁) e₂ e₃ xs e₄ → do
     let xs' = pow xs
+    τ₁ ← pmFromSM $ inferSens e₁
     τ₂ ← pmFromSM $ inferSens e₂
     τ₃ ← pmFromSM $ inferSens e₃
     σ₄ :* τ₄ ← pmFromSM $ hijack $ inferSens e₄
     let σ₄Keep = restrict xs' σ₄
         σ₄KeepMax = joins $ values σ₄Keep
         σ₄Toss = without xs' σ₄
-    case (τ₂, τ₃, τ₄) of
-      (ℝˢT ηᵋ, 𝕄T L1 UClip (RexpRT l) (RexpME r₂ ((αs :* τ₅) :⊸: (ηₛ :* ℝT))), τ₅')
+    case (τ₁, τ₂, τ₃, τ₄) of
+      (ℝˢT ηᵋ, ℝT, 𝕄T L1 UClip (RexpRT l) (RexpME r₂ ((αs :* τ₅) :⊸: (ηₛ :* ℝT))), τ₅')
         | (τ₅ ≡ τ₅')
         ⩓ (l ≡ one)
 --        ⩓ (ηₛ ≡ Sens (Quantity one)) -- TODO: why doesn't this one pass?

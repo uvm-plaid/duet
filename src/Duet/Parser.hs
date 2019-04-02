@@ -948,15 +948,19 @@ parPExp p = pWithContext "pexp" $ tries
       ED_W → do
         parLit "SVT"
         parLit "["
+        e₁ ← parSExp p
+        parLit ","
         e₂ ← parSExp p
+        parLit ","
+        e₃ ← parSExp p
         parLit "]"
         parLit "<"
         xs ← pManySepBy (parLit ",") parVar
         parLit ">"
-        e₃ ← parSExp p
-        parLit "on"
+        parLit "{"
         e₄ ← parSExp p
-        return $ SVTPE (EDSVTParams e₂) xs e₃ e₄
+        parLit "}"
+        return $ SVTPE (EDSVTParams e₁) e₂ e₃ xs e₄
       _ → abort
   , case p of
       ED_W → do
