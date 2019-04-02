@@ -1,0 +1,72 @@
+let query = sλ .
+               b: 𝔻
+               ⇒
+               sλ m  : ℕ,
+                  n  : ℕ
+                  .
+                  xs : 𝕄 [L∞, U|m, n⋅𝔻 ]
+                  ⇒
+  let scaled   = mmap xs { x ⇒ b ⋅ x } in
+  let clipped  = mmap (mclip[L2] scaled) { x ⇒ x } in
+  let filtered = mfilter zip[clipped, xs] { row  ⇒ 
+                   let ⟨clipped, orig⟩ = row#[ℕ[0], ℕ[0]] in
+                   clipped ≡ orig } in
+  ℝ⁺[0.5] ⋅ real (rows filtered)
+in
+  
+
+let pick = pλ m  : ℕ,
+              n  : ℕ,
+              ε  : ℝ⁺,
+              k  : ℕ
+              .
+              xs : 𝕄 [L∞, U|m, n⋅𝔻 ] ,
+              ε  : ℝ⁺[ε],
+              bs : 𝕄 [L1, U|1, k⋅𝔻 ]
+              ⇒
+  let target = 0.9 ⋅ real (rows xs) in
+  let fs = mmap bs { b ⇒ query b } in
+  AboveThreshold [ ε, fs, target ] <xs> { xs }
+in
+
+let prep = sλ m  : ℕ,
+              n  : ℕ
+              .
+              xs : 𝕄 [L∞, U|m, n⋅𝔻 ],
+              b: 𝔻
+              ⇒
+  let scaled   = mmap xs { x ⇒ b ⋅ x } in
+  let clipped  = mclip[L2] scaled in
+  clipped
+in
+
+let main = pλ m  : ℕ,
+              n  : ℕ,
+              ε  : ℝ⁺,
+              k  : ℕ,
+              δ  : ℝ⁺,
+              ρ  : ℝ⁺,
+              k  : ℕ
+              .
+              xs : 𝕄 [L∞, U|m, n⋅𝔻 ] ,
+              ys : 𝕄 [L∞, U|m, 1⋅𝔻 ] ,
+              ε  : ℝ⁺[ε],
+              k  : ℕ[k],
+              δ  : ℝ⁺[δ],
+              ρ  : ℝ⁺[ρ],
+              η  : ℝ,
+              bs : 𝕄 [L1, U|1, k⋅𝔻 ]
+              ⇒
+  let m₀ = mcreate[ L∞ | ℕ[1] , cols xs ] { i , j ⇒ 0.0 } in
+  b ← pick@[m, n, ε, k. xs, ε, bs];
+  let c = box (prep@[m,n] xs (bs#[idx ℕ[0], b])) in
+  ZCDP[ δ ] {
+    loop k on m₀ <xs,ys> { a, θ ⇒
+      let s = ℝ⁺[1.0] / real (rows xs) in
+      g ← mgauss[ s , ρ ] <xs,ys> { ∇[ LR | θ ; unbox c , ys ] } ;
+      return mmap θ , mmap g { x ⇒ η ⋅ x } { x , y ⇒ x - y }
+    }
+  }
+
+in main
+
