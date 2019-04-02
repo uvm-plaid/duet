@@ -34,7 +34,7 @@ let main = pλ m  : ℕ,
       };
   return g
 
-in return main
+in main
 
 -- Γ₁ ⊢ b ⦂ ℕ[b]
 -- Γ₂ ⊢ e ⦂ 𝕄 [ℓ, c|m, n⋅𝔻 ]
