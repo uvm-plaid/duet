@@ -24,7 +24,7 @@ tokKeywords = list
   ,"LR","L2","U"
   ,"real","bag","set","record", "unionAll"
   ,"partitionDF","addColDF","mapDF","join₁","joinDF₁","parallel"
-  ,"chunks","mfold-row","mfilter","zip"
+  ,"chunks","mfold-row","mfilter","zip","SVT"
   ,"matrix","mcreate","mclip","clip","∇","U∇","mmap","bmap","idx","℘","𝐝","conv","disc","∈"
   ,"aloop","loop","gauss","mgauss","bgauss","laplace","mlaplace","mconv","×","tr"
   ,"rows","cols","exponential","rand-resp"
@@ -943,6 +943,20 @@ parPExp p = pWithContext "pexp" $ tries
         e₄ ← parSExp p
         parLit "}"
         return $ ExponentialPE e₁ (EDExponentialParams e₂) e₃ xs x e₄
+      _ → abort
+  , case p of
+      ED_W → do
+        parLit "SVT"
+        parLit "["
+        e₂ ← parSExp p
+        parLit "]"
+        parLit "<"
+        xs ← pManySepBy (parLit ",") parVar
+        parLit ">"
+        e₃ ← parSExp p
+        parLit "on"
+        e₄ ← parSExp p
+        return $ SVTPE (EDSVTParams e₂) xs e₃ e₄
       _ → abort
   , case p of
       ED_W → do

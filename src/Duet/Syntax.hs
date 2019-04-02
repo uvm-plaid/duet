@@ -345,6 +345,12 @@ deriving instance Eq (ExponentialParams p)
 deriving instance Ord (ExponentialParams p)
 deriving instance Show (ExponentialParams p)
 
+data SVTParams (p ∷ PRIV) where
+  EDSVTParams ∷ SExpSource 'ED → SVTParams 'ED
+deriving instance Eq (SVTParams p)
+deriving instance Ord (SVTParams p)
+deriving instance Show (SVTParams p)
+
 type PExpSource (p ∷ PRIV) = Annotated FullContext (PExp p)
 data PExp (p ∷ PRIV) where
   ReturnPE ∷ SExpSource p → PExp p
@@ -360,6 +366,7 @@ data PExp (p ∷ PRIV) where
   LaplacePE ∷ SExpSource p → LaplaceParams p → 𝐿 𝕏 → SExpSource p → PExp p
   MLaplacePE ∷ SExpSource p → LaplaceParams p → 𝐿 𝕏 → SExpSource p → PExp p
   ExponentialPE ∷ SExpSource p → ExponentialParams p → SExpSource p → 𝐿 𝕏 → 𝕏  → SExpSource p → PExp p
+  SVTPE ∷ SVTParams p → 𝐿 𝕏 → SExpSource p → SExpSource p → PExp p
   RRespPE ∷ SExpSource p → SExpSource p → 𝐿 𝕏 → SExpSource p → PExp p
   EDSamplePE ∷ SExpSource 'ED → SExpSource 'ED → SExpSource 'ED → 𝕏 → 𝕏 → PExpSource 'ED → PExp 'ED
   RenyiSamplePE ∷ SExpSource 'RENYI → SExpSource 'RENYI → SExpSource 'RENYI → 𝕏 → 𝕏 → PExpSource 'RENYI → PExp 'RENYI

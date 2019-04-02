@@ -1096,6 +1096,27 @@ inferPriv eA = case extract eA of
               _ → error $ "sensitivity error in ParallelPE"
           _ → error $ "℘ expected in second argument of ParallelPE" ⧺ (pprender τ₁)
       _ → error $ "𝕄T type expected in first argument of ParallelPE" ⧺ (pprender τ₀)
+
+  SVTPE (EDSVTParams e₂) xs e₃ e₄ → do
+    let xs' = pow xs
+    τ₂ ← pmFromSM $ inferSens e₂
+    τ₃ ← pmFromSM $ inferSens e₃
+    σ₄ :* τ₄ ← pmFromSM $ hijack $ inferSens e₄
+    let σ₄Keep = restrict xs' σ₄
+        σ₄KeepMax = joins $ values σ₄Keep
+        σ₄Toss = without xs' σ₄
+    case (τ₂, τ₃, τ₄) of
+      (ℝˢT ηᵋ, 𝕄T L1 UClip (RexpRT l) (RexpME r₂ ((αs :* τ₅) :⊸: (ηₛ :* ℝT))), τ₅')
+        | (τ₅ ≡ τ₅')
+        ⩓ (l ≡ one)
+--        ⩓ (ηₛ ≡ Sens (Quantity one)) -- TODO: why doesn't this one pass?
+        → do
+          tell $ map (Priv ∘ truncate (Quantity $ EDPriv ηᵋ zero) ∘ unSens) σ₄Keep
+          tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
+          return $ 𝕀T r₂
+      _ → error $ "svtpe error: " ⧺ (pprender (τ₃ :* τ₄))
+      
+
   MGaussPE e₁ (EDGaussParams e₂ e₃) xs e₄ → do
     let xs' = pow xs
     τ₁ ← pmFromSM $ inferSens e₁
@@ -1337,7 +1358,13 @@ inferPriv eA = case extract eA of
               _ → error $ "type error in RenyiSamplePE." ⧺ (pprender (σxs',σys'))
       _ → error "type error in RenyiSamplePE"
 
-  e → error $ fromString $ show e
+  _ → error $ concat
+        [ "inferPriv unknown expression type: "
+        , "\n"
+        , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
+        ]
+
+--  e → error $ fromString $ show e
 
 renyiϵ' ∷ RNF → RNF → RNF → RNF → RNF
 -- TODO
