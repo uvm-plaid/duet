@@ -459,6 +459,7 @@ inferSens eA = case extract eA of
     τ ← inferSens e
     case τ of
       𝕄T ℓ' _c ηₘ (RexpME r τ') | τ' ≡ (𝔻T ℝT) → return $ 𝕄T ℓ' (NormClip ℓ) ηₘ (RexpME r τ')
+      𝕄T ℓ' _c ηₘ (RexpME r τ') | τ' ≡ (ℝT) → return $ 𝕄T ℓ' (NormClip ℓ) ηₘ (RexpME r (𝔻T ℝT))
       _ → undefined -- TypeSource Error
   MConvertSE e → do
     τ ← inferSens e
@@ -484,7 +485,7 @@ inferSens eA = case extract eA of
           ]
         → do tell $ ι (ι 1 / rₘ₂) ⨵ (σ₂ ⧺ σ₃)
              return $ 𝕄T ℓ UClip (RexpRT one) (RexpME r₁ ℝT)
-      _ → undefined -- TypeSource Error
+      _ → error $ "Lipschitz grad error: " ⧺ (pprender (τ₁ :* τ₂ :* τ₃))
   MUnbGradSE _g e₁ e₂ e₃ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
     tell $ top ⨵ σ₁
