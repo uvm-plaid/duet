@@ -525,10 +525,11 @@ inferSens eA = case extract eA of
           return $ 𝕄T ℓ c (RexpRT η₁) (RexpME r₂ τ₁')
       _  → error $ "matrix multiplication error"
   MTransposeSE e₁ → do
-    τ₁ ← inferSens e₁
+    σ₁ :* τ₁ ← hijack $ inferSens e₁
     case τ₁ of
-      𝕄T ℓ c (RexpRT η₁) (RexpME r₁ τ₁') → do
-        return $ 𝕄T ℓ c (RexpRT r₁) (RexpME η₁ τ₁')
+      𝕄T ℓ _c (RexpRT η₁) (RexpME r₁ τ₁') → do
+        tell $ ι η₁ ⨵ σ₁
+        return $ 𝕄T ℓ UClip (RexpRT r₁) (RexpME η₁ τ₁')
       _  → error $ "matrix transpose error"
   JoinSE e₁ e₂ e₃ e₄ → do
     τ₁ ← inferSens e₁
