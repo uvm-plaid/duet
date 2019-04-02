@@ -1107,7 +1107,7 @@ inferPriv eA = case extract eA of
         σ₄KeepMax = joins $ values σ₄Keep
         σ₄Toss = without xs' σ₄
     case (τ₁, τ₂, τ₃, τ₄) of
-      (ℝˢT ηᵋ, ℝT, 𝕄T L1 UClip (RexpRT l) (RexpME r₂ ((αs :* τ₅) :⊸: (ηₛ :* ℝT))), τ₅')
+      (ℝˢT ηᵋ, 𝕄T L1 UClip (RexpRT l) (RexpME r₂ ((αs :* τ₅) :⊸: (ηₛ :* ℝT))), ℝT, τ₅')
         | (τ₅ ≡ τ₅')
         ⩓ (l ≡ one)
 --        ⩓ (ηₛ ≡ Sens (Quantity one)) -- TODO: why doesn't this one pass?
@@ -1115,7 +1115,21 @@ inferPriv eA = case extract eA of
           tell $ map (Priv ∘ truncate (Quantity $ EDPriv ηᵋ zero) ∘ unSens) σ₄Keep
           tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
           return $ 𝕀T r₂
-      _ → error $ "svtpe error: " ⧺ (pprender (τ₃ :* τ₄))
+      _ → error $ concat
+            [ "Sparse Vector Technique error: "
+            , "\n"
+            , "τ₁: " ⧺ (pprender τ₁)
+            , "\n"
+            , "τ₂: " ⧺ (pprender τ₂)
+            , "\n"
+            , "τ₃: " ⧺ (pprender τ₃)
+            , "\n"
+            , "τ₄: " ⧺ (pprender τ₄)
+            , "\n"
+            , "Sensitivity bound: " ⧺ (pprender $ ιview @ RNF σ₄KeepMax)
+            , "\n"
+            , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
+            ]
       
 
   MGaussPE e₁ (EDGaussParams e₂ e₃) xs e₄ → do
