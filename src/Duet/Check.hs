@@ -672,7 +672,14 @@ inferSens eA = case extract eA of
           True → do
             tell $ ς' ⨵ σ₂
             return $ subT τ₁₂
-          False → error $ "AppSE Error" ⧺ show𝕊 (τ₂,τ₁₁')
+          False → error $ concat
+            [ "AppSE error: "
+            , pprender (τ₂ :* τ₁₁')
+            , "\n"
+            , pprender (ηκs :* fκs)
+            , "\n"
+            , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
+            ]
       _ → error $ "Application error: " ⧺ (pprender $ (τ₁ :* τ₂)) -- TypeSource Error
   PFunSE ακs xτs e → do
     let xτs' = map (mapSnd (map normalizeRExp ∘ extract)) xτs

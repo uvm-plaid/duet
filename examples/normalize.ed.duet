@@ -1,0 +1,62 @@
+let query = sλ .
+               b: 𝔻
+               ⇒
+               sλ m  : ℕ,
+                  n  : ℕ
+                  .
+                  xs : 𝕄 [L∞, U|m, n⋅𝔻 ]
+                  ⇒
+  let scaled   = mmap xs { x ⇒ b ⋅ x } in
+  let clipped  = mmap (mclip[L2] scaled) { x ⇒ x } in
+  let filtered = mfilter zip[clipped, xs] { row  ⇒ 
+                   let ⟨clipped, orig⟩ = row#[ℕ[0], ℕ[0]] in
+                   clipped ≡ orig } in
+  ℝ⁺[0.5] ⋅ real (rows filtered)
+in
+
+let scaleClip = sλ m  : ℕ,
+                   n  : ℕ
+                   .
+                   xs : 𝕄 [L∞, U|m, n⋅𝔻 ],
+                   b  : 𝔻
+                   ⇒
+  let scaled   = mmap xs { x ⇒ b ⋅ x } in
+  let clipped  = mclip[L2] scaled in
+  clipped
+in
+
+let clippedMean = pλ m  : ℕ,
+                     n  : ℕ,
+                     ε  : ℝ⁺,
+                     δ  : ℝ⁺
+                     .
+                     xs : 𝕄 [L∞, U|m, n⋅𝔻 ] ,
+                     ε  : ℝ⁺[ε],
+                     δ  : ℝ⁺[δ],
+                     b  : 𝔻
+                     ⇒
+  -- TODO: this should instead do something like:
+  -- mfold-col (mconv (scaleClip@[m, n . xs] b))
+  --   { col ⇒ mfold-row 0 col { a, r ⇒ a + r#[0,0] } / (rows xs) }
+  -- but picking the scaling parameter for each column separately
+  mgauss [ℝ⁺[1.0], ε, δ] <xs> { mconv (scaleClip@[m, n . xs] b) }
+in
+
+
+let main = pλ m  : ℕ,
+              n  : ℕ,
+              ε  : ℝ⁺,
+              δ  : ℝ⁺,
+              k  : ℕ
+              .
+              xs : 𝕄 [L∞, U|m, n⋅𝔻 ] ,
+              ε  : ℝ⁺[ε],
+              δ  : ℝ⁺[δ],
+              bs : 𝕄 [L1, U|1, k⋅𝔻 ]
+              ⇒
+  let target = 0.9 ⋅ real (rows xs) in
+  let fs = mmap bs { b ⇒ query b } in
+  bIDX ← AboveThreshold [ ε, fs, target ] <xs> { xs };
+  mean ← clippedMean@[m, n, ε, δ . xs, ε, δ, bs#[idx ℕ[0], bIDX]];
+  return ⟨bIDX, mean⟩
+in main
