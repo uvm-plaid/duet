@@ -26,5 +26,5 @@ let main = pλ m  : ℕ,
               ⇒
   let target = 0.9 ⋅ real (rows xs) in
   let fs = mmap bs { b ⇒ query b } in
-  SVT [ ε, fs, target ] <xs> { xs }
+  AboveThreshold [ ε, fs, target ] <xs> { xs }
 in main

@@ -24,7 +24,7 @@ tokKeywords = list
   ,"LR","L2","U"
   ,"real","bag","set","record", "unionAll"
   ,"partitionDF","addColDF","mapDF","join₁","joinDF₁","parallel"
-  ,"chunks","mfold-row","mfilter","zip","SVT"
+  ,"chunks","mfold-row","mfilter","zip","AboveThreshold"
   ,"matrix","mcreate","mclip","clip","∇","U∇","mmap","bmap","idx","℘","𝐝","conv","disc","∈"
   ,"aloop","loop","gauss","mgauss","bgauss","laplace","mlaplace","mconv","×","tr"
   ,"rows","cols","exponential","rand-resp"
@@ -946,7 +946,7 @@ parPExp p = pWithContext "pexp" $ tries
       _ → abort
   , case p of
       ED_W → do
-        parLit "SVT"
+        parLit "AboveThreshold"
         parLit "["
         e₁ ← parSExp p
         parLit ","
