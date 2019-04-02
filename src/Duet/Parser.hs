@@ -555,15 +555,15 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
              return $ \ e₂ → UntupSE x y e₁ e₂
         ]
   , mixF $ MixFInfixL 10 $ const (\ e₁ e₂ → AppSE e₁ Nil e₂) ^$ parSpace
-  , mixF $ MixFTerminal $ do
-       e₁ ← parSExp p
+  -- TODO: @davidar is this change ok?
+  , mixF $ MixFPostfix 10 $ do
        parLit "@"
        parLit "["
        ks ← pManySepBy (parLit ",") $ parRExp
        parLit "."
        e₂ ← parSExp p
        parLit "]"
-       return $ AppSE e₁ ks e₂
+       return $ \ e₁ → AppSE e₁ ks e₂
   , mixF $ MixFPrefix 1 $ do
       parLit "sλ"
       ακs ← pManySepBy (parLit ",") $ do
