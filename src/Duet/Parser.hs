@@ -31,7 +31,7 @@ tokKeywords = list
   ,"sample","rand-nat"
   ,"L1","L2","L∞","U"
   ,"dyn","real"
-  ,"ZCDP","RENYI"
+  ,"ZCDP","RENYI","EPSDP"
   ,"box","unbox","boxed"
   ,"if","then","else"
   ,"true","false"
@@ -962,6 +962,22 @@ parPExp p = pWithContext "pexp" $ tries
         return $ ExponentialPE e₁ (EDExponentialParams e₂) e₃ xs x e₄
       _ → abort
   , case p of
+      EPS_W → do
+        parLit "AboveThreshold"
+        parLit "["
+        e₁ ← parSExp p
+        parLit ","
+        e₂ ← parSExp p
+        parLit ","
+        e₃ ← parSExp p
+        parLit "]"
+        parLit "<"
+        xs ← pManySepBy (parLit ",") parVar
+        parLit ">"
+        parLit "{"
+        e₄ ← parSExp p
+        parLit "}"
+        return $ SVTPE (EPSSVTParams e₁) e₂ e₃ xs e₄
       ED_W → do
         parLit "AboveThreshold"
         parLit "["
@@ -1070,6 +1086,13 @@ parPExp p = pWithContext "pexp" $ tries
              e₂ ← parPExp RENYI_W
              parLit "}"
              return $ ConvertRENYIEDPE e₁ e₂
+        ]
+      ZC_W → tries
+        [ do parLit "EPSDP"
+             parLit "{"
+             e₁ ← parPExp EPS_W
+             parLit "}"
+             return $ ConvertEPSZCPE e₁
         ]
       _ → abort
   ]

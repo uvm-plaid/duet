@@ -117,6 +117,10 @@ convertZCEDPr ∷ (One r,Plus r,Minus r,Times r,Divide r,Root r,Log r) ⇒ r →
 convertZCEDPr δ (ZCPriv ρ) = EDPriv (ρ + (one + one) × root (ρ × log (one / δ))) δ
 
 -- JOE TODO: put a link here to the paper
+convertEPSZCPr ∷ (One r,Plus r,Minus r,Times r,Divide r,Root r,Log r) ⇒ Pr 'EPS r → Pr 'ZC r
+convertEPSZCPr (EpsPriv ε) = ZCPriv ((one / (one + one)) × ε × ε)
+
+-- JOE TODO: put a link here to the paper
 -- we would like to have a constraint solver for this, because the conversion
 -- only makes sense when ⟨δ,ρ,ω⟩ are in a particular relationship
 -- convertTCEDPr ∷ (One r,Plus r,Minus r,Divide r,Log r) ⇒ r → Pr 'TC r → Pr 'ED r
@@ -347,6 +351,7 @@ deriving instance Ord (ExponentialParams p)
 deriving instance Show (ExponentialParams p)
 
 data SVTParams (p ∷ PRIV) where
+  EPSSVTParams ∷ SExpSource 'EPS → SVTParams 'EPS
   EDSVTParams ∷ SExpSource 'ED → SVTParams 'ED
 deriving instance Eq (SVTParams p)
 deriving instance Ord (SVTParams p)
@@ -374,6 +379,7 @@ data PExp (p ∷ PRIV) where
   TCSamplePE ∷ SExpSource 'TC → SExpSource 'TC → SExpSource 'TC → 𝕏 → 𝕏 → PExpSource 'TC → PExp 'TC
   RandNatPE ∷ SExpSource p → SExpSource p → PExp p
   ConvertZCEDPE ∷ SExpSource 'ED → PExpSource 'ZC → PExp 'ED
+  ConvertEPSZCPE ∷ PExpSource 'EPS → PExp 'ZC
   ConvertRENYIEDPE ∷ SExpSource 'ED → PExpSource 'RENYI → PExp 'ED
 
 deriving instance Eq (PExp p)
