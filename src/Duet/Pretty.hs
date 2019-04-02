@@ -174,4 +174,10 @@ instance (Pretty r) ⇒ Pretty (Type r) where
               ppBotLevel $ concat [ppAlign $ pretty τ',ppPun "@",ppAlign $ pretty p]
       , concat [ppPun "⇒",ppSpace 1,ppAlign $ pretty τ]
       ]
-    BoxedT _ _ → ppKeyPun "□"
+    BoxedT σ τ → ppAtLevel 5 $ ppSeparated $ list
+      [ concat [ ppKeyPun "□" , ppPun "[" ]
+      , ppSeparated $ list $ inbetween (ppPun ",") $ mapOn (iter σ) $ \ (x :* Sens q) →
+          ppBotLevel $ concat [ppAlign $ pretty x,ppKeyPun "@",ppAlign $ pretty q]
+      , ppPun "]"
+      , ppBump $ pretty τ
+      ]

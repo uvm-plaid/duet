@@ -295,6 +295,16 @@ parType mode = mixfixParser $ concat
         p ← parPriv mode
         return $ τ :* p
       return $ (:⊸⋆:) $ ακs :* PArgs τps
+  , mix $ MixPrefix 3 $ do
+      parLit "box"
+      parLit "["
+      xηs ← pManySepBy (parLit ",") $ do
+        x ← parVar
+        parLit "@"
+        η ← parRExp
+        return (x :* η)
+      parLit "]"
+      return $ \ τ → BoxedT (map ι $ assoc xηs) τ
   ]
 
 parGrad ∷ Parser Token Grad

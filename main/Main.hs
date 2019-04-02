@@ -3,8 +3,10 @@ module Main where
 import Duet
 
 initEnv ∷ 𝕏 ⇰ Type RNF
-initEnv = dict [ var "sign" ↦ ((Nil :* ℝT) :⊸: (ι 1 :* ℝT))
-               ] ⩌ dø
+initEnv = dict 
+  [ var "sign" ↦ ((Nil :* ℝT) :⊸: (ι 1 :* ℝT))
+  -- , var "pmmap" ↦ (A@p ⊸⋆ B) ⊸∞ M[c,ℓ|m,n]A@(mnp) ⊸⋆ M[U,ℓ|m,n]B
+  ]
 
 parseMode ∷ 𝕊 → Ex_C PRIV_C PRIV_W
 parseMode s = case list $ splitOn𝕊 "." s of

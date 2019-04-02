@@ -1,0 +1,9 @@
+L-GD
+U-GD
+Frank Wolfe
+L-GD + mini
+L-GD + output perturbation
+L-GD + hypertuning
+L-GD + SVT-adapt-clip
+L-GD + normalization
+everything in one
