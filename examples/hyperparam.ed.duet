@@ -55,12 +55,12 @@ let noisy_sgd = pλ m  : ℕ,
                    δ  : ℝ⁺[δ],
                    η  : ℝ
                    ⇒
-  let m₀ = mzeros@[1, n. ℕ[1], cols xs] in
+  let m₀ = mzeros@[1, n] ℕ[1] (cols xs) in
   let c = box (mclip[L2] xs) in
   aloop[ δ′ ] k on m₀ <xs,ys> { a, θ ⇒
     let s = ℝ⁺[1.0] / real (rows xs) in
     g ← mgauss[ s , ε , δ ] <xs,ys> { ∇[ LR | θ ; unbox c , ys ] } ;
-    return msub@[m, n. θ, scale@[m, n. η, g]]
+    return msub@[m, n] θ (scale@[m, n] η g)
   }
 in
 
@@ -80,7 +80,7 @@ let pick_η = pλ m  : ℕ,
                 ⇒
   θs ← mmap ηs { η ⇒ noisy_sgd@[m, n, o, k, ε, δ. xs, ys, k, ε, δ, η] };
   η ← exponential[ℝ⁺[1.0], ε] θs <xs, ys> { θ ⇒
-    correct@[m, n. xs, ys, θ]
+    correct@[m, n] xs ys θ
   };
   return η
 

@@ -896,7 +896,7 @@ inferSens eA = case extract eA of
         let m = 𝕄T ℓ c (RexpRT ηₘ) (RexpME one τ₁')
         σ₂ :* τ₂ ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ m) ⩌ γ) $ inferSens e₂
         let (ς :* σ₂') = ifNone (zero :* σ₂) $ dview x σ₂
-        tell $ (r × ς) ⨵ σ₁
+        tell $ (ι r × ς) ⨵ σ₁
         tell $ ι (ηₘ × r) ⨵ σ₂'
         case τ₂ of
           𝕄T ℓ₂ c₂ (RexpRT ηₘ₂) (RexpME one τ₂') → 
