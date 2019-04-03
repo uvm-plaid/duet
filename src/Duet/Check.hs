@@ -165,6 +165,7 @@ inferKind = \case
     κ₂ ← inferKind $ extract e₂
     case (κ₁,κ₂) of
       (ℝK,ℝK) → return ℝK
+      (ℝK,ℕK) → return ℝK
       _ → error "TYPE ERROR"
   RootRE e → do
     κ ← inferKind $ extract e
@@ -630,6 +631,11 @@ inferSens eA = case extract eA of
         True → do
           tell σ'
           return $ (ακs :* τ') :⊸: (ς :* τ'')
+  DiscFSE e₁ → do
+    τ₁ ← inferSens e₁
+    case τ₁ of
+      (ακs :* τ') :⊸: (_ς :* ℝT) → return $ (ακs :* τ') :⊸: (one :* 𝔻T)
+        
   -- AppPE e ηs as → do
   --   let η's = map normalizeRExp ηs
   --   τ ← pmFromSM $ inferSens e
@@ -1039,10 +1045,10 @@ inferPriv eA = case extract eA of
                   , concat $ inbetween "\n"
                       [ show𝕊 (ηκs ≡ fκs)
                       , show𝕊 (aτs ≡ τs')
-                      , show𝕊 ηκs
-                      , show𝕊 fκs
-                      , show𝕊 aτs
-                      , show𝕊 τs'
+                      , pprender ηκs
+                      , pprender fκs
+                      , pprender aτs
+                      , pprender τs'
                       ]
                   ]
       _ → error $ "AppPE expected a function instead of" ⧺ pprender τ
