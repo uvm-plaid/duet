@@ -27,7 +27,7 @@ tokKeywords = list
   ,"chunks","mfold-row","mfilter","zip","AboveThreshold","mmap-col"
   ,"matrix","mcreate","mclip","clip","∇","U∇","mmap","bmap","idx","℘","𝐝","conv","disc","∈"
   ,"aloop","loop","gauss","mgauss","bgauss","laplace","mlaplace","mconv","×","tr","mmapp"
-  ,"rows","cols", "count","exponential","rand-resp",
+  ,"rows","cols", "count","exponential","rand-resp","discf"
   ,"sample","rand-nat"
   ,"L1","L2","L∞","U"
   ,"dyn","real"
@@ -460,6 +460,7 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
   , mixF $ MixFPrefix 10 $ const MColsSE ^$ parLit "cols"
   , mixF $ MixFPrefix 10 $ const MTransposeSE ^$ parLit "tr"
   , mixF $ MixFPrefix 10 $ const IdxSE ^$ parLit "idx"
+  , mixF $ MixFPrefix 10 $ const DiscFSE ^$ parLit "discf"
   , mixF $ MixFPrefix 10 $ do
       parLit "mclip"
       parLit "["
