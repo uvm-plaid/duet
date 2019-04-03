@@ -459,6 +459,7 @@ inferSens eA = case extract eA of
     τ ← inferSens e
     case τ of
       𝕄T ℓ' _c ηₘ (RexpME r τ') | τ' ≡ (𝔻T ℝT) → return $ 𝕄T ℓ' (NormClip ℓ) ηₘ (RexpME r τ')
+      𝕄T ℓ' _c ηₘ (RexpME r τ') | τ' ≡ (ℝT) → return $ 𝕄T ℓ' (NormClip ℓ) ηₘ (RexpME r (𝔻T ℝT))
       _ → undefined -- TypeSource Error
   MConvertSE e → do
     τ ← inferSens e
@@ -486,7 +487,7 @@ inferSens eA = case extract eA of
           ]
         → do tell $ ι (ι 1 / rₘ₂) ⨵ (σ₂ ⧺ σ₃)
              return $ 𝕄T ℓ UClip (RexpRT one) (RexpME r₁ ℝT)
-      _ → undefined -- TypeSource Error
+      _ → error $ "Lipschitz grad error: " ⧺ (pprender (τ₁ :* τ₂ :* τ₃))
   MUnbGradSE _g e₁ e₂ e₃ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
     tell $ top ⨵ σ₁
@@ -526,10 +527,11 @@ inferSens eA = case extract eA of
           return $ 𝕄T ℓ c (RexpRT η₁) (RexpME r₂ τ₁')
       _  → error $ "matrix multiplication error"
   MTransposeSE e₁ → do
-    τ₁ ← inferSens e₁
+    σ₁ :* τ₁ ← hijack $ inferSens e₁
     case τ₁ of
-      𝕄T ℓ c (RexpRT η₁) (RexpME r₁ τ₁') → do
-        return $ 𝕄T ℓ c (RexpRT r₁) (RexpME η₁ τ₁')
+      𝕄T ℓ _c (RexpRT η₁) (RexpME r₁ τ₁') → do
+        tell $ ι η₁ ⨵ σ₁
+        return $ 𝕄T ℓ UClip (RexpRT r₁) (RexpME η₁ τ₁')
       _  → error $ "matrix transpose error"
   JoinSE e₁ e₂ e₃ e₄ → do
     τ₁ ← inferSens e₁
@@ -908,7 +910,8 @@ inferSens eA = case extract eA of
         case τ₂ of
           𝕄T ℓ₂ c₂ (RexpRT ηₘ₂) (RexpME one τ₂') →
             return $ 𝕄T ℓ₂ c₂ (RexpRT ηₘ₂) (RexpME r τ₂')
-          _ → undefined
+          _ → return $ 𝕄T LInf UClip (RexpRT one) (RexpME r τ₂)
+--          _ → error $ pprender τ₂
       _  → undefined -- TypeSource Error
 
 
@@ -1351,6 +1354,8 @@ inferPriv eA = case extract eA of
       ℝˢT ηᵟ → do
         mapPPM (onPriv $ map $ convertRENYIEDPr ηᵟ) $ inferPriv e₂
       _ → error "type error: ConvertRENYIEDPE"
+  ConvertEPSZCPE e₁ → do
+    mapPPM (onPriv $ map $ convertEPSZCPr) $ inferPriv e₁
   EDSamplePE en exs eys xs' ys' e → do
     _ :* τn ← pmFromSM $ hijack $ inferSens en -- throw away the cost
     σ₁ :* τxs ← pmFromSM $ hijack $ inferSens exs
