@@ -996,11 +996,12 @@ inferPriv eA = case extract eA of
       𝕄T ℓ _c (RexpRT ηₘ) (RexpME r τ₁') → do
         σ₂ :* τ₂ ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ₁') ⩌ γ) $ inferPriv e₂
         let (p :* σ₂') = ifNone (bot :* σ₂) $ dview x σ₂
+        --error $ pprender σ₂'
         case ιview @ (Pr p RNF) p of
           Some p' → do
             let pr' = iteratePr (ηₘ × r) p'
             tell $ map (Priv ∘ truncate (Quantity pr') ∘ unSens) σ₁
-            tell $ map (Priv ∘ truncate Inf ∘ unPriv) σ₂
+            tell $ map (iteratePr (ηₘ × r)) σ₂'
             return $ 𝕄T ℓ UClip (RexpRT ηₘ) (RexpME r τ₂)
           _ → do
             tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₁
@@ -1363,7 +1364,7 @@ inferPriv eA = case extract eA of
     τ₂ ← pmFromSM $ inferSens e₂
     mat ← pmFromSM $ inferSens e₃
     case mat of
-      𝕄T _ℓ _c (RexpRT r₁) (RexpME _r₂ τ₃) → do
+      𝕄T _ℓ _c (RexpRT r₁) (RexpME r₂ τ₃) → do
         σ₄ :* τ₄ ← pmFromSM $ hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ₃) ⩌ γ) $ inferSens e₄
         let σ₄' = delete x σ₄
             σ₄Keep = restrict xs' σ₄'
@@ -1373,7 +1374,8 @@ inferPriv eA = case extract eA of
           (ℝˢT ηₛ,ℝˢT ηᵋ,Some ς) | (ς ⊑ ηₛ) ⩓ (τ₄ ≡ ℝT) ⩓ (r₁ ≡ one) → do
             tell $ map (Priv ∘ truncate (Quantity $ EDPriv ηᵋ zero) ∘ unSens) σ₄Keep
             tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
-            return $ τ₃
+            return $ 𝕀T r₂
+
           _ → error $ "Exponential error: " ⧺ (pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄ :* ιview @ RNF σ₄KeepMax))
       _ → error "type error: ExponentialPE"
   ConvertZCEDPE e₁ e₂ → do
