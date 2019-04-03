@@ -56,4 +56,5 @@ executable:
     - uvmhs
     - random
     - mwc-random
+    - time
     - normaldistribution >= 1.1.0.3

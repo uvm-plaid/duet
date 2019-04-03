@@ -90,14 +90,19 @@ main = do
         parseIOMain (pSkip tokSkip $ pFinal $ parSExp mode) $ stream ts
     ["check",fn] → do
       do pprint $ ppHeader "READING" ; flushOut
-      s ← read fn
+      s :* tRead ← timeIO $ read fn
+      do out $ "(" ⧺ show𝕊 (secondsTimeD tRead) ⧺ "s)" ; flushOut
       do pprint $ ppHeader "TOKENIZING" ; flushOut
-      ts ← tokenizeIO tokDuet $ stream $ list $ tokens s
-      do pprint $ ppHeader "PARSING" ; flushOut
+      ts :* tToken ← timeIO $ tokenizeIO tokDuet $ stream $ list $ tokens s
+      do out $ "(" ⧺ show𝕊 (secondsTimeD tToken) ⧺ "s)" ; flushOut
       unpack_C (parseMode fn) $ \ mode → do
-        e ← parseIO (pSkip tokSkip $ pFinal $ parSExp mode) $ stream ts
+        do pprint $ ppHeader "PARSING" ; flushOut
+        e :* tParse ← timeIO $ parseIO (pSkip tokSkip $ pFinal $ parSExp mode) $ stream ts
+        do out $ "(" ⧺ show𝕊 (secondsTimeD tParse) ⧺ "s)" ; flushOut
         do pprint $ ppHeader "TYPE CHECKING" ; flushOut
-        let r = runSM dø initEnv dø $ inferSens e
+        r :* tCheck ← time (\ () → runSM dø initEnv dø $ inferSens e) ()
+        do out $ "(" ⧺ show𝕊 (secondsTimeD tCheck) ⧺ "s)" ; flushOut
+        _ ← shell $ "echo " ⧺ show𝕊 (secondsTimeD tCheck) ⧺ " >> typecheck-times"
         do pprint $ ppHeader "DONE" ; flushOut
         do pprint r ; flushOut
     "lr-accuracy":xsfn:ysfn:mdfn:[] → do
