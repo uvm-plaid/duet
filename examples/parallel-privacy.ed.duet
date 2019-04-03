@@ -1,0 +1,53 @@
+let iter = sλ n  : ℕ,
+              ε  : ℝ⁺,
+              δ  : ℝ⁺,
+              b  : ℕ
+              .
+              b  : ℕ[b],
+              ε  : ℝ⁺[ε],
+              δ  : ℝ⁺[δ],
+              η  : ℝ
+              ⇒
+  pλ .
+     batch : 𝕄 [L∞, L2|b, n⋅𝔻 ] × 𝕄 [L∞, U|b, 1⋅𝔻 ],
+     θ  : 𝕄 [L∞, U|1, n⋅ℝ ]
+     ⇒
+  let s = ℝ⁺[1.0] / real b in
+  g ← mgauss[ s , ε , δ ] <xs,ys> {
+    let ⟨xs, ys⟩ = batch in
+    ∇[ LR | θ ; xs , ys ]
+  } ;
+  return mmap θ , mmap g { x ⇒ η ⋅ x } { x , y ⇒ x - y }
+in
+
+let main = pλ m  : ℕ,
+              n  : ℕ,
+              ε  : ℝ⁺,
+              k  : ℕ,
+              δ  : ℝ⁺,
+              b  : ℕ
+              .
+              xs : 𝕄 [L∞, U|m, n⋅𝔻 ] ,
+              ys : 𝕄 [L∞, U|m, 1⋅𝔻 ] ,
+              ε  : ℝ⁺[ε],
+              k  : ℕ[k],
+              δ  : ℝ⁺[δ],
+              η  : ℝ,
+              b  : ℕ[b]
+              ⇒
+  let m₀ = mcreate[ L2 | ℕ[1] , cols xs ] { i , j ⇒ 0.0 } in
+  let c = box (mclip[L2] xs) in
+  let s = real k / real b in
+  pfld-rows [chunks[b, unbox c, ys], iter@[n, ε, δ, b] b ε δ η, m₀]
+
+in main
+
+-- let f = pλ b : box stuff
+--         ⇒
+--   gauss[] {unbox b}
+-- in
+-- let g = pλ x : ℝ
+--         ⇒
+--   let b = box x in
+--   f@[.b]
+-- in g

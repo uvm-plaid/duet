@@ -90,6 +90,10 @@ let pick_η = pλ m  : ℕ,
                 δ  : ℝ⁺[δ],
                 ηs : 𝕄 [L∞, U|1, o⋅ℝ ]
                 ⇒
+  -- let m₀ = mcreate [1, o] in
+  -- loop { a, m ⇒
+  --   m#[1, a ↦ noisy_sgd@[η, xs]]
+  -- }
   θs ← mmapp ηs { η ⇒ noisy_sgd@[m, n, o, k, ε, δ. xs, ys, k, ε, δ, η] };
   η ← exponential[ℝ⁺[1.0], ε] θs <xs, ys> { θ ⇒
     correct@[m, n] xs ys θ

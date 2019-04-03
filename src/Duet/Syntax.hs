@@ -371,6 +371,7 @@ data PExp (p ∷ PRIV) where
   IfPE ∷ (SExpSource p) → (PExpSource p) → (PExpSource p) → PExp p
   ParallelPE ∷ SExpSource p → SExpSource p → 𝕏 → SExpSource p → 𝕏 → 𝕏 → PExpSource p → PExp p
   MMapPE ∷ SExpSource p → 𝕏 → PExpSource p → PExp p
+  PFldRowsPE ∷ SExpSource p → SExpSource p → SExpSource p → PExp p
   MGaussPE ∷ SExpSource p → GaussParams p → 𝐿 𝕏 → SExpSource p → PExp p
   BGaussPE ∷ SExpSource p → GaussParams p → 𝐿 𝕏 → SExpSource p → PExp p
   LaplacePE ∷ SExpSource p → LaplaceParams p → 𝐿 𝕏 → SExpSource p → PExp p

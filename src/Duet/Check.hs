@@ -1482,6 +1482,27 @@ inferPriv eA = case extract eA of
               _ → error $ "type error in RenyiSamplePE." ⧺ (pprender (σxs',σys'))
       _ → error "type error in RenyiSamplePE"
 
+  PFldRowsPE e₁ e₂ e₃ → do
+    σ₁ :* τ₁ ← pmFromSM $ hijack $ inferSens e₁
+    σ₂ :* τ₂ ← pmFromSM $ hijack $ inferSens e₂
+    τ₃ ← pmFromSM $ inferSens e₃
+    case (τ₁, τ₂) of
+      ( 𝕄T ℓ₁ c₁ (RexpRT ηr₁) (RexpME ηc₁ (𝔻T ℝT)) :×: 𝕄T ℓ₂ c₂ (RexpRT ηr₂) (RexpME ηc₂ (𝔻T ℝT)),
+         (αs :* as) :⊸⋆: τ₅ ) -- | τ₁ ≡ τ₅
+        → error $ pprender (τ₁ :* τ₂)
+
+      -- 𝕄T ℓ c (RexpRT ηₘ) (RexpME r τ₁') → do
+      --   let m = 𝕄T ℓ c (RexpRT one) (RexpME r τ₁')
+      --   σ₂ :* τ₂ ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ m) ⩌ γ) $ inferSens e₂
+      --   let (ς :* σ₂') = ifNone (zero :* σ₂) $ dview x σ₂
+      --   tell $ ς ⨵ σ₁
+      --   tell $ ι r ⨵ σ₂'
+      --   case τ₂ of
+      --     𝕄T ℓ₂ c₂ (RexpRT ηₘ₂) (RexpME ηₙ₂ τ₂') | (ηₘ₂ ≡ one) ⩓ (ηₙ₂ ≡ r) →
+      --       return $ 𝕄T ℓ₂ c₂ (RexpRT ηₘ) (RexpME r τ₂')
+      --     _ → return $ 𝕄T LInf UClip (RexpRT ηₘ) (RexpME one τ₂)
+
+
   _ → error $ concat
         [ "inferPriv unknown expression type: "
         , "\n"

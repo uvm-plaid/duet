@@ -24,7 +24,7 @@ tokKeywords = list
   ,"LR","L2","U"
   ,"real","bag","set","record", "unionAll"
   ,"partitionDF","addColDF","mapDF","join₁","joinDF₁","parallel"
-  ,"chunks","mfold-row","mfilter","zip","AboveThreshold","mmap-col","mmap-row"
+  ,"chunks","mfold-row","mfilter","zip","AboveThreshold","mmap-col","mmap-row","pfld-rows"
   ,"matrix","mcreate","mclip","clip","∇","U∇","mmap","bmap","idx","℘","𝐝","conv","disc","∈"
   ,"aloop","loop","gauss","mgauss","bgauss","laplace","mlaplace","mconv","×","tr","mmapp"
   ,"rows","cols", "count","exponential","rand-resp","discf"
@@ -713,6 +713,15 @@ parPExp p = pWithContext "pexp" $ tries
        e₂ ← parPExp p
        parLit "}"
        return $ MMapPE e₁ x e₂
+  , do parLit "pfld-rows"
+       parLit "["
+       e₁ ← parSExp p
+       parLit ","
+       e₂ ← parSExp p
+       parLit ","
+       e₃ ← parSExp p
+       parLit "]"
+       return $ PFldRowsPE e₁ e₂ e₃
   , do x ← parVar
        parLit "←"
        e₁ ← parPExp p
