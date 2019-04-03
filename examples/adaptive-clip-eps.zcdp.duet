@@ -26,7 +26,7 @@ let pick = pλ m  : ℕ,
               ⇒
   let target = 0.9 ⋅ real (rows xs) in
   let fs = mmap bs { b ⇒ query b } in
-  AboveThreshold [ ε, fs, target ] <xs> { xs }
+  EPSDP { AboveThreshold [ ε, fs, target ] <xs> { xs } }
 in
 
 let prep = sλ m  : ℕ,
@@ -45,7 +45,7 @@ let main = pλ m  : ℕ,
               ε  : ℝ⁺,
               k  : ℕ,
               δ  : ℝ⁺,
-              δ′ : ℝ⁺,
+              ρ  : ℝ⁺,
               k  : ℕ
               .
               xs : 𝕄 [L∞, U|m, n⋅𝔻 ] ,
@@ -53,16 +53,17 @@ let main = pλ m  : ℕ,
               ε  : ℝ⁺[ε],
               k  : ℕ[k],
               δ  : ℝ⁺[δ],
-              δ′ : ℝ⁺[δ′],
+              ρ  : ℝ⁺[ρ],
               η  : ℝ,
               bs : 𝕄 [L1, U|1, k⋅𝔻 ]
               ⇒
   let m₀ = mcreate[ L∞ | ℕ[1] , cols xs ] { i , j ⇒ 0.0 } in
   b ← pick@[m, n, ε, k. xs, ε, bs];
   let c = box (prep@[m,n] xs (bs#[idx ℕ[0], b])) in
-  aloop[ δ′ ] k on m₀ <xs,ys> { a, θ ⇒
+
+  loop k on m₀ <xs,ys> { a, θ ⇒
     let s = ℝ⁺[1.0] / real (rows xs) in
-    g ← mgauss[ s , ε , δ ] <xs,ys> { ∇[ LR | θ ; unbox c , ys ] } ;
+    g ← mgauss[ s , ρ ] <xs,ys> { ∇[ LR | θ ; unbox c , ys ] } ;
     return mmap θ , mmap g { x ⇒ η ⋅ x } { x , y ⇒ x - y }
   }
 

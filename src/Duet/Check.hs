@@ -165,6 +165,7 @@ inferKind = \case
     κ₂ ← inferKind $ extract e₂
     case (κ₁,κ₂) of
       (ℝK,ℝK) → return ℝK
+      (ℝK,ℕK) → return ℝK
       _ → error "TYPE ERROR"
   RootRE e → do
     κ ← inferKind $ extract e
@@ -459,11 +460,14 @@ inferSens eA = case extract eA of
     τ ← inferSens e
     case τ of
       𝕄T ℓ' _c ηₘ (RexpME r τ') | τ' ≡ (𝔻T ℝT) → return $ 𝕄T ℓ' (NormClip ℓ) ηₘ (RexpME r τ')
+      𝕄T ℓ' _c ηₘ (RexpME r τ') | τ' ≡ (ℝT) → return $ 𝕄T ℓ' (NormClip ℓ) ηₘ (RexpME r (𝔻T ℝT))
       _ → undefined -- TypeSource Error
   MConvertSE e → do
     τ ← inferSens e
     case τ of
       𝕄T _ℓ (NormClip ℓ) ηₘ (RexpME r τ') | τ' ≡ 𝔻T ℝT → return $ 𝕄T ℓ UClip ηₘ (RexpME r ℝT)
+      --QUESTION: is this ok? - CA
+      -- 𝕄T ℓ _c ηₘ (RexpME r τ') | τ' ≡ 𝔻T ℝT → return $ 𝕄T ℓ UClip ηₘ (RexpME r ℝT)
       _ → undefined -- TypeSource Error
   MLipGradSE _g e₁ e₂ e₃ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
@@ -484,7 +488,7 @@ inferSens eA = case extract eA of
           ]
         → do tell $ ι (ι 1 / rₘ₂) ⨵ (σ₂ ⧺ σ₃)
              return $ 𝕄T ℓ UClip (RexpRT one) (RexpME r₁ ℝT)
-      _ → undefined -- TypeSource Error
+      _ → error $ "Lipschitz grad error: " ⧺ (pprender (τ₁ :* τ₂ :* τ₃))
   MUnbGradSE _g e₁ e₂ e₃ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
     tell $ top ⨵ σ₁
@@ -524,10 +528,11 @@ inferSens eA = case extract eA of
           return $ 𝕄T ℓ c (RexpRT η₁) (RexpME r₂ τ₁')
       _  → error $ "matrix multiplication error"
   MTransposeSE e₁ → do
-    τ₁ ← inferSens e₁
+    σ₁ :* τ₁ ← hijack $ inferSens e₁
     case τ₁ of
-      𝕄T ℓ c (RexpRT η₁) (RexpME r₁ τ₁') → do
-        return $ 𝕄T ℓ c (RexpRT r₁) (RexpME η₁ τ₁')
+      𝕄T ℓ _c (RexpRT η₁) (RexpME r₁ τ₁') → do
+        tell $ ι η₁ ⨵ σ₁
+        return $ 𝕄T ℓ UClip (RexpRT r₁) (RexpME η₁ τ₁')
       _  → error $ "matrix transpose error"
   JoinSE e₁ e₂ e₃ e₄ → do
     τ₁ ← inferSens e₁
@@ -626,6 +631,11 @@ inferSens eA = case extract eA of
         True → do
           tell σ'
           return $ (ακs :* τ') :⊸: (ς :* τ'')
+  DiscFSE e₁ → do
+    τ₁ ← inferSens e₁
+    case τ₁ of
+      (ακs :* τ') :⊸: (_ς :* ℝT) → return $ (ακs :* τ') :⊸: (one :* 𝔻T)
+        
   -- AppPE e ηs as → do
   --   let η's = map normalizeRExp ηs
   --   τ ← pmFromSM $ inferSens e
@@ -821,6 +831,11 @@ inferSens eA = case extract eA of
     σ :* τ ← hijack $ inferSens e
     tell $ map (Sens ∘ truncate (Quantity (NatRNF 1)) ∘ unSens) σ
     return $ 𝔻T τ
+  CountSE e → do
+    τ ← inferSens e
+    case τ of
+      𝕄T ℓ c (RexpRT ηₘ) (RexpME r τ₁') → do
+        return $ ℝT
   LoopSE e₂ e₃ x₁ x₂ e₄ → do
     τ₂ ← inferSens e₂
     τ₃ ← inferSens e₃
@@ -899,9 +914,10 @@ inferSens eA = case extract eA of
         tell $ (ι r × ς) ⨵ σ₁
         tell $ ι (ηₘ × r) ⨵ σ₂'
         case τ₂ of
-          𝕄T ℓ₂ c₂ (RexpRT ηₘ₂) (RexpME one τ₂') → 
+          𝕄T ℓ₂ c₂ (RexpRT ηₘ₂) (RexpME one τ₂') →
             return $ 𝕄T ℓ₂ c₂ (RexpRT ηₘ₂) (RexpME r τ₂')
-          _ → undefined
+          _ → return $ 𝕄T LInf UClip (RexpRT one) (RexpME r τ₂)
+--          _ → error $ pprender τ₂
       _  → undefined -- TypeSource Error
 
 
@@ -979,6 +995,21 @@ inferPriv eA = case extract eA of
     σ₂ :* τ₂ ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ₁) ⩌ γ) $ inferPriv e₂
     tell $ delete x σ₂
     return τ₂
+  MMapPE e₁ x e₂ → do
+    σ₁ :* τ₁ ← pmFromSM $ hijack $ inferSens e₁
+    case τ₁ of
+      𝕄T ℓ _c (RexpRT ηₘ) (RexpME r τ₁') | (joins (values σ₁) ⊑ ι 1) → do
+        σ₂ :* τ₂ ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ₁') ⩌ γ) $ inferPriv e₂
+        let (p :* σ₂') = ifNone (bot :* σ₂) $ dview x σ₂
+        tell $ map Priv $ mapp (iteratePr (ηₘ × r)) $ (map unPriv σ₂)
+        case (ιview @ (Pr p RNF) p) of
+          (Some p') → do
+            tell $ map (Priv ∘ truncate (Quantity (iteratePr (ηₘ × r) p')) ∘ unSens) σ₁
+            return $ 𝕄T ℓ UClip (RexpRT ηₘ) (RexpME r τ₂)
+          _ → do
+            tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₁
+            return $ 𝕄T ℓ UClip (RexpRT ηₘ) (RexpME r τ₂)
+      _  → undefined -- TypeSource Error
   AppPE e ηs as → do
     let η's = map normalizeRExp ηs
     τ ← pmFromSM $ inferSens e
@@ -1010,14 +1041,14 @@ inferPriv eA = case extract eA of
                     tell $ map (Priv ∘ truncate (unPriv p) ∘ unSens) σ
                   return $ subT τ₁
                 False → error $ concat
-                  [ "type error in AppPE"
+                  [ "type error in AppPE\n"
                   , concat $ inbetween "\n"
                       [ show𝕊 (ηκs ≡ fκs)
                       , show𝕊 (aτs ≡ τs')
-                      , show𝕊 ηκs
-                      , show𝕊 fκs
-                      , show𝕊 aτs
-                      , show𝕊 τs'
+                      , pprender ηκs
+                      , pprender fκs
+                      , pprender aτs
+                      , pprender τs'
                       ]
                   ]
       _ → error $ "AppPE expected a function instead of" ⧺ pprender τ
@@ -1125,7 +1156,6 @@ inferPriv eA = case extract eA of
               _ → error $ "sensitivity error in ParallelPE"
           _ → error $ "℘ expected in second argument of ParallelPE" ⧺ (pprender τ₁)
       _ → error $ "𝕄T type expected in first argument of ParallelPE" ⧺ (pprender τ₀)
-
   SVTPE (EDSVTParams e₁) e₂ e₃ xs e₄ → do
     let xs' = pow xs
     τ₁ ← pmFromSM $ inferSens e₁
@@ -1159,7 +1189,39 @@ inferPriv eA = case extract eA of
             , "\n"
             , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
             ]
-      
+  SVTPE (EPSSVTParams e₁) e₂ e₃ xs e₄ → do
+    let xs' = pow xs
+    τ₁ ← pmFromSM $ inferSens e₁
+    τ₂ ← pmFromSM $ inferSens e₂
+    τ₃ ← pmFromSM $ inferSens e₃
+    σ₄ :* τ₄ ← pmFromSM $ hijack $ inferSens e₄
+    let σ₄Keep = restrict xs' σ₄
+        σ₄KeepMax = joins $ values σ₄Keep
+        σ₄Toss = without xs' σ₄
+    case (τ₁, τ₂, τ₃, τ₄) of
+      (ℝˢT ηᵋ, 𝕄T L1 UClip (RexpRT l) (RexpME r₂ ((αs :* τ₅) :⊸: (ηₛ :* ℝT))), ℝT, τ₅')
+        | (τ₅ ≡ τ₅')
+        ⩓ (l ≡ one)
+--        ⩓ (ηₛ ≡ Sens (Quantity one)) -- TODO: why doesn't this one pass?
+        → do
+          tell $ map (Priv ∘ truncate (Quantity $ EpsPriv ηᵋ) ∘ unSens) σ₄Keep
+          tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
+          return $ 𝕀T r₂
+      _ → error $ concat
+            [ "Sparse Vector Technique error: "
+            , "\n"
+            , "τ₁: " ⧺ (pprender τ₁)
+            , "\n"
+            , "τ₂: " ⧺ (pprender τ₂)
+            , "\n"
+            , "τ₃: " ⧺ (pprender τ₃)
+            , "\n"
+            , "τ₄: " ⧺ (pprender τ₄)
+            , "\n"
+            , "Sensitivity bound: " ⧺ (pprender $ ιview @ RNF σ₄KeepMax)
+            , "\n"
+            , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
+            ]
 
   MGaussPE e₁ (EDGaussParams e₂ e₃) xs e₄ → do
     let xs' = pow xs
@@ -1304,7 +1366,7 @@ inferPriv eA = case extract eA of
     τ₂ ← pmFromSM $ inferSens e₂
     mat ← pmFromSM $ inferSens e₃
     case mat of
-      𝕄T _ℓ _c (RexpRT r₁) (RexpME _r₂ τ₃) → do
+      𝕄T _ℓ _c (RexpRT r₁) (RexpME r₂ τ₃) → do
         σ₄ :* τ₄ ← pmFromSM $ hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ₃) ⩌ γ) $ inferSens e₄
         let σ₄' = delete x σ₄
             σ₄Keep = restrict xs' σ₄'
@@ -1314,7 +1376,8 @@ inferPriv eA = case extract eA of
           (ℝˢT ηₛ,ℝˢT ηᵋ,Some ς) | (ς ⊑ ηₛ) ⩓ (τ₄ ≡ ℝT) ⩓ (r₁ ≡ one) → do
             tell $ map (Priv ∘ truncate (Quantity $ EDPriv ηᵋ zero) ∘ unSens) σ₄Keep
             tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
-            return $ τ₃
+            return $ 𝕀T r₂
+
           _ → error $ "Exponential error: " ⧺ (pprender $ (τ₁ :* τ₂ :* τ₃ :* τ₄ :* ιview @ RNF σ₄KeepMax))
       _ → error "type error: ExponentialPE"
   ConvertZCEDPE e₁ e₂ → do
@@ -1329,6 +1392,8 @@ inferPriv eA = case extract eA of
       ℝˢT ηᵟ → do
         mapPPM (onPriv $ map $ convertRENYIEDPr ηᵟ) $ inferPriv e₂
       _ → error "type error: ConvertRENYIEDPE"
+  ConvertEPSZCPE e₁ → do
+    mapPPM (onPriv $ map $ convertEPSZCPr) $ inferPriv e₁
   EDSamplePE en exs eys xs' ys' e → do
     _ :* τn ← pmFromSM $ hijack $ inferSens en -- throw away the cost
     σ₁ :* τxs ← pmFromSM $ hijack $ inferSens exs

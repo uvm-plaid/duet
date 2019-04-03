@@ -26,12 +26,12 @@ tokKeywords = list
   ,"partitionDF","addColDF","mapDF","join₁","joinDF₁","parallel"
   ,"chunks","mfold-row","mfilter","zip","AboveThreshold","mmap-col"
   ,"matrix","mcreate","mclip","clip","∇","U∇","mmap","bmap","idx","℘","𝐝","conv","disc","∈"
-  ,"aloop","loop","gauss","mgauss","bgauss","laplace","mlaplace","mconv","×","tr"
-  ,"rows","cols","exponential","rand-resp"
+  ,"aloop","loop","gauss","mgauss","bgauss","laplace","mlaplace","mconv","×","tr","mmapp"
+  ,"rows","cols", "count","exponential","rand-resp","discf"
   ,"sample","rand-nat"
   ,"L1","L2","L∞","U"
   ,"dyn","real"
-  ,"ZCDP","RENYI"
+  ,"ZCDP","RENYI","EPSDP"
   ,"box","unbox","boxed"
   ,"if","then","else"
   ,"true","false"
@@ -460,6 +460,7 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
   , mixF $ MixFPrefix 10 $ const MColsSE ^$ parLit "cols"
   , mixF $ MixFPrefix 10 $ const MTransposeSE ^$ parLit "tr"
   , mixF $ MixFPrefix 10 $ const IdxSE ^$ parLit "idx"
+  , mixF $ MixFPrefix 10 $ const DiscFSE ^$ parLit "discf"
   , mixF $ MixFPrefix 10 $ do
       parLit "mclip"
       parLit "["
@@ -672,6 +673,7 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
   , mixF $ MixFPrefix 10 $ const ConvSE ^$ parLit "conv"
   , mixF $ MixFPrefix 10 $ const MConvertSE ^$ parLit "mconv"
   , mixF $ MixFPrefix 10 $ const DiscSE ^$ parLit "disc"
+  , mixF $ MixFPrefix 10 $ const CountSE ^$ parLit "count"
   ]
 
 parPExp ∷ (PRIV_C p) ⇒ PRIV_W p → Parser Token (PExpSource p)
@@ -694,6 +696,14 @@ parPExp p = pWithContext "pexp" $ tries
        xs ← pManySepBy (parLit ",") $ parSExp p
        parLit "]"
        return $ AppPE e ks xs
+  , do parLit "mmapp"
+       e₁ ← parSExp p
+       parLit "{"
+       x ← parVar
+       parLit "⇒"
+       e₂ ← parPExp p
+       parLit "}"
+       return $ MMapPE e₁ x e₂
   , do x ← parVar
        parLit "←"
        e₁ ← parPExp p
@@ -962,6 +972,22 @@ parPExp p = pWithContext "pexp" $ tries
         return $ ExponentialPE e₁ (EDExponentialParams e₂) e₃ xs x e₄
       _ → abort
   , case p of
+      EPS_W → do
+        parLit "AboveThreshold"
+        parLit "["
+        e₁ ← parSExp p
+        parLit ","
+        e₂ ← parSExp p
+        parLit ","
+        e₃ ← parSExp p
+        parLit "]"
+        parLit "<"
+        xs ← pManySepBy (parLit ",") parVar
+        parLit ">"
+        parLit "{"
+        e₄ ← parSExp p
+        parLit "}"
+        return $ SVTPE (EPSSVTParams e₁) e₂ e₃ xs e₄
       ED_W → do
         parLit "AboveThreshold"
         parLit "["
@@ -1070,6 +1096,13 @@ parPExp p = pWithContext "pexp" $ tries
              e₂ ← parPExp RENYI_W
              parLit "}"
              return $ ConvertRENYIEDPE e₁ e₂
+        ]
+      ZC_W → tries
+        [ do parLit "EPSDP"
+             parLit "{"
+             e₁ ← parPExp EPS_W
+             parLit "}"
+             return $ ConvertEPSZCPE e₁
         ]
       _ → abort
   ]
