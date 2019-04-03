@@ -464,6 +464,8 @@ inferSens eA = case extract eA of
     τ ← inferSens e
     case τ of
       𝕄T _ℓ (NormClip ℓ) ηₘ (RexpME r τ') | τ' ≡ 𝔻T ℝT → return $ 𝕄T ℓ UClip ηₘ (RexpME r ℝT)
+      --QUESTION: is this ok? - CA
+      𝕄T ℓ _c ηₘ (RexpME r τ') | τ' ≡ 𝔻T ℝT → return $ 𝕄T ℓ UClip ηₘ (RexpME r ℝT)
       _ → undefined -- TypeSource Error
   MLipGradSE _g e₁ e₂ e₃ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
@@ -821,6 +823,11 @@ inferSens eA = case extract eA of
     σ :* τ ← hijack $ inferSens e
     tell $ map (Sens ∘ truncate (Quantity (NatRNF 1)) ∘ unSens) σ
     return $ 𝔻T τ
+  CountSE e → do
+    τ ← inferSens e
+    case τ of
+      𝕄T ℓ c (RexpRT ηₘ) (RexpME r τ₁') → do
+        return $ ℝT
   LoopSE e₂ e₃ x₁ x₂ e₄ → do
     τ₂ ← inferSens e₂
     τ₃ ← inferSens e₃
@@ -899,7 +906,7 @@ inferSens eA = case extract eA of
         tell $ (ι r × ς) ⨵ σ₁
         tell $ ι (ηₘ × r) ⨵ σ₂'
         case τ₂ of
-          𝕄T ℓ₂ c₂ (RexpRT ηₘ₂) (RexpME one τ₂') → 
+          𝕄T ℓ₂ c₂ (RexpRT ηₘ₂) (RexpME one τ₂') →
             return $ 𝕄T ℓ₂ c₂ (RexpRT ηₘ₂) (RexpME r τ₂')
           _ → undefined
       _  → undefined -- TypeSource Error
@@ -979,6 +986,24 @@ inferPriv eA = case extract eA of
     σ₂ :* τ₂ ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ₁) ⩌ γ) $ inferPriv e₂
     tell $ delete x σ₂
     return τ₂
+  MMapPE e₁ x e₂ → do
+    -- 1 sens check
+    σ₁ :* τ₁ ← pmFromSM $ hijack $ inferSens e₁
+    case τ₁ of
+      𝕄T ℓ _c (RexpRT ηₘ) (RexpME r τ₁') → do
+        σ₂ :* τ₂ ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ₁') ⩌ γ) $ inferPriv e₂
+        let (p :* σ₂') = ifNone (bot :* σ₂) $ dview x σ₂
+        case ιview @ (Pr p RNF) p of
+          Some p' → do
+            let pr' = iteratePr (ηₘ × r) p'
+            tell $ map (Priv ∘ truncate (Quantity pr') ∘ unSens) σ₁
+            tell $ map (Priv ∘ truncate Inf ∘ unPriv) σ₂
+            return $ 𝕄T ℓ UClip (RexpRT ηₘ) (RexpME r τ₂)
+          _ → do
+            tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₁
+            tell $ map (Priv ∘ truncate Inf ∘ unPriv) σ₂
+            return $ 𝕄T ℓ UClip (RexpRT ηₘ) (RexpME r τ₂)
+      _  → undefined -- TypeSource Error
   AppPE e ηs as → do
     let η's = map normalizeRExp ηs
     τ ← pmFromSM $ inferSens e
@@ -1010,7 +1035,7 @@ inferPriv eA = case extract eA of
                     tell $ map (Priv ∘ truncate (unPriv p) ∘ unSens) σ
                   return $ subT τ₁
                 False → error $ concat
-                  [ "type error in AppPE"
+                  [ "type error in AppPE\n"
                   , concat $ inbetween "\n"
                       [ show𝕊 (ηκs ≡ fκs)
                       , show𝕊 (aτs ≡ τs')
@@ -1125,7 +1150,6 @@ inferPriv eA = case extract eA of
               _ → error $ "sensitivity error in ParallelPE"
           _ → error $ "℘ expected in second argument of ParallelPE" ⧺ (pprender τ₁)
       _ → error $ "𝕄T type expected in first argument of ParallelPE" ⧺ (pprender τ₀)
-
   SVTPE (EDSVTParams e₁) e₂ e₃ xs e₄ → do
     let xs' = pow xs
     τ₁ ← pmFromSM $ inferSens e₁
@@ -1159,8 +1183,6 @@ inferPriv eA = case extract eA of
             , "\n"
             , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
             ]
-      
-
   MGaussPE e₁ (EDGaussParams e₂ e₃) xs e₄ → do
     let xs' = pow xs
     τ₁ ← pmFromSM $ inferSens e₁

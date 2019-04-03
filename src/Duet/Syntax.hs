@@ -322,6 +322,7 @@ data SExp (p ∷ PRIV) where
   ClipSE ∷ SExpSource p → SExp p
   ConvSE ∷ SExpSource p → SExp p
   DiscSE ∷ SExpSource p → SExp p
+  CountSE ∷ SExpSource p → SExp p
   ChunksSE ∷ SExpSource p → SExpSource p → SExpSource p → SExp p
   deriving (Eq,Ord,Show)
 
@@ -362,6 +363,7 @@ data PExp (p ∷ PRIV) where
   GaussPE ∷ SExpSource p → GaussParams p → 𝐿 𝕏 → SExpSource p → PExp p
   IfPE ∷ (SExpSource p) → (PExpSource p) → (PExpSource p) → PExp p
   ParallelPE ∷ SExpSource p → SExpSource p → 𝕏 → SExpSource p → 𝕏 → 𝕏 → PExpSource p → PExp p
+  MMapPE ∷ SExpSource p → 𝕏 → PExpSource p → PExp p
   MGaussPE ∷ SExpSource p → GaussParams p → 𝐿 𝕏 → SExpSource p → PExp p
   BGaussPE ∷ SExpSource p → GaussParams p → 𝐿 𝕏 → SExpSource p → PExp p
   LaplacePE ∷ SExpSource p → LaplaceParams p → 𝐿 𝕏 → SExpSource p → PExp p
