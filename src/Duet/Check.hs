@@ -1186,6 +1186,40 @@ inferPriv eA = case extract eA of
             , "\n"
             , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
             ]
+  SVTPE (EPSSVTParams e₁) e₂ e₃ xs e₄ → do
+    let xs' = pow xs
+    τ₁ ← pmFromSM $ inferSens e₁
+    τ₂ ← pmFromSM $ inferSens e₂
+    τ₃ ← pmFromSM $ inferSens e₃
+    σ₄ :* τ₄ ← pmFromSM $ hijack $ inferSens e₄
+    let σ₄Keep = restrict xs' σ₄
+        σ₄KeepMax = joins $ values σ₄Keep
+        σ₄Toss = without xs' σ₄
+    case (τ₁, τ₂, τ₃, τ₄) of
+      (ℝˢT ηᵋ, 𝕄T L1 UClip (RexpRT l) (RexpME r₂ ((αs :* τ₅) :⊸: (ηₛ :* ℝT))), ℝT, τ₅')
+        | (τ₅ ≡ τ₅')
+        ⩓ (l ≡ one)
+--        ⩓ (ηₛ ≡ Sens (Quantity one)) -- TODO: why doesn't this one pass?
+        → do
+          tell $ map (Priv ∘ truncate (Quantity $ EpsPriv ηᵋ) ∘ unSens) σ₄Keep
+          tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
+          return $ 𝕀T r₂
+      _ → error $ concat
+            [ "Sparse Vector Technique error: "
+            , "\n"
+            , "τ₁: " ⧺ (pprender τ₁)
+            , "\n"
+            , "τ₂: " ⧺ (pprender τ₂)
+            , "\n"
+            , "τ₃: " ⧺ (pprender τ₃)
+            , "\n"
+            , "τ₄: " ⧺ (pprender τ₄)
+            , "\n"
+            , "Sensitivity bound: " ⧺ (pprender $ ιview @ RNF σ₄KeepMax)
+            , "\n"
+            , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
+            ]
+
   MGaussPE e₁ (EDGaussParams e₂ e₃) xs e₄ → do
     let xs' = pow xs
     τ₁ ← pmFromSM $ inferSens e₁
