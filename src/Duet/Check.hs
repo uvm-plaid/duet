@@ -468,7 +468,7 @@ inferSens eA = case extract eA of
       𝕄T _ℓ (NormClip ℓ) ηₘ (RexpME r τ') | τ' ≡ 𝔻T ℝT → return $ 𝕄T ℓ UClip ηₘ (RexpME r ℝT)
       --QUESTION: is this ok? - CA
       -- 𝕄T ℓ _c ηₘ (RexpME r τ') | τ' ≡ 𝔻T ℝT → return $ 𝕄T ℓ UClip ηₘ (RexpME r ℝT)
-      _ → undefined -- TypeSource Error
+      _ → error $ "MConvert error: " ⧺ (pprender τ)
   MLipGradSE _g e₁ e₂ e₃ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
     tell $ top ⨵ σ₁
@@ -634,8 +634,8 @@ inferSens eA = case extract eA of
   DiscFSE e₁ → do
     τ₁ ← inferSens e₁
     case τ₁ of
-      (ακs :* τ') :⊸: (_ς :* ℝT) → return $ (ακs :* τ') :⊸: (one :* 𝔻T)
-        
+      (ακs :* τ') :⊸: (_ς :* ℝT) → return $ (ακs :* τ') :⊸: (one :* 𝔻T ℝT)
+
   -- AppPE e ηs as → do
   --   let η's = map normalizeRExp ηs
   --   τ ← pmFromSM $ inferSens e
@@ -941,6 +941,21 @@ inferSens eA = case extract eA of
             , "\n"
             , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
             ]
+
+  MMapRowSE e₁ x e₂ → do
+    σ₁ :* τ₁ ← hijack $ inferSens e₁
+    case τ₁ of
+      𝕄T ℓ c (RexpRT ηₘ) (RexpME r τ₁') → do
+        let m = 𝕄T ℓ c (RexpRT one) (RexpME r τ₁')
+        σ₂ :* τ₂ ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ m) ⩌ γ) $ inferSens e₂
+        let (ς :* σ₂') = ifNone (zero :* σ₂) $ dview x σ₂
+        tell $ ς ⨵ σ₁
+        tell $ ι r ⨵ σ₂'
+        case τ₂ of
+          𝕄T ℓ₂ c₂ (RexpRT ηₘ₂) (RexpME ηₙ₂ τ₂') | (ηₘ₂ ≡ one) ⩓ (ηₙ₂ ≡ r) →
+            return $ 𝕄T ℓ₂ c₂ (RexpRT ηₘ) (RexpME r τ₂')
+          _ → return $ 𝕄T LInf UClip (RexpRT ηₘ) (RexpME one τ₂)
+      _  → undefined -- TypeSource Error
 
   _ → error $ concat
         [ "inferSens unknown expression type: "

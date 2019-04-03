@@ -28,12 +28,12 @@ in
 
 let predictOne = sλ n : ℕ .
                     θ : 𝕄 [L∞, U|1, n⋅ℝ]
-                    =>
+                    ⇒
                     sλ .
-                       x : 𝕄 [L∞, U|1, n⋅𝔻],
+                       x : 𝕄 [L∞, U|1, n⋅𝔻]
                        ⇒
-  let prediction = (mconv x) × (tr theta) in
-  sign (prediction#[idx N[0], idx N[0]])
+  let prediction = (mmap x { e ⇒ conv e }) × (tr θ) in
+  sign (prediction#[idx ℕ[0], idx ℕ[0]])
 in
 
 let predict = sλ m : ℕ, n : ℕ .
@@ -41,8 +41,8 @@ let predict = sλ m : ℕ, n : ℕ .
                  θ : 𝕄 [L∞, U|1, n⋅ℝ]
                  ⇒
   --
-  let po = discF (predictOne[n] theta) in
-  mmap-row xs { row => po row }
+  let po = discf (predictOne@[n] θ) in
+  mmap-row xs { row ⇒ po row }
 in
 
 let correct = sλ m : ℕ, n : ℕ .
@@ -91,7 +91,6 @@ let pick_η = pλ m  : ℕ,
                 ηs : 𝕄 [L∞, U|1, o⋅ℝ ]
                 ⇒
   θs ← mmapp ηs { η ⇒ noisy_sgd@[m, n, o, k, ε, δ. xs, ys, k, ε, δ, η] };
-  -- return θs
   η ← exponential[ℝ⁺[1.0], ε] θs <xs, ys> { θ ⇒
     correct@[m, n] xs ys θ
   };
@@ -114,6 +113,7 @@ let main = pλ m  : ℕ,
               δ  : ℝ⁺[δ],
               ηs : 𝕄 [L∞, U|1, o⋅ℝ ]
               ⇒
+ -- η ← pick_η@[m, n, o, k, ε/o, δ/o. xs, ys, k, ε/(real (cols ηs)), δ/(real (cols ηs)), ηs];
   η ← pick_η@[m, n, o, k, ε, δ. xs, ys, k, ε, δ, ηs];
   θ ← noisy_sgd@[m, n, o, k, ε, δ. xs, ys, k, ε, δ, η];
   return θ

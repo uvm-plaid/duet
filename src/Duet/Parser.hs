@@ -24,7 +24,7 @@ tokKeywords = list
   ,"LR","L2","U"
   ,"real","bag","set","record", "unionAll"
   ,"partitionDF","addColDF","mapDF","join₁","joinDF₁","parallel"
-  ,"chunks","mfold-row","mfilter","zip","AboveThreshold","mmap-col"
+  ,"chunks","mfold-row","mfilter","zip","AboveThreshold","mmap-col","mmap-row"
   ,"matrix","mcreate","mclip","clip","∇","U∇","mmap","bmap","idx","℘","𝐝","conv","disc","∈"
   ,"aloop","loop","gauss","mgauss","bgauss","laplace","mlaplace","mconv","×","tr","mmapp"
   ,"rows","cols", "count","exponential","rand-resp","discf"
@@ -521,6 +521,15 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
       e₂ ← parSExp p
       parLit "}"
       return $ MMapColSE e₁ x e₂
+  , mixF $ MixFTerminal $ do
+      parLit "mmap-row"
+      e₁ ← parSExp p
+      parLit "{"
+      x ← parVar
+      parLit "⇒"
+      e₂ ← parSExp p
+      parLit "}"
+      return $ MMapRowSE e₁ x e₂
   , mixF $ MixFTerminal $ do
       parLit "mfold-row"
       e₁ ← parSExp p

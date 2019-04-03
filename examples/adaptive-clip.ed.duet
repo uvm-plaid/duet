@@ -29,12 +29,12 @@ let pick = pλ m  : ℕ,
   AboveThreshold [ ε, fs, target ] <xs> { xs }
 in
 
-let prep = sλ m  : ℕ,
-              n  : ℕ
-              .
-              xs : 𝕄 [L∞, U|m, n⋅𝔻 ],
-              b: 𝔻
-              ⇒
+let scaleAndClip = sλ m  : ℕ,
+                      n  : ℕ
+                      .
+                      xs : 𝕄 [L∞, U|m, n⋅𝔻 ],
+                      b: 𝔻
+                      ⇒
   let scaled   = mmap xs { x ⇒ b ⋅ x } in
   let clipped  = mclip[L2] scaled in
   clipped
@@ -59,7 +59,7 @@ let main = pλ m  : ℕ,
               ⇒
   let m₀ = mcreate[ L∞ | ℕ[1] , cols xs ] { i , j ⇒ 0.0 } in
   b ← pick@[m, n, ε, k. xs, ε, bs];
-  let c = box (prep@[m,n] xs (bs#[idx ℕ[0], b])) in
+  let c = box (scaleAndClip@[m,n] xs (bs#[idx ℕ[0], b])) in
   aloop[ δ′ ] k on m₀ <xs,ys> { a, θ ⇒
     let s = ℝ⁺[1.0] / real (rows xs) in
     g ← mgauss[ s , ε , δ ] <xs,ys> { ∇[ LR | θ ; unbox c , ys ] } ;
