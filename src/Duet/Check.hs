@@ -990,22 +990,18 @@ inferPriv eA = case extract eA of
     tell $ delete x σ₂
     return τ₂
   MMapPE e₁ x e₂ → do
-    -- 1 sens check
     σ₁ :* τ₁ ← pmFromSM $ hijack $ inferSens e₁
     case τ₁ of
-      𝕄T ℓ _c (RexpRT ηₘ) (RexpME r τ₁') → do
+      𝕄T ℓ _c (RexpRT ηₘ) (RexpME r τ₁') | (joins (values σ₁) ⊑ ι 1) → do
         σ₂ :* τ₂ ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ τ₁') ⩌ γ) $ inferPriv e₂
         let (p :* σ₂') = ifNone (bot :* σ₂) $ dview x σ₂
-        --error $ pprender σ₂'
-        case ιview @ (Pr p RNF) p of
-          Some p' → do
-            let pr' = iteratePr (ηₘ × r) p'
-            tell $ map (Priv ∘ truncate (Quantity pr') ∘ unSens) σ₁
-            tell $ map (iteratePr (ηₘ × r)) σ₂'
+        tell $ map Priv $ mapp (iteratePr (ηₘ × r)) $ (map unPriv σ₂)
+        case (ιview @ (Pr p RNF) p) of
+          (Some p') → do
+            tell $ map (Priv ∘ truncate (Quantity (iteratePr (ηₘ × r) p')) ∘ unSens) σ₁
             return $ 𝕄T ℓ UClip (RexpRT ηₘ) (RexpME r τ₂)
           _ → do
             tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₁
-            tell $ map (Priv ∘ truncate Inf ∘ unPriv) σ₂
             return $ 𝕄T ℓ UClip (RexpRT ηₘ) (RexpME r τ₂)
       _  → undefined -- TypeSource Error
   AppPE e ηs as → do
