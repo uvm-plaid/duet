@@ -466,7 +466,7 @@ inferSens eA = case extract eA of
     case τ of
       𝕄T _ℓ (NormClip ℓ) ηₘ (RexpME r τ') | τ' ≡ 𝔻T ℝT → return $ 𝕄T ℓ UClip ηₘ (RexpME r ℝT)
       --QUESTION: is this ok? - CA
-      𝕄T ℓ _c ηₘ (RexpME r τ') | τ' ≡ 𝔻T ℝT → return $ 𝕄T ℓ UClip ηₘ (RexpME r ℝT)
+      -- 𝕄T ℓ _c ηₘ (RexpME r τ') | τ' ≡ 𝔻T ℝT → return $ 𝕄T ℓ UClip ηₘ (RexpME r ℝT)
       _ → undefined -- TypeSource Error
   MLipGradSE _g e₁ e₂ e₃ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁

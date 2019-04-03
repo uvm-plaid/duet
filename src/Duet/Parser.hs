@@ -27,7 +27,7 @@ tokKeywords = list
   ,"chunks","mfold-row","mfilter","zip","AboveThreshold","mmap-col"
   ,"matrix","mcreate","mclip","clip","∇","U∇","mmap","bmap","idx","℘","𝐝","conv","disc","∈"
   ,"aloop","loop","gauss","mgauss","bgauss","laplace","mlaplace","mconv","×","tr","mmapp"
-  ,"rows","cols", "count","exponential","rand-resp"
+  ,"rows","cols", "count","exponential","rand-resp",
   ,"sample","rand-nat"
   ,"L1","L2","L∞","U"
   ,"dyn","real"

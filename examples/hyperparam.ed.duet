@@ -26,11 +26,23 @@ let mzeros = sλ m : ℕ,
   mcreate[ L∞ | nr , nc ] { i , j ⇒ 0.0 }
 in
 
+let predictOne = sλ n : ℕ .
+                    θ : 𝕄 [L∞, U|1, n⋅ℝ]
+                    =>
+                    sλ .
+                       x : 𝕄 [L∞, U|1, n⋅𝔻],
+                       ⇒
+  let prediction = (mconv x) × (tr theta) in
+  sign (prediction#[idx N[0], idx N[0]])
+in
+
 let predict = sλ m : ℕ, n : ℕ .
                  xs : 𝕄 [L∞, U|m, n⋅𝔻],
                  θ : 𝕄 [L∞, U|1, n⋅ℝ]
                  ⇒
-  mmap ((mconv xs) × (tr θ)) { x ⇒ disc (sign x) }
+  --
+  let po = discF (predictOne[n] theta) in
+  mmap-row xs { row => po row }
 in
 
 let correct = sλ m : ℕ, n : ℕ .
