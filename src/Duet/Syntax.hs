@@ -325,6 +325,7 @@ data SExp (p ∷ PRIV) where
   UnboxSE ∷ SExpSource p → SExp p
   ClipSE ∷ SExpSource p → SExp p
   ConvSE ∷ SExpSource p → SExp p
+  DiscFSE ∷ SExpSource p → SExp p
   DiscSE ∷ SExpSource p → SExp p
   CountSE ∷ SExpSource p → SExp p
   ChunksSE ∷ SExpSource p → SExpSource p → SExpSource p → SExp p
