@@ -366,8 +366,11 @@ inferSens eA = case extract eA of
       (ℝT,ℝˢT η₂) → do
         tell $ ι (one / η₂) ⨵ σ₁ ⧺ σ₂
         return $ ℝT
-      (ℝT,ℝT) → return ℝT
-      (𝔻T ℝT,𝔻T ℝT) → return $ 𝔻T ℝT
+      (ℝT,ℝT) → error "broken" --return ℝT
+      (𝔻T ℝT,𝔻T ℝT) → do
+        tell σ₁
+        tell σ₂
+        return $ 𝔻T ℝT
       _ → undefined -- TypeError
   RootSE e → do
     σ :* τ ← hijack $ inferSens e
@@ -944,6 +947,26 @@ inferSens eA = case extract eA of
 --          _ → error $ pprender τ₂
       _  → undefined -- TypeSource Error
 
+  MMapCol2SE e₁ e₂ x₁ x₂ e₃ → do
+    σ₁ :* τ₁ ← hijack $ inferSens e₁
+    σ₂ :* τ₂ ← hijack $ inferSens e₂
+    case (τ₁, τ₂) of
+      (𝕄T ℓ₁ c₁ (RexpRT ηₘ₁) (RexpME r τ₁'), 𝕄T ℓ₂ c₂ (RexpRT ηₘ₂) (RexpME r₂ τ₂'))
+       | (r ≡ r₂) → do
+        let m₁ = 𝕄T ℓ₁ c₁ (RexpRT ηₘ₁) (RexpME one τ₁')
+        let m₂ = 𝕄T ℓ₁ c₁ (RexpRT ηₘ₂) (RexpME one τ₂')
+        σ₃ :* τ₃ ← hijack $ mapEnvL contextTypeL (\ γ → dict [x₁ ↦ m₁,x₂ ↦ m₂] ⩌ γ) $ inferSens e₃
+        let (ς₁ :* σ₃')  = ifNone (zero :* σ₃)  $ dview x₁ σ₃
+        let (ς₂ :* σ₃'') = ifNone (zero :* σ₃') $ dview x₂ σ₃'
+        tell $ (ι r × ς₁) ⨵ σ₁
+        tell $ (ι r × ς₂) ⨵ σ₂
+        tell $ ι r ⨵ σ₃''
+        case τ₃ of
+          𝕄T ℓ₃ c₃ (RexpRT ηₘ₃) (RexpME one τ₃') →
+            return $ 𝕄T ℓ₃ c₃ (RexpRT ηₘ₃) (RexpME r τ₃')
+          _ → return $ 𝕄T LInf UClip (RexpRT one) (RexpME r τ₃)
+      _  → undefined -- TypeSource Error
+
 
   MFoldSE e₁ e₂ x₁ x₂ e₃ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
@@ -980,6 +1003,7 @@ inferSens eA = case extract eA of
             return $ 𝕄T ℓ₂ c₂ (RexpRT ηₘ) (RexpME r τ₂')
           _ → return $ 𝕄T LInf UClip (RexpRT ηₘ) (RexpME one τ₂)
       _  → undefined -- TypeSource Error
+
 
   _ → error $ concat
         [ "inferSens unknown expression type: "

@@ -97,10 +97,11 @@ let normalize =
     } in
 
   -- scale the values using the clipping parameters
-  let centered = 
+  let scaled = 
     mmap-col centered, scales { col, scale ⇒
       mmap col { x ⇒
-        x / (disc scale#[idx ℕ[0], idx ℕ[0]])
+        x / (scale#[idx ℕ[0], idx ℕ[0]])
       }
     } in
+  scaled
 in normalize
