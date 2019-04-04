@@ -129,7 +129,13 @@ inferKind = \case
     δ ← askL contextKindL
     case δ ⋕? x of
       Some κ → return κ
-      None → error "kinding failure: kind variable lookup error"
+      None → error $ concat
+            [ "Kind variable lookup error: failed to find " ⧺ (pprender x) ⧺ " in the environment:\n"
+            , pprender δ
+            -- , "\n"
+            -- , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
+            ]
+
   NatRE _ → return $ ℕK
   NNRealRE _ → return $ ℝK
   MaxRE e₁ e₂ → do
@@ -533,6 +539,9 @@ inferSens eA = case extract eA of
       𝕄T ℓ _c (RexpRT η₁) (RexpME r₁ τ₁') → do
         tell $ ι η₁ ⨵ σ₁
         return $ 𝕄T ℓ UClip (RexpRT r₁) (RexpME η₁ τ₁')
+      𝕄T L1 _c (RexpRT η₁) (RexpME r₁ τ₁') → do
+        tell $ σ₁
+        return $ 𝕄T L1 UClip (RexpRT r₁) (RexpME η₁ τ₁')
       _  → error $ "matrix transpose error"
   JoinSE e₁ e₂ e₃ e₄ → do
     τ₁ ← inferSens e₁
@@ -1533,6 +1542,22 @@ inferPriv eA = case extract eA of
                     return τ₂
             _ → error $ "Fold error " ⧺ (pprender (τ₃ :* τ₄ :* τ₅))
 
+  PMapColPE e₁ x e₂ → do
+    σ₁ :* τ₁ ← pmFromSM $ hijack $ inferSens e₁
+    case τ₁ of
+      𝕄T LInf UClip (RexpRT ηₘ) (RexpME r (𝔻T τ₁')) | (joins (values σ₁) ⊑ ι 1) → do
+        let mcol = 𝕄T LInf UClip (RexpRT ηₘ) (RexpME one (𝔻T τ₁'))
+        σ₂ :* τ₂ ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ mcol) ⩌ γ) $ inferPriv e₂
+        let (p :* σ₂') = ifNone (bot :* σ₂) $ dview x σ₂
+        tell $ map Priv $ mapp (iteratePr (ηₘ × r)) $ (map unPriv σ₂)
+        case (ιview @ (Pr p RNF) p) of
+          (Some p') → do
+            tell $ map (Priv ∘ truncate (Quantity (iteratePr r p')) ∘ unSens) σ₁
+            return $ 𝕄T LInf UClip (RexpRT one) (RexpME r τ₂)
+          _ → do
+            tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₁
+            return $ 𝕄T LInf UClip (RexpRT one) (RexpME r τ₂)
+      _  → undefined -- TypeSource Error
 
   _ → error $ concat
         [ "inferPriv unknown expression type: "

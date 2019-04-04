@@ -1,4 +1,8 @@
-let testClippingParam = sλ .
+
+-- evaluate a clipping parameter: return how many
+-- rows would be clipped by using that parameter
+let evalClippingParam =
+            sλ .
                b: 𝔻
                ⇒
                sλ m  : ℕ,
@@ -14,82 +18,89 @@ let testClippingParam = sλ .
   ℝ⁺[0.5] ⋅ real (rows filtered)
 in
 
-let scaleClip = sλ m  : ℕ,
-                   n  : ℕ
-                   .
-                   xs : 𝕄 [L∞, U|m, n⋅𝔻 ],
-                   b  : 𝔻
-                   ⇒
-  let scaled   = mmap xs { x ⇒ b ⋅ x } in
-  let clipped  = mclip[L2] scaled in
-  clipped
-in
-
-let clippedMeanCol = sλ m   : ℕ
-                        .
-                        mat : 𝕄 [L∞, U|m, 1⋅𝔻 ],
-                        b   : 𝔻
-                        ⇒
-  let scaled   = mmap mat { x ⇒ b ⋅ x } in
-  let clipped  = mconv (mclip[L1] scaled) in
-  let sum      = mfold-row 0.0, clipped { a, r ⇒
-                   a + r#[idx ℕ[0], idx ℕ[0]] } in
-  sum / (real (rows mat))
-in
-
-let colMeans = sλ m : ℕ, n : ℕ
-                  .
-                  mat : 𝕄 [L∞, U|m, n⋅𝔻 ],
-                  b   : 𝔻
-                  ⇒
-  mmap-col mat { col ⇒ clippedMeanCol@[m] col b }
-in
-
--- let pColMeans = pλ m  : ℕ,
---                    n  : ℕ,
---                    ε  : ℝ⁺,
---                    δ  : ℝ⁺
---                    .
---                    xs : 𝕄 [L∞, U|m, n⋅𝔻 ] ,
---                    ε  : ℝ⁺[ε],
---                    δ  : ℝ⁺[δ],
---                    b  : 𝔻
---                    ⇒
---   mgauss [(real (cols xs)) / (real (rows xs)), ε, δ] <xs> { colMeans@[m,n] xs b }
--- in
-
-let clippedMean = pλ m  : ℕ,
-                     n  : ℕ,
-                     ε  : ℝ⁺,
-                     δ  : ℝ⁺
-                     .
-                     xs : 𝕄 [L∞, U|m, n⋅𝔻 ] ,
-                     ε  : ℝ⁺[ε],
-                     δ  : ℝ⁺[δ],
-                     b  : 𝔻
-                     ⇒
-  -- TODO: this should instead do something like:
-  -- mfold-col (mconv (scaleClip@[m, n . xs] b))
-  --   { col ⇒ mfold-row 0 col { a, r ⇒ a + r#[0,0] } / (rows xs) }
-  -- but picking the scaling parameter for each column separately
-  mgauss [ℝ⁺[1.0], ε, δ] <xs> { mconv (scaleClip@[m, n] xs b) }
-in
-
-
-let main = pλ m  : ℕ,
+-- determine the scale of a matrix (i.e. best clipping parameter)
+let selectClippingParam =
+           pλ m  : ℕ,
               n  : ℕ,
               ε  : ℝ⁺,
-              δ  : ℝ⁺,
               k  : ℕ
               .
               xs : 𝕄 [L∞, U|m, n⋅𝔻 ] ,
               ε  : ℝ⁺[ε],
-              δ  : ℝ⁺[δ],
               bs : 𝕄 [L1, U|1, k⋅𝔻 ]
               ⇒
   let target = 0.9 ⋅ real (rows xs) in
-  let fs = mmap bs { b ⇒ testClippingParam b } in
-  bIDX ← AboveThreshold [ ε, fs, target ] <xs> { xs };
-  mean ← clippedMean@[m, n, ε, δ . xs, ε, δ, bs#[idx ℕ[0], bIDX]];
-  return ⟨bIDX, mean⟩
-in colMeans
+  let fs = mmap bs { b ⇒ evalClippingParam b } in
+  bIdx ← AboveThreshold [ ε, fs, target ] <xs> { xs };
+  return bs#[idx ℕ[0], bIdx]
+in
+
+-- determine the mean of a single column matrix
+let colMean = pλ m   : ℕ,
+                 k   : ℕ,
+                 ε   : ℝ⁺,
+                 δ   : ℝ⁺
+                 .
+                 mat : 𝕄 [L∞, U|m, 1⋅𝔻 ],
+                 ε   : ℝ⁺[ε],
+                 δ   : ℝ⁺[δ],
+                 bs  : 𝕄 [L1, U|1, k⋅𝔻 ]
+                 ⇒
+  b ← selectClippingParam@[m, 1, ε, k. mat, ε, bs];
+  gauss [ℝ⁺[1.0] / (real (rows mat)), ε, δ] <mat> {
+    let scaled   = mmap mat { x ⇒ b ⋅ x } in
+    let clipped  = mconv (mclip[L1] scaled) in
+    let sum      = mfold-row 0.0, clipped { a, r ⇒
+                     a + r#[idx ℕ[0], idx ℕ[0]] } in
+    sum / (real (rows mat))
+  }
+in
+
+-- determine the mean of each column in the given matrix
+let colMeans = pλ m : ℕ, n : ℕ, k : ℕ, ε : ℝ⁺, δ : ℝ⁺
+                  .
+                  mat : 𝕄 [L∞, U|m, n⋅𝔻 ],
+                  ε   : ℝ⁺[ε],
+                  δ   : ℝ⁺[δ],
+                  bs  : 𝕄 [L1, U|1, k⋅𝔻 ]
+                  ⇒
+  pmap-col mat { col ⇒ colMean@[m, k, ε, δ. col, ε, δ, bs] }
+in
+
+-- determine the scale of each column in the given matrix
+let colScaleParams =
+  pλ m : ℕ, n : ℕ, k : ℕ, ε : ℝ⁺, δ : ℝ⁺
+     .
+     mat : 𝕄 [L∞, U|m, n⋅𝔻 ],
+     ε   : ℝ⁺[ε],
+     δ   : ℝ⁺[δ],
+     bs  : 𝕄 [L1, U|1, k⋅𝔻 ]
+     ⇒
+  pmap-col mat { col ⇒ selectClippingParam@[m, 1, ε, k. col, ε, bs] }
+in
+
+-- given a mean and scale for each column, prepare
+-- the given matrix for clipping
+let normalize =
+  sλ m : ℕ, n : ℕ
+     .
+     mat    : 𝕄 [L∞, U|m, n⋅𝔻 ],
+     means  : 𝕄 [L1, U|1, n⋅𝔻 ],
+     scales : 𝕄 [L1, U|1, n⋅𝔻 ]
+     ⇒
+  -- center the values using the column mean
+  let centered = 
+    mmap-col mat, means { col, mean ⇒
+      mmap col { x ⇒
+        x - mean#[idx ℕ[0], idx ℕ[0]]
+      }
+    } in
+
+  -- scale the values using the clipping parameters
+  let centered = 
+    mmap-col centered, scales { col, scale ⇒
+      mmap col { x ⇒
+        x / (disc scale#[idx ℕ[0], idx ℕ[0]])
+      }
+    } in
+in normalize

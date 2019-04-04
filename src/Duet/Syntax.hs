@@ -293,6 +293,7 @@ data SExp (p ∷ PRIV) where
   -- | MUnbGradSE (SExpSource p) (SExpSource p) (SExpSource p)
   MMapSE ∷ SExpSource p → 𝕏  → SExpSource p → SExp p
   MMapColSE ∷ SExpSource p → 𝕏  → SExpSource p → SExp p
+  MMapCol2SE ∷ SExpSource p → 𝕏  → SExpSource p → SExp p
   MMapRowSE ∷ SExpSource p → 𝕏  → SExpSource p → SExp p
   MMap2SE ∷ SExpSource p → SExpSource p → 𝕏 → 𝕏 → SExpSource p → SExp p
   MFoldSE ∷ SExpSource p → SExpSource p → 𝕏 → 𝕏 → SExpSource p → SExp p
@@ -372,6 +373,7 @@ data PExp (p ∷ PRIV) where
   IfPE ∷ (SExpSource p) → (PExpSource p) → (PExpSource p) → PExp p
   ParallelPE ∷ SExpSource p → SExpSource p → 𝕏 → SExpSource p → 𝕏 → 𝕏 → PExpSource p → PExp p
   MMapPE ∷ SExpSource p → 𝕏 → PExpSource p → PExp p
+  PMapColPE ∷ SExpSource p → 𝕏 → PExpSource p → PExp p
   PFldRowsPE ∷ SExpSource p → SExpSource p → SExpSource p → PExp p
   PFldRows2PE ∷ SExpSource p → SExpSource p → SExpSource p → SExpSource p → SExpSource p → PExp p
   MGaussPE ∷ SExpSource p → GaussParams p → 𝐿 𝕏 → SExpSource p → PExp p
