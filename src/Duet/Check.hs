@@ -868,7 +868,7 @@ inferSens eA = case extract eA of
             , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
             ]
 
-  ChunksSE e₁ e₂ e₃ → do
+  Chunks2SE e₁ e₂ e₃ → do
     τ₁ ← inferSens e₁
     τ₂ ← inferSens e₂
     τ₃ ← inferSens e₃
@@ -881,6 +881,21 @@ inferSens eA = case extract eA of
       _ → error $ concat
             [ "Chunks error: "
             , (pprender $ (τ₁ :* τ₂ :* τ₃))
+            , "\n"
+            , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
+            ]
+
+  ChunksSE e₁ e₂ → do
+    τ₁ ← inferSens e₁
+    τ₂ ← inferSens e₂
+    case (τ₁, τ₂) of
+      (ℕˢT ηb, 𝕄T ℓ₁ c₁ r₁₁ s₁) → do
+        let mt₁ = 𝕄T ℓ₁ c₁ (RexpRT ηb) s₁
+            s   = ConsME (mt₁) EmptyME
+        return $ 𝕄T LInf UClip (RexpRT ηb) s -- TODO: ηb is wrong here, but doesn't affect sens.
+      _ → error $ concat
+            [ "Chunks error: "
+            , (pprender $ (τ₁ :* τ₂))
             , "\n"
             , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
             ]
@@ -1482,25 +1497,41 @@ inferPriv eA = case extract eA of
               _ → error $ "type error in RenyiSamplePE." ⧺ (pprender (σxs',σys'))
       _ → error "type error in RenyiSamplePE"
 
-  PFldRowsPE e₁ e₂ e₃ → do
-    σ₁ :* τ₁ ← pmFromSM $ hijack $ inferSens e₁
-    σ₂ :* τ₂ ← pmFromSM $ hijack $ inferSens e₂
-    τ₃ ← pmFromSM $ inferSens e₃
-    case (τ₁, τ₂) of
-      ( 𝕄T ℓ₁ c₁ (RexpRT ηr₁) (RexpME ηc₁ (𝔻T ℝT)) :×: 𝕄T ℓ₂ c₂ (RexpRT ηr₂) (RexpME ηc₂ (𝔻T ℝT)),
-         (αs :* as) :⊸⋆: τ₅ ) -- | τ₁ ≡ τ₅
-        → error $ pprender (τ₁ :* τ₂)
+  -- TODO: I think this is broken
+  -- PFldRowsPE e₁ e₂ e₃ → do
+  --   σ₁ :* τ₁ ← pmFromSM $ hijack $ inferSens e₁
+  --   σ₂ :* τ₂ ← pmFromSM $ hijack $ inferSens e₂
+  --   τ₃ ← pmFromSM $ inferSens e₃
+  --   case (τ₁, τ₂) of
+  --     ( 𝕄T ℓ₁ c₁ (RexpRT ηr₁) (RexpME ηc₁ (𝔻T ℝT)) :×: 𝕄T ℓ₂ c₂ (RexpRT ηr₂) (RexpME ηc₂ (𝔻T ℝT)),
+  --        (αs :* as) :⊸⋆: τ₅ ) -- | τ₁ ≡ τ₅
+  --       → error $ pprender (τ₁ :* τ₂)
 
-      -- 𝕄T ℓ c (RexpRT ηₘ) (RexpME r τ₁') → do
-      --   let m = 𝕄T ℓ c (RexpRT one) (RexpME r τ₁')
-      --   σ₂ :* τ₂ ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ m) ⩌ γ) $ inferSens e₂
-      --   let (ς :* σ₂') = ifNone (zero :* σ₂) $ dview x σ₂
-      --   tell $ ς ⨵ σ₁
-      --   tell $ ι r ⨵ σ₂'
-      --   case τ₂ of
-      --     𝕄T ℓ₂ c₂ (RexpRT ηₘ₂) (RexpME ηₙ₂ τ₂') | (ηₘ₂ ≡ one) ⩓ (ηₙ₂ ≡ r) →
-      --       return $ 𝕄T ℓ₂ c₂ (RexpRT ηₘ) (RexpME r τ₂')
-      --     _ → return $ 𝕄T LInf UClip (RexpRT ηₘ) (RexpME one τ₂)
+  PFldRows2PE e₁ e₂ e₃ e₄ e₅ → do
+    τ₁ ← pmFromSM $ inferSens e₁
+    τ₂ ← pmFromSM $ inferSens e₂
+    σ₃ :* τ₃ ← pmFromSM $ hijack $ inferSens e₃
+    σ₄ :* τ₄ ← pmFromSM $ hijack $ inferSens e₄
+    τ₅ ← pmFromSM $ inferSens e₅
+    case (τ₁, τ₃, τ₄, τ₅) of
+      (ℕˢT ηb,
+       𝕄T ℓ₁ c₁ (RexpRT ηr₁) (RexpME ηc₁ (𝔻T ℝT)),
+       𝕄T ℓ₂ c₂ (RexpRT ηr₂) (RexpME ηc₂ (𝔻T ℝT)),
+       (αs :* as) :⊸⋆: τ₆ ) -- | τ₁ ≡ τ₅
+        → case as of
+            (PArgs ((𝕄T ℓ₁' c₁' (RexpRT ηr₁') (RexpME ηc₁' (𝔻T ℝT)) :* (p₁ ∷ Priv p₁ RNF)) :&
+                    (𝕄T ℓ₂' c₂' (RexpRT ηr₂') (RexpME ηc₂' (𝔻T ℝT)) :* (p₂ ∷ Priv p₂ RNF)) :&
+                    (τ₂prime :* p₃) :& Nil))
+             | (ℓ₁ ≡ ℓ₁') ⩓ (ℓ₂ ≡ ℓ₂') ⩓
+               (c₁ ≡ c₁') ⩓ (c₂ ≡ c₂') ⩓
+               (ηr₁' ≡ ηb) ⩓ (ηc₁ ≡ ηc₁') ⩓
+               (ηr₂' ≡ ηb) ⩓ (ηc₂ ≡ ηc₂')
+              → case (eqPRIV (priv @ p) (priv @ p₁), eqPRIV (priv @ p) (priv @ p₂)) of
+                  (Some Refl, Some Refl) → do
+                    tell $ map (Priv ∘ truncate (unPriv p₁) ∘ unSens) σ₃
+                    tell $ map (Priv ∘ truncate (unPriv p₂) ∘ unSens) σ₄
+                    return τ₂
+            _ → error $ "Fold error " ⧺ (pprender (τ₃ :* τ₄ :* τ₅))
 
 
   _ → error $ concat

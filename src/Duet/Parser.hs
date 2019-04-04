@@ -664,10 +664,18 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
        e₁ ← parSExp p
        parLit ","
        e₂ ← parSExp p
+       parLit "]"
+       return $ ChunksSE e₁ e₂
+  , mixF $ MixFTerminal $ do
+       parLit "chunks"
+       parLit "["
+       e₁ ← parSExp p
+       parLit ","
+       e₂ ← parSExp p
        parLit ","
        e₃ ← parSExp p
        parLit "]"
-       return $ ChunksSE e₁ e₂ e₃
+       return $ Chunks2SE e₁ e₂ e₃
   , mixF $ MixFTerminal $ do
        parLit "zip"
        parLit "["
@@ -720,8 +728,12 @@ parPExp p = pWithContext "pexp" $ tries
        e₂ ← parSExp p
        parLit ","
        e₃ ← parSExp p
+       parLit ","
+       e₄ ← parSExp p
+       parLit ","
+       e₅ ← parSExp p
        parLit "]"
-       return $ PFldRowsPE e₁ e₂ e₃
+       return $ PFldRows2PE e₁ e₂ e₃ e₄ e₅
   , do x ← parVar
        parLit "←"
        e₁ ← parPExp p

@@ -1,0 +1,42 @@
+-- gradient descent
+-- per-iteration bound
+-- minibatching via parallel composition
+let epoch = sλ n  : ℕ,
+               ρ  : ℝ⁺,
+               b  : ℕ
+               .
+               b  : ℕ[b],
+               ρ  : ℝ⁺[ρ],
+               η  : ℝ
+               ⇒
+  pλ .
+     xs : 𝕄 [L∞, L2|b, n⋅𝔻 ],
+     ys : 𝕄 [L∞, U|b, 1⋅𝔻 ],
+     θ  : 𝕄 [L∞, U|1, n⋅ℝ ]
+     ⇒
+  let s = ℝ⁺[1.0] / real b in
+  g ← mgauss[ s , ρ ] <xs,ys> {
+    ∇[ LR | θ ; xs , ys ]
+  } ;
+  return mmap θ , mmap g { x ⇒ η ⋅ x } { x , y ⇒ x - y }
+in
+
+let main = pλ m  : ℕ,
+              n  : ℕ,
+              ρ  : ℝ⁺,
+              k  : ℕ,
+              b  : ℕ
+              .
+              xs : 𝕄 [L∞, U|m, n⋅𝔻 ] ,
+              ys : 𝕄 [L∞, U|m, 1⋅𝔻 ] ,
+              ρ  : ℝ⁺[ρ],
+              η  : ℝ,
+              k  : ℕ[k],
+              b  : ℕ[b]
+              ⇒
+  let m₀ = mcreate[ L2 | ℕ[1] , cols xs ] { i , j ⇒ 0.0 } in
+  loop k on m₀ <xs,ys> { a, θ ⇒
+    pfld-rows [b, θ, mclip[L2] xs, ys, epoch@[n, ρ, b] b ρ η]
+  }
+in main
+

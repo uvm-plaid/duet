@@ -329,7 +329,8 @@ data SExp (p ∷ PRIV) where
   DiscFSE ∷ SExpSource p → SExp p
   DiscSE ∷ SExpSource p → SExp p
   CountSE ∷ SExpSource p → SExp p
-  ChunksSE ∷ SExpSource p → SExpSource p → SExpSource p → SExp p
+  ChunksSE ∷ SExpSource p → SExpSource p → SExp p
+  Chunks2SE ∷ SExpSource p → SExpSource p → SExpSource p → SExp p
   deriving (Eq,Ord,Show)
 
 data GaussParams (p ∷ PRIV) where
@@ -372,6 +373,7 @@ data PExp (p ∷ PRIV) where
   ParallelPE ∷ SExpSource p → SExpSource p → 𝕏 → SExpSource p → 𝕏 → 𝕏 → PExpSource p → PExp p
   MMapPE ∷ SExpSource p → 𝕏 → PExpSource p → PExp p
   PFldRowsPE ∷ SExpSource p → SExpSource p → SExpSource p → PExp p
+  PFldRows2PE ∷ SExpSource p → SExpSource p → SExpSource p → SExpSource p → SExpSource p → PExp p
   MGaussPE ∷ SExpSource p → GaussParams p → 𝐿 𝕏 → SExpSource p → PExp p
   BGaussPE ∷ SExpSource p → GaussParams p → 𝐿 𝕏 → SExpSource p → PExp p
   LaplacePE ∷ SExpSource p → LaplaceParams p → 𝐿 𝕏 → SExpSource p → PExp p
