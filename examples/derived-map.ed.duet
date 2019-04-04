@@ -1,0 +1,5 @@
+let derived-map = sλ . f : (∀ . ℝ ⊸[ 2.0 ] ℝ),
+                       X : 𝕄 [ L1 , U | 100 , 200 ⋅ ℝ ]
+                       ⇒
+      mcreate[ L1 | ℕ[100] , ℕ[200] ] { i , j ⇒ f (X #[i,j]) }
+in derived-map

@@ -21,6 +21,7 @@ tokKeywords ∷ 𝐿 𝕊
 tokKeywords = list
   ["let","in","sλ","pλ","return","on"
   ,"ℕ","ℝ","ℝ⁺","𝔻","𝕀","𝕄","𝔻𝔽","𝔹","𝕊","★","∷","⋅","[]","⧺"
+  ,"∀"
   ,"LR","L2","U"
   ,"real","bag","set","record", "unionAll"
   ,"partitionDF","addColDF","mapDF","join₁","joinDF₁","parallel"
@@ -198,6 +199,11 @@ parTypeSource p = pWithContext "type" (parType p)
 parType ∷ (PRIV_C p) ⇒ PRIV_W p → Parser Token (Type RExp)
 parType mode = mixfixParser $ concat
   [ mix $ MixTerminal $ do
+      parLit "("
+      τ ← parType mode
+      parLit ")"
+      return τ
+  , mix $ MixTerminal $ do
       parLit "ℕ"
       parLit "["
       η ← parRExp
@@ -269,7 +275,7 @@ parType mode = mixfixParser $ concat
   , mix $ MixInfixL 4 $ const (:&:) ^$ parLit "&"
   , mix $ MixPrefix 2 $ do
       parLit "∀"
-      ακs ← pOneOrMoreSepBy (parLit ",") $ do
+      ακs ← pManySepBy (parLit ",") $ do
         α ← parVar
         parLit ":"
         κ ← parKind
@@ -283,7 +289,7 @@ parType mode = mixfixParser $ concat
       return $ \ τ₂ → (ακs :* τ₁) :⊸: (s :* τ₂)
   , mix $ MixPrefix 2 $ do
       parLit "∀"
-      ακs ← pOneOrMoreSepBy (parLit ",") $ do
+      ακs ← pManySepBy (parLit ",") $ do
         α ← parVar
         parLit ":"
         κ ← parKind
@@ -527,11 +533,13 @@ parSExp p = mixfixParserWithContext "sexp" $ concat
       parLit ","
       e₂ ← parSExp p
       parLit "{"
-      x ← parVar
+      x₁ ← parVar
+      parLit ","
+      x₂ ← parVar
       parLit "⇒"
       e₃ ← parSExp p
       parLit "}"
-      return $ MMapCol2SE e₁ e₂ x e₃
+      return $ MMapCol2SE e₁ e₂ x₁ x₂ e₃
   , mixF $ MixFTerminal $ do
       parLit "mmap-row"
       e₁ ← parSExp p
