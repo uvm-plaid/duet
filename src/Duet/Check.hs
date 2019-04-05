@@ -711,7 +711,12 @@ inferSens eA = case extract eA of
             , "\n"
             , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
             ]
-      _ → error $ "Application error: " ⧺ (pprender $ (τ₁ :* τ₂)) -- TypeSource Error
+      _ → error $ concat
+            [ "AppSE error: "
+            , pprender (τ₁ :* τ₂)
+            , "\n"
+            , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
+            ]
   PFunSE ακs xτs e → do
     let xτs' = map (mapSnd (map normalizeRExp ∘ extract)) xτs
         xs = map fst xτs
@@ -961,7 +966,12 @@ inferSens eA = case extract eA of
         σ₃ :* τ₃ ← hijack $ mapEnvL contextTypeL (\ γ → dict [x₁ ↦ m₁,x₂ ↦ m₂] ⩌ γ) $ inferSens e₃
         let (ς₁ :* σ₃')  = ifNone (zero :* σ₃)  $ dview x₁ σ₃
         let (ς₂ :* σ₃'') = ifNone (zero :* σ₃') $ dview x₂ σ₃'
-        tell $ (ι r × ς₁) ⨵ σ₁
+        case ℓ₁ of
+          LInf → tell $ ς₁ ⨵ σ₁
+          _ → tell $ (ι r × ς₁) ⨵ σ₁
+        case ℓ₂ of
+          LInf → tell $ ς₂ ⨵ σ₂
+          _ → tell $ (ι r × ς₂) ⨵ σ₂
         tell $ (ι r × ς₂) ⨵ σ₂
         tell $ ι r ⨵ σ₃''
         case τ₃ of
@@ -1115,9 +1125,17 @@ inferPriv eA = case extract eA of
                       , pprender fκs
                       , pprender aτs
                       , pprender τs'
+                      , "\n"
+                      , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
                       ]
                   ]
-      _ → error $ "AppPE expected a function instead of" ⧺ pprender τ
+      _ → error $ concat $ inbetween "\n"
+                      [ "AppPE expected a function instead of"
+                      , pprender τ
+                      , "aστs is:"
+                      , pprender aστs
+                      , pprender $ ppLineNumbers $ pretty $ annotatedTag eA
+                      ]
   IfPE e₁ e₂ e₃ → do
     τ₁ ← pmFromSM $ inferSens e₁
     σ₂ :* τ₂ ← hijack $ inferPriv e₂
@@ -1232,7 +1250,7 @@ inferPriv eA = case extract eA of
         σ₄KeepMax = joins $ values σ₄Keep
         σ₄Toss = without xs' σ₄
     case (τ₁, τ₂, τ₃, τ₄) of
-      (ℝˢT ηᵋ, 𝕄T L1 UClip (RexpRT l) (RexpME r₂ ((αs :* τ₅) :⊸: (ηₛ :* ℝT))), ℝT, τ₅')
+      (ℝˢT ηᵋ, 𝕄T _ UClip (RexpRT l) (RexpME r₂ ((αs :* τ₅) :⊸: (ηₛ :* ℝT))), ℝT, τ₅')
         | (τ₅ ≡ τ₅')
         ⩓ (l ≡ one)
 --        ⩓ (ηₛ ≡ Sens (Quantity one)) -- TODO: why doesn't this one pass?
@@ -1572,7 +1590,8 @@ inferPriv eA = case extract eA of
   PMapColPE e₁ x e₂ → do
     σ₁ :* τ₁ ← pmFromSM $ hijack $ inferSens e₁
     case τ₁ of
-      𝕄T LInf UClip (RexpRT ηₘ) (RexpME r (𝔻T τ₁')) | (joins (values σ₁) ⊑ ι 1) → do
+      𝕄T LInf UClip (RexpRT ηₘ) (RexpME r (𝔻T τ₁')) -- TODO: this breaks | (joins (values σ₁) ⊑ ι 1)
+       → do
         let mcol = 𝕄T LInf UClip (RexpRT ηₘ) (RexpME one (𝔻T τ₁'))
         σ₂ :* τ₂ ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ mcol) ⩌ γ) $ inferPriv e₂
         let (p :* σ₂') = ifNone (bot :* σ₂) $ dview x σ₂
