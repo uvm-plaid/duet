@@ -13,7 +13,9 @@ Install hpack: https://github.com/sol/hpack/blob/master/get-hpack.sh
 
 ## Running
 
-To typecheck all the case studies just run ```make```.
+To typecheck all our case studies just run ```make```.
+
+To typecheck all our examples run ```make all```.
 
 To typecheck a specific example:
 
