@@ -1,13 +1,3 @@
--- frank wolfe (matching the paper)
-
--- issues:
--- 1. The paper has a bug: The call to exponential returns a signed number which
---    gets used as an idx. This version returns a pair from exponential and (correctly)
---    does the multiplication afterwards.
--- 2. The paper has another bug: "n" is unbound in the 4th line.
--- 3. This version doesn't do clipping (it assumes the input is clipped).
--- 4. We need pairs
--- 5. The paper version uses pattern matching, but this version uses fst[] and snd[]
 
 let main = pλ m  : ℕ,
               n  : ℕ,
