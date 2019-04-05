@@ -4,5 +4,5 @@ for e in gd-pb.ed.duet bolt-on.ed.duet fw.ed.duet gd-pb-mini.ed.duet parallel-pr
     echo "================================================================================"
     echo "Running example:" $e
     echo "================================================================================"
-    stack run -- check examples/${e}
+    stack run -- check examples/complete/${e}
 done

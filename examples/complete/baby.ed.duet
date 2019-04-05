@@ -7,7 +7,7 @@ let main = pλ ε   : ℝ⁺,
               ⇒
   result ← gauss[ℝ⁺[1.0], ε, δ] <df> { real (rows df) };
   return result
-in return main
+in main
 
 -- Γ ⊢ e : 𝐝 τ , Σ
 -- ------------------

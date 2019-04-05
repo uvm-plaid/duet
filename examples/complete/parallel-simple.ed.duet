@@ -19,7 +19,7 @@ let main = pλ ε  : ℝ⁺,
     x ← gauss[ℝ⁺[1.0], ε, δ] <p> { clip(p#[s,t]) };
     return ⟨b, x⟩
   }
-in return main
+in main
 
 
 -- Γ                                        , ⌉Σᴳ₀⌈⸢1⸣                     ⊢ eᴳ₀ : 𝕄 [ ℓ , c | ★ , s ]

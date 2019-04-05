@@ -10,7 +10,7 @@ let main = pλ ε : ℝ⁺,
               δ : ℝ⁺[δ]
               ⇒
   -- NORMAL mode
-  let getXY = sλ row : 𝕄 [L∞ , U | 1 , 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 𝕊 ∷ [] ] ⇒
+  let getXY = sλ . row : 𝕄 [L∞ , U | 1 , 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 𝕊 ∷ [] ] ⇒
     ⟨ row#[ℕ[0],ℕ[2]], row#[ℕ[0],ℕ[3]] ⟩
   in
   parallel[ outgoing , blocks ] { row ⇒ getXY row } { b, p ⇒

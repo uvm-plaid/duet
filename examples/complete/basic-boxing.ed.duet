@@ -4,4 +4,4 @@ let main = pλ . x : ℕ ⇒
   -- in return y
   -- this should work
   in return unbox (y)
-in return main
+in main

@@ -1350,7 +1350,7 @@ inferPriv eA = case extract eA of
         σ₄KeepMax = joins $ values σ₄Keep
         σ₄Toss = without xs' σ₄
     case (τ₁,τ₂,τ₃,τ₄,ιview @ RNF σ₄KeepMax) of
-      (ℝˢT ηₛ,ℕˢT ηᵅ,ℝˢT ηᵋ,𝕄T L2 _c ηₘ ηₙ,Some ς) | ς ⊑ ηₛ → do
+      (ℝˢT ηₛ,ℝˢT ηᵅ,ℝˢT ηᵋ,𝕄T L2 _c ηₘ ηₙ,Some ς) | ς ⊑ ηₛ → do
         b ← isRealMExp ηₙ
         when (not b) $ throw (error "MGauss error isRealMExp check failed" ∷ TypeError)
         tell $ map (Priv ∘ truncate (Quantity $ RenyiPriv ηᵅ ηᵋ) ∘ unSens) σ₄Keep

@@ -13,7 +13,7 @@ Install hpack: https://github.com/sol/hpack/blob/master/get-hpack.sh
 
 ## Running
 
-To typecheck all the case studies just run ```make```:
+To typecheck all the case studies just run ```make```.
 
 To typecheck a specific example:
 
@@ -24,10 +24,9 @@ stack run -- check /path/to/examples/${example-name}
 For example  
 
 ```shell
-stack run -- check examples/gd-pb.ed.duet
+stack run -- check examples/complete/gd-pb.ed.duet
 ```
 
 ## Notes
 
 * code, examples, and output use lots of math unicode symbols
- 

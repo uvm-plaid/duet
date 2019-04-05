@@ -37,6 +37,9 @@ ARGS := check examples/normalize.ed.duet
 default:
 	./examples.sh
 
+all:
+	./all_examples.sh
+
 .PHONY: run
 run: $(NAME).cabal
 	stack run -- $(ARGS)
