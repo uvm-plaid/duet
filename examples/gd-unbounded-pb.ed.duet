@@ -23,4 +23,4 @@ let main = pλ m  : ℕ,
     return mmap θ , mmap g { x ⇒ η ⋅ x } { x , y ⇒ x - y }
   }
 
-in return main
+in main
