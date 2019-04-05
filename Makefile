@@ -12,13 +12,17 @@ ARGS := run examples/gd-pb.ed.duet data_short/xs.csv data_short/ys.csv 0.05 100 
 ARGS := run examples/gd-pb.ed.duet data_long/adpxs.csv data_long/adpys.csv 0.05 100 0.0001 0.0001 1
 ARGS := run examples/gd-pb-mini.ed.duet data_long/adpxs.csv data_long/adpys.csv 10000 100 0.0001 0.0001 1 50
 ARGS := lr-accuracy data_long/adpxs.csv data_long/adpys.csv out/model.csv
-ARGS := check examples/fw.ed.duet
-ARGS := check examples/gd-unbounded-pb.ed.duet
 ARGS := check examples/baby-map-s.ed.duet
-ARGS := check examples/gd-pb.ed.duet
 ARGS := check examples/normalize.ed.duet
+ARGS := check examples/gd-pb.ed.duet
+ARGS := check examples/bolt-on.ed.duet
+ARGS := check examples/fw.ed.duet
+ARGS := check examples/gd-pb-mini.ed.duet
+ARGS := check examples/parallel-privacy.ed.duet
+ARGS := check examples/gd-unbounded-pb.ed.duet
 ARGS := check examples/hyperparam.ed.duet
-
+ARGS := check examples/adaptive-clip.ed.duet
+ARGS := check examples/normalize.ed.duet
 
 # run examples/gd-pb-mini.ed.duet data_short/fbxs.csv data_short/fbys.csv 0.05 100 0.0001 0.0001 1 50
 # run examples/parallel-simple.ed.duet data_short/made_up.csv 0.05 0.0001 0 0 0 1
@@ -29,6 +33,9 @@ ARGS := check examples/hyperparam.ed.duet
 # stack ghci
 # :set args check "examples/gd-pb.ed.duet"
 # main
+
+default:
+	./examples.sh
 
 .PHONY: run
 run: $(NAME).cabal

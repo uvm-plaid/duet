@@ -8,12 +8,11 @@ let query = sλ .
                   ⇒
   let scaled   = mmap xs { x ⇒ b ⋅ x } in
   let clipped  = mmap (mclip[L2] scaled) { x ⇒ x } in
-  let filtered = mfilter zip[clipped, xs] { row  ⇒ 
+  let filtered = mfilter zip[clipped, xs] { row  ⇒
                    let ⟨clipped, orig⟩ = row#[ℕ[0], ℕ[0]] in
                    clipped ≡ orig } in
   ℝ⁺[0.5] ⋅ real (rows filtered)
 in
-  
 
 let pick = pλ m  : ℕ,
               n  : ℕ,
@@ -67,4 +66,3 @@ let main = pλ m  : ℕ,
   }
 
 in main
-

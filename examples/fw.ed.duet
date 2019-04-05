@@ -8,10 +8,6 @@
 -- 3. This version doesn't do clipping (it assumes the input is clipped).
 -- 4. We need pairs
 -- 5. The paper version uses pattern matching, but this version uses fst[] and snd[]
--- 6. We need vector update (↦)
--- 7. We need idx arithmetic: j mod d better be an "idx d" even if j is an "idx 2d".
--- 8. Doesn't parse
--- 9. Doesn't typecheck
 
 let main = pλ m  : ℕ,
               n  : ℕ,
@@ -19,7 +15,7 @@ let main = pλ m  : ℕ,
               δ  : ℝ⁺,
               k  : ℕ
               .
-              -- xs : 𝕄 [L∞ L∞|m,n] 𝔻, -- FIX: this is so we don't need clipping for now
+              -- xs : 𝕄 [L∞ L∞|m,n] 𝔻,
               -- ys : 𝕄 [L∞ U|m,1] 𝔻,
               xs : 𝕄 [L∞, L∞|m, n⋅𝔻 ] ,
               ys : 𝕄 [L∞, U|m, 1⋅𝔻 ] ,
@@ -27,8 +23,6 @@ let main = pλ m  : ℕ,
               δ  : ℝ⁺[δ],
               k  : ℕ[k]
               ⇒
---  let k = ℕ[1000] in
---  let δ = ℝ⁺[1.0e-6] in
   let d = cols xs in
   let m₀ = mcreate[ L∞ | ℕ[1] , d ] { i , j ⇒ 0.0 } in
   let indexes = mcreate[ L∞ | ℕ[1] , ℕ[1]⋅d ] { i , j ⇒
