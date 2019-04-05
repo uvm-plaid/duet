@@ -15,14 +15,20 @@
 
 let main = pλ m  : ℕ,
               n  : ℕ,
-              ε  : ℝ⁺.
+              ε  : ℝ⁺,
+              δ  : ℝ⁺,
+              k  : ℕ
+              .
               -- xs : 𝕄 [L∞ L∞|m,n] 𝔻, -- FIX: this is so we don't need clipping for now
               -- ys : 𝕄 [L∞ U|m,1] 𝔻,
               xs : 𝕄 [L∞, L∞|m, n⋅𝔻 ] ,
               ys : 𝕄 [L∞, U|m, 1⋅𝔻 ] ,
-              ε  : ℝ⁺[ε] ⇒
-  let k = ℕ[1000] in
-  let δ = ℝ⁺[1.0e-6] in
+              ε  : ℝ⁺[ε],
+              δ  : ℝ⁺[δ],
+              k  : ℕ[k]
+              ⇒
+--  let k = ℕ[1000] in
+--  let δ = ℝ⁺[1.0e-6] in
   let d = cols xs in
   let m₀ = mcreate[ L∞ | ℕ[1] , d ] { i , j ⇒ 0.0 } in
   let indexes = mcreate[ L∞ | ℕ[1] , ℕ[1]⋅d ] { i , j ⇒
@@ -34,10 +40,10 @@ let main = pλ m  : ℕ,
     p ← exponential[s, ε] indexes <xs,ys> { x ⇒
           let ⟨c, s⟩ = x in let g = ∇[ LR | θ ; xs , ys ] in g#[idx ℕ[0], c] } ;
     let g₀ = mcreate[ L∞ | ℕ[1] , d ] { i , j ⇒ 0.0 } in
-    let gₚ = (let ⟨i, s⟩ = p in g₀#[idx ℕ[0],i ↦ s ⋅ real 100]) in
+    let gₚ = (let ⟨i, s⟩ = indexes#[idx ℕ[0], p] in g₀#[idx ℕ[0],i ↦ s ⋅ real 100]) in
 
     let θ'  = mmap θ  { x ⇒ (1.0-μ) ⋅ x } in
     let gₚ' = mmap gₚ { x ⇒ μ ⋅ (100.0 ⋅ x) } in
     return mmap θ', gₚ' { x, y ⇒ x + y }
   }
-in return main
+in main

@@ -366,7 +366,10 @@ inferSens eA = case extract eA of
       (ℝT,ℝˢT η₂) → do
         tell $ ι (one / η₂) ⨵ σ₁ ⧺ σ₂
         return $ ℝT
-      (ℝT,ℝT) → error "broken" --return ℝT
+      (ℝT,ℝT) → do
+        tell $ map (Sens ∘ truncate Inf ∘ unSens) σ₁
+        tell $ map (Sens ∘ truncate Inf ∘ unSens) σ₂
+        return ℝT
       (𝔻T ℝT,𝔻T ℝT) → do
         tell σ₁
         tell σ₂
