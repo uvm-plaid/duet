@@ -13,9 +13,9 @@ Install hpack: https://github.com/sol/hpack/blob/master/get-hpack.sh
 
 ## Running
 
-To typecheck all our case studies just run ```make```.
+To typecheck all case studies: run `make`.
 
-To typecheck all our examples run ```make all```.
+To typecheck all examples: run `make all`.
 
 To typecheck a specific example:
 
@@ -31,4 +31,6 @@ stack run -- check examples/complete/gd-pb.ed.duet
 
 ## Notes
 
-* code, examples, and output use lots of math unicode symbols
+* Code, examples, and output use lots of math unicode symbols.
+* Some syntax (e.g., for matrix-map) used in examples are slighlty different
+  from those presented in the paper.
