@@ -32,5 +32,5 @@ stack run -- check examples/complete/gd-pb.ed.duet
 ## Notes
 
 * Code, examples, and output use lots of math unicode symbols.
-* Some syntax (e.g., for matrix-map) used in examples are slighlty different
+* Some syntax (e.g., for matrix-map) used in examples are slightly different
   from those presented in the paper.

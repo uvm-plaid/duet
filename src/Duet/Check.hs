@@ -31,6 +31,9 @@ freeBvs (τ₁ :&: τ₂) = freeBvs τ₁ ∪ freeBvs τ₂
 freeBvs ((_ :* τ₁) :⊸: (_ :* τ₂)) = freeBvs τ₁ ∪ freeBvs τ₂
 freeBvs (pargs :⊸⋆: τ) = freeBlpargvs pargs ∪ freeBvs τ
 freeBvs (BoxedT σ τ) = keys σ ∪ freeBvs τ
+--TODO:QUESTION
+freeBvs (VarT x) = pø
+
 
 freeBmexp :: (MExp r) → 𝑃 𝕏
 freeBmexp me = case me of
@@ -250,6 +253,9 @@ checkType τA = case τA of
      _ :* _a ← hijack $  checkType τ
      map and $ mapM checkTypeP τps
   BoxedT _σ τ → checkType τ
+  --TODO:QUESTION
+  VarT _x → return True
+  _ → error $ "checkType error on " ⧺ pprender τA
 
 checkTypeP ∷ ∀ p₁ p₂. (PRIV_C p₁) ⇒ (Type RExp ∧ Priv p₂ RExp) → SM p₁ 𝔹
 checkTypeP (τ :* p) = do

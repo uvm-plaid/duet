@@ -1,0 +1,9 @@
+let apply = sλ τ₁ : ☆K,
+               τ₂ : ☆K,
+               s  : ℝ⁺
+               .
+               f : (∀ . τ₁ ⊸[ s ] τ₂),
+               x : τ₁
+               ⇒
+  f x
+in apply

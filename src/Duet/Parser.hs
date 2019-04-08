@@ -20,7 +20,7 @@ makePrettyUnion ''Token
 tokKeywords ∷ 𝐿 𝕊
 tokKeywords = list
   ["let","in","sλ","pλ","return","on"
-  ,"ℕ","ℝ","ℝ⁺","𝔻","𝕀","𝕄","𝔻𝔽","𝔹","𝕊","★","∷","⋅","[]","⧺"
+  ,"ℕ","ℝ","ℝ⁺","𝔻","𝕀","𝕄","𝔻𝔽","𝔹","𝕊","★","∷","⋅","[]","⧺","☆K"
   ,"∀"
   ,"LR","L2","U"
   ,"real","bag","set","record", "unionAll"
@@ -128,6 +128,7 @@ parKind ∷ Parser Token Kind
 parKind = pNew "kind" $ tries
   [ do parLit "ℕ" ; return ℕK
   , do parLit "ℝ⁺" ; return ℝK
+  , do parLit "☆K" ; return TypeK
   ]
 
 parRowsT :: Parser Token (RowsT RExp)
@@ -219,6 +220,7 @@ parType mode = mixfixParser $ concat
   , mix $ MixTerminal $ const ℝT ^$ parLit "ℝ"
   , mix $ MixTerminal $ const 𝔹T ^$ parLit "𝔹"
   , mix $ MixTerminal $ const 𝕊T ^$ parLit "𝕊"
+  , mix $ MixTerminal $ VarT ^$ parVar
   , mix $ MixTerminal $ do
       parLit "𝕀"
       parLit "["

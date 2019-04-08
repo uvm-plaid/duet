@@ -42,7 +42,9 @@ interpRExp γ = \case
   ExpFnRE e → exp $ interpRExp γ $ extract e
   MinusRE e₁ e₂ → interpRExp γ (extract e₁) - interpRExp γ (extract e₂)
 
-data RNF = 
+data TLExp r = Type r | RExp 
+
+data RNF =
     NatRNF ℕ
   | NNRealRNF 𝔻
   | SymRNF (𝑃 {- max -} (𝑃 {- min -} RSP))
@@ -79,13 +81,13 @@ ppRAtom = \case
 ppProd ∷ (RAtom ⇰ ℕ) → Doc
 ppProd xs = case list xs of
   Nil → pretty 1
-  (x :* n) :& Nil → 
+  (x :* n) :& Nil →
     case n ≡ 1 of
       True → ppRAtom x
       False → ppAtLevel 7 $ concat [ppRAtom x,ppOp "^",pretty n]
   _ → ppAtLevel 6 $ concat $ do
         (x :* n) ← list xs
-        return $ 
+        return $
           case n ≡ 1 of
             True → ppRAtom x
             False → ppAtLevel 7 $ concat [ppRAtom x,ppOp "^",pretty n]
@@ -93,7 +95,7 @@ ppProd xs = case list xs of
 ppSum ∷ (RAtom ⇰ ℕ) ⇰ ℕ → Doc
 ppSum xs² = case list xs² of
   Nil → pretty 0
-  (xs :* m) :& Nil → 
+  (xs :* m) :& Nil →
       case m ≡ 1 of
         True → ppProd xs
         False → ppAtLevel 6 $ concat [pretty m,ppProd xs]
@@ -143,7 +145,7 @@ interpRAtom γ = \case
   MinusRA xs⁴ ys⁴ → interpRNF γ xs⁴ - interpRNF γ ys⁴
 
 interpRSP ∷ (𝕏 ⇰ 𝔻) → RSP → 𝔻
-interpRSP γ xs² = 
+interpRSP γ xs² =
   fold 0.0 (+) $ do
     (xs :* m) ← list $ unRSP xs²
     let d = fold 1.0 (×) $ do
@@ -155,7 +157,7 @@ interpRNF ∷ (𝕏 ⇰ 𝔻) → RNF → 𝔻
 interpRNF γ = \case
   NatRNF n → dbl n
   NNRealRNF r → r
-  SymRNF xs⁴ → 
+  SymRNF xs⁴ →
     fold 0.0 (⩏) $ do
       xs³ ← list xs⁴
       return $ fold (1.0/0.0) (⩎) $ do
@@ -351,7 +353,7 @@ normalizeRExp = normalizeRExpPre ∘ extract
 -- Renaming Variables --
 
 renaming ∷ 𝑃 𝕏 → 𝑃 𝕏 → 𝕏 ⇰ 𝕏
-renaming 𝓈 fv = 
+renaming 𝓈 fv =
   let xs = 𝓈 ∩ fv
       mn = fold None (⩎) $ map 𝕩Gen $ iter xs
       mn' = elim𝑂 0 (+1) mn
@@ -379,7 +381,7 @@ fvRSP xs² = pow $ do
   (xs :* _) ← list $ unRSP xs²
   (a :* _) ← list xs
   list $ fvRAtom a
-  
+
 fvRNF ∷ RNF → 𝑃 𝕏
 fvRNF = \case
   NatRNF _ → pø
@@ -392,7 +394,7 @@ fvRNF = \case
 -- Substitution --
 
 natExpRNF ∷ RNF → ℕ → RNF
-natExpRNF e n 
+natExpRNF e n
   | n ≡ 0 = NatRNF 1
   | otherwise = e `timesRNF` natExpRNF e (n - 1)
 
@@ -410,7 +412,7 @@ substRAtom x r' = \case
   MinusRA xs⁴ ys⁴ → minusRNF (substRNF x r' xs⁴) (substRNF x r' ys⁴)
 
 substRSP ∷ 𝕏 → RNF → RSP → RNF
-substRSP x r' xs² = 
+substRSP x r' xs² =
   fold (NatRNF 0) plusRNF $ do
     (xs :* m) ← list $ unRSP xs²
     return $ (NatRNF m `timesRNF`) $ fold (NatRNF 1) timesRNF $ do

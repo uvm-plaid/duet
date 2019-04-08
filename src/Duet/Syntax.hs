@@ -9,6 +9,7 @@ import Duet.RNF
 data Kind =
     ℕK
   | ℝK
+  | TypeK
   deriving (Eq,Ord,Show)
 
 instance POrd Kind where
@@ -211,6 +212,7 @@ data Type r =
   | (𝐿 (𝕏 ∧ Kind) ∧ Type r) :⊸: (Sens r ∧ Type r)
   | (𝐿 (𝕏 ∧ Kind) ∧ PArgs r) :⊸⋆: Type r
   | BoxedT (𝕏 ⇰ Sens r) (Type r)
+  | VarT 𝕏
   deriving (Eq,Ord,Show)
 
 instance Functor Type where
@@ -235,6 +237,8 @@ instance Functor Type where
     (αks :* τ₁) :⊸: (s :* τ₂) → (αks :* map f τ₁) :⊸: (map f s :*  map f τ₂)
     (αks :* PArgs xτs) :⊸⋆: τ → (αks :* PArgs (map (mapPair (map f) (map f)) xτs)) :⊸⋆: map f τ
     BoxedT σ τ → BoxedT (map (map f) σ) (map f τ)
+    --TODO:QUESTION
+    VarT x → VarT x
 
 -----------------
 -- Expressions --
