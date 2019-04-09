@@ -2,7 +2,7 @@
 -- Presna algorithm
 let main = pλ ε : ℝ⁺
               .
-              -- interval:ℕ,phone_id:ℕ,x:ℕ,y:ℕ,hash:𝕊
+              interval : ℕ,
               incoming : 𝕄 [L∞ , U | ★ , 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 𝕊 ∷ [] ],
               outgoing : 𝕄 [L∞ , U | ★ , 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 ℕ ∷ 𝐝 𝕊 ∷ [] ],
               blocks   : ℘ (𝐝 ℕ × 𝐝 ℕ),      -- set of all the blocks of interest

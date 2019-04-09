@@ -198,6 +198,15 @@ rowToDFRow (τ:&τs) (s:&ss) = case τ of
   _ → error $ "rowToDFRow: type is currently not supported" ⧺ pprender τ
 rowToDFRow y z = error $ "rowToDFRow: arguments length mismatch" ⧺ (pprender (y :* z))
 
+pairList ∷ 𝐿 Val → Val
+pairList (v₁ :& v₂ :& Nil) = PairV (v₁ :* v₂)
+pairList _ = error "pairList: tried to build pair out of list with incorrect structure"
+
+csvToPairSet ∷ (Pretty r) ⇒ 𝐿 (𝐿 𝕊) → 𝐿 (Type r) → Val
+csvToPairSet sss τs =
+  let csvList ∷ 𝐿 (𝐿 Val) = map (rowToDFRow τs) sss
+  in SetV $ pow $ map pairList csvList
+
 csvToDF ∷ (Pretty r) ⇒ 𝐿 (𝐿 𝕊) → 𝐿 (Type r) → Val
 csvToDF sss τs =
   let csvList ∷ 𝐿 (𝐿 Val) = map (rowToDFRow τs) sss
@@ -392,6 +401,17 @@ peval env (BindPE x e₁ e₂) = do
 peval env (IfPE e₁ e₂ e₃) = case seval env (extract e₁) of
   BoolV True → peval env (extract e₂)
   BoolV False → peval env (extract e₃)
+
+peval env (AppPE e₁ _ e₂s) =
+  let f = seval env (extract e₁) in
+  case f of
+    (PFunV xs (ExPriv (Ex_C body)) env') →
+      let args = map (seval env ∘ extract) e₂s in
+      let env'' = (assoc $ zip xs args) ⩌ env' in
+      peval env'' body
+    _ → error $ "AppPE: invalid function: " ⧺ (pprender f)
+      -- let env'' = (x ↦ (seval env (extract e₂))) ⩌ env'
+      -- in seval env'' body
 
 -- sample on two matrices and compute on sample
 peval env (EDSamplePE size xs ys x y e) =

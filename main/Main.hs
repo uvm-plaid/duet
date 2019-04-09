@@ -46,6 +46,12 @@ buildArgs (τ:&τs) (a:&as) = case τ of
     let csvm = csvToDF (list $ map list csvss) (schemaToTypes (ConsME τ m))
     r ← buildArgs τs as
     return $ csvm :& r
+  SetT (τ₁ :×: τ₂) → do
+    csvs ← read a
+    let csvss = map (splitOn𝕊 ",") $ filter (\x → not (isEmpty𝕊 x)) $ splitOn𝕊 "\n" csvs
+    let csvm = csvToPairSet (list $ map list csvss) (list [τ₁, τ₂])
+    r ← buildArgs τs as
+    return $ csvm :& r
   ℕT → do
     r ← buildArgs τs as
     return $ NatV (read𝕊 a) :& r
