@@ -157,7 +157,9 @@ main = do
                       MatrixV m → do
                         pprint r'
                         write "out/model.csv" (intercalate "\n" (map (intercalate ",") (mapp (show𝕊 ∘ urv) (toRows m))))
-                      _ → do pprint r'
+                      _ → do
+                        pprint r'
+                        write "out/output.json" $ printJSON r'
                     pprint $ ppHeader "DONE" ; flushOut
                   _ → error "expected pλ at top level"
               _ → error "expected pλ at top level"
@@ -166,3 +168,16 @@ main = do
       pprint $ ppHeader "USAGE"
       out $ "duet parse <file>"
       out $ "duet check <file>"
+
+printJSON ∷ Val → 𝕊
+printJSON v =  (printJSONr v) ⧺ "\n"
+
+printJSONr ∷ Val → 𝕊
+printJSONr v = case v of
+  NatV n → show𝕊 n
+  RealV n → show𝕊 n
+  BoolV True → "\"True\""
+  BoolV False → "\"False\""
+  PairV (v₁ :* v₂) → "[ " ⧺ (printJSONr v₁) ⧺ ", " ⧺ (printJSONr v₂) ⧺ " ]"
+  SetV vs → "[\n" ⧺ (intercalate ",\n" $ map printJSONr (list vs)) ⧺ " ]"
+  _ → show𝕊 v
