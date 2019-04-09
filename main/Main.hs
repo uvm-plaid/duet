@@ -58,7 +58,7 @@ buildArgs (τ:&τs) (a:&as) = case τ of
   ℝˢT _ → do
     r ← buildArgs τs as
     return $ RealV (read𝕊 a) :& r
-  _ → error $ "unexpected arg type in main"
+  _ → error $ "unexpected arg type in main: " ⧺ (pprender τ)
 buildArgs _ _ = error "number of args provided does not match function signature"
 
 drop :: ℕ -> IO (𝐼 𝕊) -> IO (𝐼 𝕊)
