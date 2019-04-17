@@ -1,0 +1,25 @@
+-- `duet run <this-file> "incoming1.csv" "outgoing1.csv" "blocks1.csv" "crisis1.cs" 0.05 0.0001 > output.csv`
+-- scheduling (no privacy)
+let hist = sλ m : ℕ,
+              n : ℕ
+              .
+              availabilities : 𝕄 [L∞ , U | m , n ⋅ 𝐝 ℕ ]
+              ⇒
+  mmap-col availabilities { col ⇒
+    mfold-row (disc 0), col { a, r ⇒
+      a + r#[idx ℕ[0], idx ℕ[0]]
+    }
+  }
+in
+
+let main = pλ ε : ℝ⁺,
+              m : ℕ,
+              n : ℕ
+              .
+              availabilities : 𝕄 [L∞ , U | m , n ⋅ 𝐝 ℕ ],
+              ε : ℝ⁺[ε]
+              ⇒
+  let availableHist = hist@[m,n] availabilities in
+  let indexes = mcreate[ L∞ | ℕ[1] , cols availabilities ] { i , j ⇒ j } in
+  exponential[ℝ⁺[1.0], ε] indexes <availableHist> { i ⇒ availableHist#[idx ℕ[0], i] }
+in main

@@ -325,6 +325,7 @@ inferSens eA = case extract eA of
       (ℕT,ℕT) → return ℕT
       (ℝT,ℝT) → return ℝT
       (𝔻T ℝT,𝔻T ℝT) → return $ 𝔻T ℝT
+      (𝔻T ℕT,𝔻T ℕT) → return $ 𝔻T ℕT
       _ → error $ concat
             [ "Plus error: "
             , pprender $ (τ₁ :* τ₂)
@@ -958,6 +959,16 @@ inferSens eA = case extract eA of
           𝕄T ℓ₂ c₂ (RexpRT ηₘ₂) (RexpME one τ₂') →
             return $ 𝕄T ℓ₂ c₂ (RexpRT ηₘ₂) (RexpME r τ₂')
           _ → return $ 𝕄T LInf UClip (RexpRT one) (RexpME r τ₂)
+      𝕄T ℓ c len (RexpME r τ₁') → do
+        let m = 𝕄T ℓ c len (RexpME one τ₁')
+        σ₂ :* τ₂ ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ m) ⩌ γ) $ inferSens e₂
+        let (ς :* σ₂') = ifNone (zero :* σ₂) $ dview x σ₂
+        tell $ (ι r × ς) ⨵ σ₁
+        tell $ map (Sens ∘ truncate Inf ∘ unSens) σ₂'
+        case τ₂ of
+          𝕄T ℓ₂ c₂ len' (RexpME one τ₂') →
+            return $ 𝕄T ℓ₂ c₂ len' (RexpME r τ₂')
+          _ → return $ 𝕄T LInf UClip (RexpRT one) (RexpME r τ₂)
 --          _ → error $ pprender τ₂
       _  → undefined -- TypeSource Error
 
@@ -1001,6 +1012,16 @@ inferSens eA = case extract eA of
         tell $ ς₂ ⨵ σ₂
         tell $ ι r₁ ⨵ σ₃''
         return τ₃
+      𝕄T ℓ c StarRT s → do
+        let τᵢ = 𝕄T ℓ c (RexpRT one) s
+        σ₃ :* τ₃ ← hijack $ mapEnvL contextTypeL (\ γ → dict [x₁ ↦ τ₁,x₂ ↦ τᵢ] ⩌ γ) $
+                     inferSens e₃
+        let (_ :* σ₃')  = ifNone (zero :* σ₃)  $ dview x₁ σ₃
+            (ς₂ :* σ₃'') = ifNone (zero :* σ₃') $ dview x₂ σ₃'
+        tell $ map (Sens ∘ truncate Inf ∘ unSens) σ₁
+        tell $ ς₂ ⨵ σ₂
+        tell $ map (Sens ∘ truncate Inf ∘ unSens) σ₃''
+        return τ₃
       _ → error $ concat
             [ "MFold error: "
             , (pprender $ (τ₁ :* τ₂))
@@ -1011,7 +1032,7 @@ inferSens eA = case extract eA of
   MMapRowSE e₁ x e₂ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
     case τ₁ of
-      𝕄T ℓ c (RexpRT ηₘ) (RexpME r τ₁') → do
+      𝕄T ℓ c len (RexpME r τ₁') → do
         let m = 𝕄T ℓ c (RexpRT one) (RexpME r τ₁')
         σ₂ :* τ₂ ← hijack $ mapEnvL contextTypeL (\ γ → (x ↦ m) ⩌ γ) $ inferSens e₂
         let (ς :* σ₂') = ifNone (zero :* σ₂) $ dview x σ₂
@@ -1019,8 +1040,8 @@ inferSens eA = case extract eA of
         tell $ ι r ⨵ σ₂'
         case τ₂ of
           𝕄T ℓ₂ c₂ (RexpRT ηₘ₂) (RexpME ηₙ₂ τ₂') | (ηₘ₂ ≡ one) ⩓ (ηₙ₂ ≡ r) →
-            return $ 𝕄T ℓ₂ c₂ (RexpRT ηₘ) (RexpME r τ₂')
-          _ → return $ 𝕄T LInf UClip (RexpRT ηₘ) (RexpME one τ₂)
+            return $ 𝕄T ℓ₂ c₂ len (RexpME r τ₂')
+          _ → return $ 𝕄T LInf UClip len (RexpME one τ₂)
       _  → undefined -- TypeSource Error
 
 
@@ -1463,7 +1484,8 @@ inferPriv eA = case extract eA of
             σ₄KeepMax = joins $ values σ₄Keep
             σ₄Toss = without xs' σ₄'
         case (τ₁,τ₂,ιview @ RNF σ₄KeepMax) of
-          (ℝˢT ηₛ,ℝˢT ηᵋ,Some ς) | (ς ⊑ ηₛ) ⩓ (τ₄ ≡ ℝT) ⩓ (r₁ ≡ one) → do
+          (ℝˢT ηₛ,ℝˢT ηᵋ,Some ς) | (ς ⊑ ηₛ) ⩓ ((τ₄ ≡ ℝT) ⩔ (τ₄ ≡ ℕT) ⩔ (τ₄ ≡ 𝔻T ℕT))
+           ⩓ (r₁ ≡ one) → do
             tell $ map (Priv ∘ truncate (Quantity $ EDPriv ηᵋ zero) ∘ unSens) σ₄Keep
             tell $ map (Priv ∘ truncate Inf ∘ unSens) σ₄Toss
             return $ 𝕀T r₂
