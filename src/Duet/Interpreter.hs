@@ -499,7 +499,15 @@ peval env (ParallelPE e₀ e₁ x₂ e₂ x₃ x₄ e₃) =
     (MatrixV m, SetV p) → do
       let candidates ∷ 𝐿 (Val ∧ 𝐿 (𝐿 Val)) = map (\row → (seval ((x₂ ↦ MatrixV (fromRows (list [row]))) ⩌ env) (extract e₂)) :* (list [row])) (toRows m)
       let parts ∷ 𝐿 (Val ∧ 𝐿 (𝐿 Val)) = partition (list (uniques p)) $ list $ filter (\x → (fst x) ∈ p) candidates
-      let parts₁ = filter (\(v:*llvs) → not (llvs ≡ Nil)) parts
+      let myNil ∷ 𝐿 (𝐿 Val) = Nil
+      let fillin k = case (assoc parts) ⋕? k of
+            Some v → k :* v
+            None   → k :* myNil
+      let parts' = map fillin (uniques p)
+      --error $ pprender $ map (\k → k ∈ pow (map fst parts)) (uniques p)
+      --error $ pprender $ map (\k → (assoc parts) ⋕! k) (uniques p)
+      let parts₁ = parts --filter (\(v:*llvs) → not (llvs ≡ Nil)) parts
+      --error $ pprender parts₁
       r ← pow ^$ mapM (\(v :* llvals) → (peval ((x₃ ↦ v) ⩌ (x₄ ↦ MatrixV (fromRows llvals)) ⩌ env) (extract e₃))) parts₁
       return $ SetV $ r
 
