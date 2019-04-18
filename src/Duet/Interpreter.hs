@@ -498,17 +498,14 @@ peval env (ParallelPE e₀ e₁ x₂ e₂ x₃ x₄ e₃) =
   case (seval env (extract e₀), seval env (extract e₁)) of
     (MatrixV m, SetV p) → do
       let candidates ∷ 𝐿 (Val ∧ 𝐿 (𝐿 Val)) = map (\row → (seval ((x₂ ↦ MatrixV (fromRows (list [row]))) ⩌ env) (extract e₂)) :* (list [row])) (toRows m)
-      let parts ∷ 𝐿 (Val ∧ 𝐿 (𝐿 Val)) = partition (list (uniques p)) $ list $ filter (\x → (fst x) ∈ p) candidates
-      let myNil ∷ 𝐿 (𝐿 Val) = Nil
-      let fillin k = case (assoc parts) ⋕? k of
-            Some v → k :* v
-            None   → k :* myNil
-      let parts' = map fillin (uniques p)
-      --error $ pprender $ map (\k → k ∈ pow (map fst parts)) (uniques p)
-      --error $ pprender $ map (\k → (assoc parts) ⋕! k) (uniques p)
-      let parts₁ = parts --filter (\(v:*llvs) → not (llvs ≡ Nil)) parts
-      --error $ pprender parts₁
-      r ← pow ^$ mapM (\(v :* llvals) → (peval ((x₃ ↦ v) ⩌ (x₄ ↦ MatrixV (fromRows llvals)) ⩌ env) (extract e₃))) parts₁
+      let partitions = map (\x → x :* (concat $ map snd $ filter (\y → (fst y) ≡ x) candidates))
+                       (uniques p)
+      let evalPart (name :* llvals) = case llvals of
+            Nil → evalOnePart name (MatrixV $ ExMatrix $ matrix (s𝕟32 @ 0) (s𝕟32 @ 0)
+                                         (\i j -> RealV 0.0))
+            _   → evalOnePart name $ MatrixV (fromRows llvals)
+          evalOnePart v m = (peval ((x₃ ↦ v) ⩌ (x₄ ↦ m) ⩌ env) (extract e₃))
+      r ← pow ^$ mapM evalPart partitions
       return $ SetV $ r
 
 -- evaluate sensitivity expression and return in the context of the privacy language
