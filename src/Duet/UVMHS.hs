@@ -1,4 +1,4 @@
-module Duet.UVMHS 
+module Duet.UVMHS
   ( module UVMHS
   , module Duet.UVMHS
   ) where
@@ -64,3 +64,6 @@ profile f x = do
   s₂ ← HS.getRTSStats
   let (n₂,u₂) = (HS.major_gcs s₂,HS.cumulative_live_bytes s₂)
   return (t₂ ⨺ t₁,dbl (HS.fromIntegral u₂ - HS.fromIntegral u₁ ∷ ℕ) / dbl (HS.fromIntegral n₂ - HS.fromIntegral n₁ ∷ ℕ))
+
+xcolsplit ∷ Vᴍ m n a → Vᴍ 1 n (Vᴍ m 1 a)
+xcolsplit xys@(Vᴍ _ _ _) = matrix (s𝕟32 @ 1) (xcols xys) $ \ _ j → matrix (rowsVᴍ xys) (s𝕟32 @ 1) $ \ i _ → indexVᴍ i j xys

@@ -81,7 +81,7 @@ instance (∀ p. Eq (e p),∀ p. Ord (e p)) ⇒ Ord (ExPriv e) where
 ex2m :: ExMatrix a → (∀ m n. Vᴍ m n a → b) → b
 ex2m (ExMatrix xs) f = f xs
 
-n2i :: Sℕ32 n → ℕ → 𝕀32 n
+n2i :: ∀ n. Rℕ n ⇒ Sℕ32 n → ℕ → 𝕀32 n
 n2i s n = case (d𝕚 s (𝕟32 n)) of
   Some x → x
   None → error "index out of bounds"
@@ -103,8 +103,20 @@ cols (ExMatrix xs) = nat $ unSℕ32 $ xcols xs
 rows :: ExMatrix a → ℕ
 rows (ExMatrix xs) = nat $ unSℕ32 $ xrows xs
 
+scols :: ∀ n a. Rℕ n ⇒ ExMatrix a → Sℕ32 n
+scols (ExMatrix (xs ∷ Vᴍ m' n' a)) = case compareTℕ @ n @ n' of
+  Some Refl → xcols xs
+
+srows :: ∀ n a. Rℕ n ⇒ ExMatrix a → Sℕ32 n
+srows (ExMatrix (xs ∷ Vᴍ m' n' a)) = case compareTℕ @ n @ m' of
+  Some Refl → xrows xs
+
 tr :: ExMatrix 𝔻 → ExMatrix 𝔻
 tr (ExMatrix xs) = ExMatrix $ xtranspose xs
+
+mindex :: ∀ m n a. (Rℕ m,Rℕ n) ⇒ ExMatrix a → 𝕀32 m → 𝕀32 n → a
+mindex (ExMatrix (xs ∷ Vᴍ m' n' a)) i j = case (compareTℕ @ n @ n',compareTℕ @ m @ m') of
+  (Some Refl, Some Refl) → xs 𝄪 (i,j)
 
 boolCheck :: 𝔹 → 𝔻
 boolCheck True = 1.0
@@ -328,6 +340,11 @@ seval env (MCreateSE l e₁ e₂ ix jx e₃) =
       MatrixV $ ExMatrix $ matrix m n $ \ i j →
         seval ((ix ↦ NatV (nat $ un𝕀32 i)) ⩌ (jx ↦ NatV (nat $ un𝕀32 j)) ⩌ env) $ extract e₃
 
+seval env (MFoldSE e₁ e₂ x₁ x₂ e₃) =
+  case (seval env (extract e₁),seval env (extract e₂)) of
+    (v₁, MatrixV (ExMatrix v₂)) →
+      fold v₁ (\a b → (seval ((x₁ ↦ a) ⩌ (x₂ ↦ b) ⩌ env) (extract e₃))) $ iter $ map (MatrixV ∘ ExMatrix) $ xsplit v₂
+
 -- matrix maps
 seval env (MMapSE e₁ x e₂) =
   case (seval env (extract e₁)) of
@@ -343,6 +360,11 @@ seval env (MMap2SE e₁ e₂ x₁ x₂ e₃) =
           let fn = (\a b → (seval ((x₂ ↦ b) ⩌ ((x₁ ↦ a) ⩌ env)) (extract e₃)))
               c = xmap2 fn xs ys
           in MatrixV $ ExMatrix c
+
+seval env (MMapColSE e₁ x e₂) =
+  case (seval env (extract e₁)) of
+    (MatrixV (ExMatrix v₁)) →
+      MatrixV $ ExMatrix $ map (\a → (seval ((x ↦ (MatrixV (ExMatrix a))) ⩌ env) (extract e₂))) (xcolsplit v₁)
 
 -- functions and application
 seval env (PFunSE _ args body) =
@@ -511,6 +533,22 @@ peval env (ParallelPE e₀ e₁ x₂ e₂ x₃ x₄ e₃) =
 -- evaluate sensitivity expression and return in the context of the privacy language
 peval env (ReturnPE e) =
   return $ seval env (extract e)
+
+peval env (ExponentialPE s (EDExponentialParams ε) xs _ x body) =
+  case (seval env (extract s), seval env (extract ε), seval env (extract xs)) of
+    (RealV s', RealV ε', MatrixV xs') →
+      let xs''     = map (\row' → fromRows $ list [row']) $ toRows xs'
+          envs     = map (\m → (x ↦ (MatrixV m)) ⩌ env) xs''
+          getScore = \env1 → case seval env1 (extract body) of
+            (RealV   r) → r
+            (MatrixV m) | (rows m :* cols m) == (1 :* 1) → urv $ mindex m (n2i (srows m) 0) (n2i (scols m) 0)
+            a → error $ "Invalid score: " ⧺ (show𝕊 a)
+          scores   = map getScore envs
+          δ'       = 1e-5
+          σ        = (s' × (root $ 2.0 × (log $ 1.25/δ')) / ε')
+      in do
+        scores' ← mapM (\score → gaussianNoise score σ) scores
+        return $ MatrixV $ fst $ minElemPairs $ list (zip xs'' scores')
 
 -- error
 peval env e = error $ "Unknown expression: " ⧺ (show𝕊 e)
