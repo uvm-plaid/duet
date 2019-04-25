@@ -358,9 +358,18 @@ inferSens eA = case extract eA of
       (ℕT,𝕀T η₂) → do
         tell $ ι η₂ ⨵ σ₁ ⧺ σ₂
         return ℕT
-      (ℕT,ℕT) → do tell $ σ₁ ⧺ σ₂ ; return ℕT
-      (ℝT,ℝT) → do tell $ σ₁ ⧺ σ₂ ; return ℝT
-      (𝔻T ℝT,𝔻T ℝT) → do tell $ σ₁ ⧺ σ₂ ; return $ 𝔻T ℝT
+      (ℕT,ℕT) → do
+        tell $ map (Sens ∘ truncate Inf ∘ unSens) σ₁
+        tell $ map (Sens ∘ truncate Inf ∘ unSens) σ₂
+        return ℕT
+      (ℝT,ℝT) → do
+        tell $ map (Sens ∘ truncate Inf ∘ unSens) σ₁
+        tell $ map (Sens ∘ truncate Inf ∘ unSens) σ₂
+        return ℝT
+      (𝔻T ℝT,𝔻T ℝT) → do
+        tell $ map (Sens ∘ truncate Inf ∘ unSens) σ₁
+        tell $ map (Sens ∘ truncate Inf ∘ unSens) σ₂
+        return $ 𝔻T ℝT
       _ → error $ "Times error: " ⧺ (pprender $ (τ₁ :* τ₂))
   DivSE e₁ e₂ → do
     σ₁ :* τ₁ ← hijack $ inferSens e₁
