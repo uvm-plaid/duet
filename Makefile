@@ -24,6 +24,7 @@ ARGS := check examples/hyperparam.ed.duet
 ARGS := check examples/adaptive-clip.ed.duet
 ARGS := check examples/normalize.ed.duet
 ARGS := run examples/complete/presna-queries.eps.duet 1 data_short/incoming.csv data_short/outgoing.csv data_short/normal.csv data_short/crisis_warning.csv 1.0
+ARGS := run examples/complete/scheduling.ed.duet data_short/schedule.csv 100
 
 # run examples/gd-pb-mini.ed.duet data_short/fbxs.csv data_short/fbys.csv 0.05 100 0.0001 0.0001 1 50
 # run examples/parallel-simple.ed.duet data_short/made_up.csv 0.05 0.0001 0 0 0 1

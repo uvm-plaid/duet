@@ -1275,6 +1275,8 @@ inferPriv eA = case extract eA of
                 return $ (SetT τ₃)
               _ → error $ "sensitivity error in ParallelPE"
           _ → error $ "℘ expected in second argument of ParallelPE" ⧺ (pprender τ₁)
+      (𝕄T ℓ c StarRT me) →
+        error $ "Found a sensitivity greater than 1 in: " ⧺ (pprender $ values σ₀)
       _ → error $ "𝕄T type expected in first argument of ParallelPE" ⧺ (pprender τ₀)
   SVTPE (EDSVTParams e₁) e₂ e₃ xs e₄ → do
     let xs' = pow xs

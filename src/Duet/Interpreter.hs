@@ -154,6 +154,7 @@ mscale r (ExMatrix m) = ExMatrix $ xmap (× r) m
 
 -- build the rows of a matrix
 fromRows :: 𝐿 (𝐿 a) → ExMatrix a
+fromRows Nil = ExMatrix $ matrix (s𝕟32 @ 0) (s𝕟32 @ 0) (\i j -> undefined)
 fromRows ls = xb ls $ \ xs → ExMatrix (xvirt xs)
 
 -- extracts the rows of a matrix as a list of vectors
@@ -222,7 +223,7 @@ csvToPairSet sss τs =
 csvToDF ∷ (Pretty r) ⇒ 𝐿 (𝐿 𝕊) → 𝐿 (Type r) → Val
 csvToDF sss τs =
   let csvList ∷ 𝐿 (𝐿 Val) = map (rowToDFRow τs) sss
-  in xb csvList $ \ m → MatrixV $ ExMatrix $ xvirt m
+  in MatrixV $ fromRows csvList
 
 partition ∷ 𝐿 Val → 𝐿 (Val ∧ 𝐿 (𝐿 Val)) → 𝐿 (Val ∧ 𝐿 (𝐿 Val))
 partition _ Nil = Nil
@@ -252,6 +253,8 @@ seval _ (ℕˢSE n)       = NatV n
 seval env (RealSE e) =
   case (seval env $ extract e) of
     (NatV n) → RealV $ dbl n
+    (RealV n) → RealV n
+    a → error $ "realSE: unknown type " ⧺ (pprender a) ⧺ " in " ⧺ (pprender e)
 
 -- variables
 seval env (VarSE x) = env ⋕! x
@@ -266,7 +269,7 @@ seval env (PlusSE e₁ e₂) =
     (MatrixV v₁, MatrixV v₂) → MatrixV $ map RealV ( (map urv v₁) +++ (map urv v₂) )
     (RealV v₁, RealV v₂) → RealV (v₁ + v₂)
     (NatV v₁, NatV v₂) → NatV (v₁ + v₂)
-    (a, b) → error $ "No pattern for " ⧺ (show𝕊 (a, b))
+    (a, b) → error $ "No pattern in + for " ⧺ (show𝕊 (a, b))
 
 seval env (MinusSE e₁ e₂) =
   case (seval env (extract e₁), seval env (extract e₂)) of
@@ -305,6 +308,7 @@ seval env (MIndexSE e₁ e₂ e₃) =
       case (d𝕚 (xrows v) (natΩ32 n₁),d𝕚 (xcols v) (natΩ32 n₂)) of
         (Some (n₁' ∷ 𝕀32 m),Some (n₂' ∷ 𝕀32 n))  → v 𝄪 (n₁',n₂')
         _ → error "matrix index out of bounds"
+    (a, b, c) → error $ "Mindex fail: " ⧺ (pprender (e₁ :* a :* b :* c))
 
 -- clip operation for only L2 norm
 seval env (MClipSE norm e) =
@@ -343,7 +347,7 @@ seval env (MCreateSE l e₁ e₂ ix jx e₃) =
 seval env (MFoldSE e₁ e₂ x₁ x₂ e₃) =
   case (seval env (extract e₁),seval env (extract e₂)) of
     (v₁, MatrixV (ExMatrix v₂)) →
-      fold v₁ (\a b → (seval ((x₁ ↦ a) ⩌ (x₂ ↦ b) ⩌ env) (extract e₃))) $ iter $ map (MatrixV ∘ ExMatrix) $ xsplit v₂
+      fold v₁ (\b a → (seval ((x₁ ↦ a) ⩌ (x₂ ↦ b) ⩌ env) (extract e₃))) $ iter $ map (MatrixV ∘ ExMatrix) $ xsplit v₂
 
 -- matrix maps
 seval env (MMapSE e₁ x e₂) =
@@ -408,6 +412,25 @@ seval env (EqualsSE e₁ e₂) =
   let v₁ = seval env $ extract e₁
       v₂ = seval env $ extract e₂
   in BoolV $ v₁ ≡ v₂
+
+seval env (IdxSE e) = seval env $ extract e
+
+seval env (DiscSE e) = seval env $ extract e
+
+seval env (ConvSE e) = seval env $ extract e
+
+seval env (MFilterSE e₁ x e₂) =
+  case (seval env (extract e₁)) of
+    MatrixV m → do
+      let boolVals ∷ 𝐿 (Val ∧ (𝐿 Val)) = map (\row → (seval ((x ↦ MatrixV (fromRows (list [row]))) ⩌ env) (extract e₂)) :* row) (toRows m)
+      let filtered = filter (\val → case val of
+                                (BoolV v :* result) → v)
+                     boolVals
+      let final = map snd filtered
+      let finalM = MatrixV $ fromRows $ list final
+      finalM
+    _ → error $ "Error in mfilterSE"
+
 
 seval env e = error $ "Unknown expression: " ⧺ (show𝕊 e)
 
@@ -522,10 +545,7 @@ peval env (ParallelPE e₀ e₁ x₂ e₂ x₃ x₄ e₃) =
       let candidates ∷ 𝐿 (Val ∧ 𝐿 (𝐿 Val)) = map (\row → (seval ((x₂ ↦ MatrixV (fromRows (list [row]))) ⩌ env) (extract e₂)) :* (list [row])) (toRows m)
       let partitions = map (\x → x :* (concat $ map snd $ filter (\y → (fst y) ≡ x) candidates))
                        (uniques p)
-      let evalPart (name :* llvals) = case llvals of
-            Nil → evalOnePart name (MatrixV $ ExMatrix $ matrix (s𝕟32 @ 0) (s𝕟32 @ 0)
-                                         (\i j -> RealV 0.0))
-            _   → evalOnePart name $ MatrixV (fromRows llvals)
+      let evalPart (name :* llvals) = evalOnePart name $ MatrixV (fromRows llvals)
           evalOnePart v m = (peval ((x₃ ↦ v) ⩌ (x₄ ↦ m) ⩌ env) (extract e₃))
       r ← pow ^$ mapM evalPart partitions
       return $ SetV $ r

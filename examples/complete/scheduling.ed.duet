@@ -6,9 +6,12 @@ let hist = sλ m : ℕ,
               availabilities : 𝕄 [L∞ , U | m , n ⋅ 𝐝 ℕ ]
               ⇒
   mmap-col availabilities { col ⇒
-    mfold-row (disc 0), col { a, r ⇒
-      a + r#[idx ℕ[0], idx ℕ[0]]
+    mfold-row 0.0, col { a, r ⇒
+      a + (real (conv (r#[idx ℕ[0], idx ℕ[0]])))
     }
+    -- rows (mfilter col { r ⇒
+    --         r#[idx ℕ[0], idx ℕ[0]] ≡ (disc 1)
+    --       })
   }
 in
 
