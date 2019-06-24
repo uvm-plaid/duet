@@ -108,7 +108,8 @@ main = do
         do pprint $ ppHeader "TYPE CHECKING" ; flushOut
         r :* tCheck ← time (\ () → runSM dø initEnv dø $ inferSens e) ()
         do out $ "(" ⧺ show𝕊 (secondsTimeD tCheck) ⧺ "s)" ; flushOut
-        _ ← shell $ "echo " ⧺ show𝕊 (secondsTimeD tCheck) ⧺ " >> typecheck-times"
+        tt ← read "typecheck-times"
+        write "typecheck-times" $ tt ⧺ "\n" ⧺ show𝕊 (secondsTimeD tCheck)
         do pprint $ ppHeader "DONE" ; flushOut
         do pprint r ; flushOut
     "lr-accuracy":xsfn:ysfn:mdfn:[] → do
