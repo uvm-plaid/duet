@@ -583,7 +583,7 @@ exponentialHelper env s ε xs x body = do
       σ      = (s × (root $ 2.0 × (log $ 1.25/δ)) / ε)
   scores' ← xumapM (\score → gaussianNoise score σ) scores
   let rM = firstMaxByLT ((<) `on` snd) $ withIndex scores'
-  
+
   -- foldWith (withIndex scores) Nothing $ \ (i :* s) rM →
   --       case rM of
   --         Nothing → (i :* s)
