@@ -1171,34 +1171,3 @@ tokSkip = \case
   TokenSpace → True
   TokenComment → True
   _ → False
-
-  -- [ mix $ MixTerminal $ do
-  --     void $ pSatisfies "lparen" $ shape eTLParenL
-  --     x ← parseExp
-  --     void $ pSatisfies "rparen" $ shape eTRParenL
-  --     return x
-  -- , mix $ MixTerminal  $ EAtom ∘ ASymbol ^$ pShaped "symbol" $ view eTSymbolL
-  -- , mix $ MixTerminal  $ EAtom ∘ ANatural ^$ pShaped "natural" $ view eTNaturalL
-  -- , mix $ MixInfixR  5 $ const ESum ^$ surroundWhitespace $ pShaped "plus" $ view eTPlusL
-  -- , mix $ MixInfixR  6 $ const EProduct ^$ surroundWhitespace $ pShaped "times" $ view eTTimesL
-  -- , mix $ MixInfixL  7 $ const EExpo ^$ surroundWhitespace $ pShaped "power" $ view eTPowerL
-  -- , mix $ MixPostfix 7 $ const EFact ^$ preWhitespace $ pShaped "fact" $ view eTFactL
-  -- , mix $ MixPrefix  8 $ const ENegate ^$ postWhitespace $ pShaped "neg" $ view eTNegativeL
-  -- , mix $ MixInfix   5 $ const EEquality ^$ surroundWhitespace $ pShaped "equal" $ view eTEqualL
-  -- ]
-  -- where
-  --   surroundWhitespace ∷ Parser ExpToken a → Parser ExpToken a
-  --   surroundWhitespace xM = do
-  --     void $ pOptional $ pSatisfies "whitespace" $ shape eTWhitespaceL
-  --     x ← xM
-  --     void $ pOptional $ pSatisfies "whitespace" $ shape eTWhitespaceL
-  --     return x
-  --   preWhitespace ∷ Parser ExpToken a → Parser ExpToken a
-  --   preWhitespace xM = do
-  --     void $ pOptional $ pSatisfies "whitespace" $ shape eTWhitespaceL
-  --     xM
-  --   postWhitespace ∷ Parser ExpToken a → Parser ExpToken a
-  --   postWhitespace xM = do
-  --     x ← xM
-  --     void $ pOptional $ pSatisfies "whitespace" $ shape eTWhitespaceL
-  --     return x

@@ -561,17 +561,6 @@ peval env (ExponentialPE se (EDExponentialParams εe) xse _ x body) =
       Some Refl → do
         i ← exponentialHelper env s ε xs x $ extract body
         return $ NatV i
-      -- let xs''     = map (\row' → fromRows $ list [row']) $ toRows xs'
-      --     envs     = map (\m → (x ↦ (MatrixV m)) ⩌ env) xs''
-      --     getScore = \env1 → case seval env1 (extract body) of
-      --       (RealV   r) → r
-      --       (MatrixV m@(ExMatrix _)) | (rows m :* cols m) == (1 :* 1) → urv $ _ -- mindex m _ _ -- (n2i (srows m) 0) (n2i (scols m) 0)
-      --       a → error $ "Invalid score: " ⧺ (show𝕊 a)
-      --     scores   = map getScore envs
-      --     δ'       = 1e-5
-      --     σ        = (s' × (root $ 2.0 × (log $ 1.25/δ')) / ε')
-      -- in do
-      --   return $ MatrixV $ fst $ minElemPairs $ list (zip xs'' scores')
 
 -- error
 peval env e = error $ "Unknown expression: " ⧺ (show𝕊 e)
@@ -583,13 +572,6 @@ exponentialHelper env s ε xs x body = do
       σ      = (s × (root $ 2.0 × (log $ 1.25/δ)) / ε)
   scores' ← xumapM (\score → gaussianNoise score σ) scores
   let rM = firstMaxByLT ((<) `on` snd) $ withIndex scores'
-
-  -- foldWith (withIndex scores) Nothing $ \ (i :* s) rM →
-  --       case rM of
-  --         Nothing → (i :* s)
-  --         Just (i' :* s') → case s > s' of
-  --           True → (i :* s)
-  --           False → (i' :* s')
   return $ case rM of
     None → error "exponential on empty thing"
     Some r → fst r
