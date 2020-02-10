@@ -46,15 +46,18 @@ ghc-options:
   - -O0
   - -threaded -rtsopts -with-rtsopts=-N 
 
+dependencies:
+  - base
+  - uvmhs
+  - random
+  - mwc-random
+  - time
+  - normaldistribution >= 1.1.0.3
+
+library:
+  source-dirs: src
+
 executable:
-  source-dirs:
-    - src
-    - main
+  source-dirs: main
   main: Main.hs
-  dependencies:
-    - base
-    - uvmhs
-    - random
-    - mwc-random
-    - time
-    - normaldistribution >= 1.1.0.3
+  dependencies: duet
